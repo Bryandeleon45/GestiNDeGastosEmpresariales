@@ -1,0 +1,90 @@
+Create a fully functional, production-ready screen in Figma for "Gestión de Accesos - Proveedores" (Supplier Access Control Portal) for "Muni Panajachel - GESTIÓN ADMINISTRATIVA". Built using Auto-Layout, dynamic UI component sets, interactive dropdown variants, status badges, and connected prototyping interactions.
+
+==================================================
+1. LAYOUT & COLOR PALETTE
+==================================================
+- Theme: Clean, modern civic administration portal.
+- Palette: 
+  * Background: Light grey (#F8F9FA)
+  * Primary Brand: Forest Green (#1E5E2F)
+  * Text: Dark Charcoal (#212529) and Muted Slate (#6C757D)
+  * Connection Status Badges:
+    - Conectado: Soft green (#DCFCE7) background with green text (#16A34A) and a green dot.
+    - Sin Conexión: Light grey (#F3F4F6) background with muted grey text (#6B7280) and a grey dot.
+    - Acceso Bloqueado: Light red/pink (#FEE2E2) background with red text (#DC2626) and a red dot.
+
+==================================================
+2. INTERACTIVE SIDEBAR NAVIGATION (Left Panel)
+==================================================
+- Top Header: Municipal coat of arms emblem + "Muni Panajachel - GESTIÓN ADMINISTRATIVA".
+- Menu Items (Create interactive states for each):
+  1. "Dashboard" (Hoverable link).
+  2. "Dependencias" (Hoverable link).
+  3. "Proveedores" (Active/Selected state - solid forest green background, white icon and text).
+  4. "Proformas", "Facturación", "Bodega", "Reportes", "Configuración" (Hoverable links).
+- Bottom Action: "Cerrar Sesión" (Red exit icon and text with hover state).
+
+==================================================
+3. TOP HEADER BAR & BREADCRUMBS
+==================================================
+- Top Bar Layout: Search input "Buscar proveedores..." | Notification bell with red badge | Help question mark icon | User profile card "Lic. Ricardo Gómez - Director Administrativo" with avatar.
+- Breadcrumbs Path: "Proveedores > Gestión de Accesos" (Muted grey text with green active terminal link).
+- Title Section:
+  * Title: "Gestión de Accesos - Proveedores" (Bold 24px dark text).
+  * Subtitle: "Administración de roles, credenciales y conexión al portal municipal."
+  * Primary Action Button: "+ Conectar Nuevo Proveedor" (Solid forest green button with user icon and hover/pressed variants).
+
+==================================================
+4. KEY PERFORMANCE METRICS CARDS
+==================================================
+Create 2 KPI cards side-by-side:
+1. Card 1: Icon container with green group icon | Label "TOTAL USUARIOS", Value "148".
+2. Card 2: Icon container with green shield-check icon | Label "ACTIVOS PORTAL", Value "132".
+
+==================================================
+5. DIRECTORY & ACCESS CONTROL TABLE ("Directorio de Accesos")
+==================================================
+- Header Control Bar:
+  * Title: "Directorio de Accesos"
+  * Segmented Filter Tabs: "Todos" (Active pill selection), "Activos", "Inactivos".
+  * Right Action: Filter icon + "Filtros Avanzados" (Clickable text link).
+- Table Column Headers (Light Grey Row): "NOMBRE DEL PROVEEDOR / NIT", "ROL ASIGNADO", "ESTADO DE CONEXIÓN", "ÚLTIMA ACTIVIDAD", "ACCIONES DE SEGURIDAD".
+- Interactive Table Rows (Hover highlight on row hover):
+  1. Row 1:
+     * Avatar: "SL" in soft green box | Name: "Suministros El Lago" | Subtext: "NIT: 459823-1".
+     * Role Dropdown: "Proveedor Premium" with a downward arrow (Interactive dropdown component).
+     * Connection Status: "Conectado" (Green status badge).
+     * Last Activity: "Hoy, 10:24 AM".
+     * Security Actions: Key/Lock icon buttons for access management.
+  2. Row 2:
+     * Avatar: "FS" in soft green box | Name: "Ferretería El Sol" | Subtext: "NIT: 102938-4".
+     * Role Dropdown: "Proveedor Estándar" with a downward arrow.
+     * Connection Status: "Sin Conexión" (Grey status badge).
+     * Last Activity: "Hace 3 días".
+     * Security Actions: Key/Lock icon buttons.
+  3. Row 3:
+     * Avatar: "DM" in soft green box | Name: "Distribuidora Maya" | Subtext: "NIT: 882736-2".
+     * Role Dropdown: "Distribuidor Mayorista" with a downward arrow.
+     * Connection Status: "Conectado" (Green status badge).
+     * Last Activity: "Ayer, 04:15 PM".
+     * Security Actions: Key/Lock icon buttons.
+  4. Row 4:
+     * Avatar: "CC" in soft grey box | Name: "Construcciones del Centro" | Subtext: "NIT: 554433-K".
+     * Role Dropdown: "Proveedor Premium" with a downward arrow.
+     * Connection Status: "Acceso Bloqueado" (Red status badge).
+     * Last Activity: "21 Oct, 2023".
+     * Security Actions: Unblock/Key icon buttons.
+
+- Table Footer:
+  * Left: "Mostrando 4 de 148 proveedores registrados"
+  * Right: Pagination controls `<` | Page `1` (Active green box) | Page `2` | Page `3` | `>`
+
+- Footer Note: Centered small muted text: "© 2023 Municipalidad de Panajachel - Sistema de Gestión Administrativa. Todos los derechos reservados."
+
+==================================================
+6. PROTOTYPING & FUNCTIONAL CONNECTIONS
+==================================================
+- Role Select Interactivity: Clicking any "ROL ASIGNADO" dropdown opens an interactive floating menu to switch roles ("Proveedor Estándar", "Proveedor Premium", "Distribuidor Mayorista", "Bloqueado").
+- Primary Action Button: Clicking "+ Conectar Nuevo Proveedor" triggers `Open Overlay` to display the supplier onboarding modal screen.
+- Tab Filtering: Clicking "Activos" or "Inactivos" filters table rows dynamically in the prototype view.
+- Sidebar Navigation: Clicking "Dashboard" or "Dependencias" routes seamlessly back to their respective portal screens.
