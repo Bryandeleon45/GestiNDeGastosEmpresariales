@@ -1,10 +1,10 @@
-import { useState, useEffect, useRef } from "react";
+﻿import { useState, useEffect, useRef } from "react";
 import muniLogo from "@/imports/image-14.png";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell,
 } from "recharts";
 
-// ─── Design tokens ────────────────────────────────────────────────────────────
+// â”€â”€â”€ Design tokens â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const G  = "#1E5E2F";
 const GL = "#E8F5ED";
 const GB = "#C6E0CC";
@@ -18,7 +18,41 @@ const ACCENT_PALETTE = [
   { name:"Crimson",      hex:"#BE123C" },
 ];
 
-// ─── Municipal Seal ───────────────────────────────────────────────────────────
+const mockData = {
+  user: {
+    name: "",
+    role: "",
+    avatar: "",
+  },
+  kpis: {
+    totalSolicitudes: { value: "0", change: "" },
+    presupuestoEjecutado: { value: "0%", total: "Q 0.0M", max: "Q 0.0M" },
+    ordenesPendientes: { value: "0", subtotal: "Q 0.00" },
+    entregasParciales: { value: "0", alert: "" },
+  },
+  chartData: [],
+  activity: [],
+  statusBadge: {
+    Entregado: "bg-emerald-50 text-emerald-700 border border-emerald-200",
+    Parcial:   "bg-amber-50 text-amber-700 border border-amber-200",
+    Pendiente: "bg-gray-100 text-gray-600 border border-gray-200",
+  },
+  stock: [],
+};
+// â”€â”€â”€ Top-level data constants (for compatibility with existing references) â”€â”€â”€â”€â”€
+const CHART_DATA: { dept: string; gasto: number }[] = mockData.chartData;
+const ACTIVITY: { sol: string; dep: string; monto: string; status: string }[] = mockData.activity;
+const STATUS_BADGE: Record<string, string> = mockData.statusBadge;
+// â”€â”€â”€ Stock data kept for StockAlertsCard component â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+const STOCK: StockItem[] = mockData.stock as StockItem[];
+
+interface StockItem {
+  id: string; name: string; pct: number; level: "CRÍTICO" | "BAJO";
+  disp: number; min: number; unit: string;
+  lastRestock: string; location: string; proveedor: string; costo: string;
+}
+
+// â”€â”€â”€ Municipal Seal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function MunicipalSeal({ size = 40, onClick }: { size?: number; onClick?: () => void }) {
   const img = (
     <img
@@ -43,7 +77,7 @@ function MunicipalSeal({ size = 40, onClick }: { size?: number; onClick?: () => 
   );
 }
 
-// ─── Icons ────────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Icons â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const Icons = {
   Dashboard:    () => <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.8}><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>,
   Dependencias: () => <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.8}><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>,
@@ -96,7 +130,7 @@ const Icons = {
   FileText:     () => <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.8}><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>,
 };
 
-// ─── Nav ──────────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Nav â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const NAV_MAIN = [
   { key: "dashboard",    label: "Dashboard",    Icon: Icons.Dashboard },
   { key: "dependencias", label: "Dependencias", Icon: Icons.Dependencias },
@@ -108,40 +142,8 @@ const NAV_MAIN = [
   { key: "configuracion", label: "Configuración", Icon: Icons.Config },
 ];
 
-const CHART_DATA = [
-  { dept: "DAFIM",      gasto: 85000 },
-  { dept: "SECRETARÍA", gasto: 42000 },
-  { dept: "OF. AGUA",   gasto: 97000 },
-  { dept: "SERVICIOS",  gasto: 61000 },
-  { dept: "OBRAS",      gasto: 130000 },
-  { dept: "CULTURA",    gasto: 28000 },
-];
-
-type ActStatus = "Entregado" | "Parcial" | "Pendiente";
-const ACTIVITY: { sol: string; dep: string; monto: string; status: ActStatus }[] = [
-  { sol: "SOL-2023-458", dep: "DAFIM",              monto: "Q 12,450.00", status: "Entregado" },
-  { sol: "SOL-2023-459", dep: "Secretaría General", monto: "Q 3,200.00",  status: "Parcial" },
-  { sol: "SOL-2023-460", dep: "Oficina de Agua",    monto: "Q 45,900.00", status: "Pendiente" },
-  { sol: "SOL-2023-461", dep: "Policía Municipal",  monto: "Q 1,150.00",  status: "Entregado" },
-  { sol: "SOL-2023-462", dep: "Obras Públicas",     monto: "Q 78,200.00", status: "Parcial" },
-];
-const STATUS_BADGE: Record<ActStatus, string> = {
-  Entregado: "bg-emerald-50 text-emerald-700 border border-emerald-200",
-  Parcial:   "bg-amber-50 text-amber-700 border border-amber-200",
-  Pendiente: "bg-gray-100 text-gray-600 border border-gray-200",
-};
-interface StockItem {
-  id: string; name: string; pct: number; level: "CRÍTICO" | "BAJO";
-  disp: number; min: number; unit: string;
-  lastRestock: string; location: string; proveedor: string; costo: string;
-}
-const STOCK: StockItem[] = [
-  { id:"s1", name:"Papel Bond A4 (Resmas)", pct:12, level:"CRÍTICO", disp:12,  min:100, unit:"Resmas",  lastRestock:"15/03/2026", location:"Bodega Central B-02", proveedor:"Papelería El Sol",    costo:"Q 45.00 / resma" },
-  { id:"s2", name:"Tóner HP LaserJet 85A",  pct:33, level:"BAJO",    disp:5,   min:15,  unit:"Unidades", lastRestock:"01/04/2026", location:"Bodega Central B-05", proveedor:"TecnoSupplies GT",   costo:"Q 285.00 / unidad" },
-  { id:"s3", name:"Folder Manila Oficio",   pct:50, level:"BAJO",    disp:250, min:500, unit:"Piezas",   lastRestock:"20/04/2026", location:"Bodega Central B-01", proveedor:"Distribuidora DAFIM", costo:"Q 1.50 / pieza" },
-];
-
-// ─── Audit log data ───────────────────────────────────────────────────────────
+// â”€â”€â”€ Audit log data â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// â”€â”€â”€ Audit log data â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 interface AuditEntry {
   fecha: string; usuario: string;
   actividad: string; actividadColor: "green" | "gray";
@@ -149,46 +151,17 @@ interface AuditEntry {
   estado: string; estadoStyle: string; EstadoIcon: () => JSX.Element;
 }
 const PAGE_SIZE = 5;
-const ALL_AUDIT: AuditEntry[] = [
-  { fecha:"11/06/2026 22:40:43", usuario:"A. Reyes",  actividad:"SC-2024-045 (Oficina)", actividadColor:"green", descripcion:"Orden de compra procesada y enviada a proveedor.", estado:"Procesado",    estadoStyle:"bg-emerald-50 text-emerald-700 border border-emerald-200", EstadoIcon:Icons.CheckBadge },
-  { fecha:"11/06/2026 22:40:43", usuario:"(System)",  actividad:"SC-2024-044 (Agua)",    actividadColor:"green", descripcion:"Solicitud aprobada automáticamente por sistema.",  estado:"Auto-Aprobado",estadoStyle:"bg-green-50 text-green-700 border border-green-200",     EstadoIcon:Icons.Zap },
-  { fecha:"10/06/2026 16:01",    usuario:"A. Reyes",  actividad:"(General)",             actividadColor:"gray",  descripcion:"Presupuesto anual actualizado al 64%.",            estado:"Actualizado",  estadoStyle:"bg-emerald-50 text-emerald-700 border border-emerald-200", EstadoIcon:Icons.Refresh },
-  { fecha:"10/06/2026 09:44",    usuario:"J. Pérez",  actividad:"SC-2024-042 (Cloro)",   actividadColor:"green", descripcion:"Solicitud creada por Oficina de Agua.",            estado:"Creado",       estadoStyle:"bg-amber-50 text-amber-700 border border-amber-200",     EstadoIcon:Icons.Pencil },
-  { fecha:"09/06/2026 11:20",    usuario:"(System)",  actividad:"SC-2024-040 (Papelería)",actividadColor:"green",descripcion:"Solicitud guardada como borrador.",                estado:"Guardado",     estadoStyle:"bg-gray-100 text-gray-600 border border-gray-200",        EstadoIcon:Icons.Doc },
-  { fecha:"09/06/2026 08:15",    usuario:"M. López",  actividad:"SC-2024-039 (Limpieza)",actividadColor:"green", descripcion:"Proveedor asignado a orden de limpieza.",          estado:"Procesado",    estadoStyle:"bg-emerald-50 text-emerald-700 border border-emerald-200", EstadoIcon:Icons.CheckBadge },
-  { fecha:"08/06/2026 17:30",    usuario:"A. Reyes",  actividad:"SC-2024-038 (Oficina)", actividadColor:"green", descripcion:"Factura #F-2024-128 aprobada y registrada.",       estado:"Procesado",    estadoStyle:"bg-emerald-50 text-emerald-700 border border-emerald-200", EstadoIcon:Icons.CheckBadge },
-  { fecha:"08/06/2026 14:22",    usuario:"(System)",  actividad:"(General)",             actividadColor:"gray",  descripcion:"Alerta de stock bajo generada automáticamente.",   estado:"Auto-Aprobado",estadoStyle:"bg-green-50 text-green-700 border border-green-200",     EstadoIcon:Icons.Zap },
-  { fecha:"07/06/2026 11:05",    usuario:"J. Pérez",  actividad:"SC-2024-036 (Agua)",    actividadColor:"green", descripcion:"Solicitud de mantenimiento enviada a bodega.",     estado:"Creado",       estadoStyle:"bg-amber-50 text-amber-700 border border-amber-200",     EstadoIcon:Icons.Pencil },
-  { fecha:"07/06/2026 09:00",    usuario:"R. Castro", actividad:"SC-2024-035 (Cultura)", actividadColor:"green", descripcion:"Presupuesto aprobado por Director Financiero.",    estado:"Actualizado",  estadoStyle:"bg-emerald-50 text-emerald-700 border border-emerald-200", EstadoIcon:Icons.Refresh },
-  { fecha:"06/06/2026 16:45",    usuario:"M. López",  actividad:"SC-2024-034 (Obras)",   actividadColor:"green", descripcion:"Orden de compra enviada a proveedor externo.",     estado:"Procesado",    estadoStyle:"bg-emerald-50 text-emerald-700 border border-emerald-200", EstadoIcon:Icons.CheckBadge },
-  { fecha:"06/06/2026 13:10",    usuario:"A. Reyes",  actividad:"SC-2024-033 (Oficina)", actividadColor:"green", descripcion:"Informe mensual de gastos generado.",               estado:"Actualizado",  estadoStyle:"bg-emerald-50 text-emerald-700 border border-emerald-200", EstadoIcon:Icons.Refresh },
-  { fecha:"05/06/2026 10:30",    usuario:"(System)",  actividad:"SC-2024-032 (DAFIM)",   actividadColor:"green", descripcion:"Cierre automático de solicitud vencida.",           estado:"Guardado",     estadoStyle:"bg-gray-100 text-gray-600 border border-gray-200",        EstadoIcon:Icons.Doc },
-  { fecha:"05/06/2026 08:55",    usuario:"J. Pérez",  actividad:"SC-2024-031 (Agua)",    actividadColor:"green", descripcion:"Nueva solicitud registrada por Oficina de Agua.",  estado:"Creado",       estadoStyle:"bg-amber-50 text-amber-700 border border-amber-200",     EstadoIcon:Icons.Pencil },
-  { fecha:"04/06/2026 15:20",    usuario:"R. Castro", actividad:"(General)",             actividadColor:"gray",  descripcion:"Configuración del sistema actualizada.",            estado:"Actualizado",  estadoStyle:"bg-emerald-50 text-emerald-700 border border-emerald-200", EstadoIcon:Icons.Refresh },
-];
+const ALL_AUDIT: AuditEntry[] = [];
 const TIPO_OPTIONS = ["Todas las actividades","Orden de Compra","Aprobación","Actualización","Creación","Borrador"];
 
-// ─── Search Bar ───────────────────────────────────────────────────────────────
+// â”€â”€â”€ Search Bar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 type SearchResultType = "solicitud" | "proveedor" | "stock";
 interface SearchResult {
   id: string; type: SearchResultType;
   title: string; meta: string; badge: string; badgeStyle: string;
 }
 
-const ALL_SEARCH_RESULTS: SearchResult[] = [
-  { id:"r1",  type:"solicitud", title:"SOL-2023-458 — DAFIM",                        meta:"Compra de materiales de oficina",       badge:"Entregado", badgeStyle:"bg-emerald-50 text-emerald-700 border-emerald-200" },
-  { id:"r2",  type:"solicitud", title:"SOL-2023-459 — Secretaría General",            meta:"Servicio técnico de mantenimiento",     badge:"Parcial",   badgeStyle:"bg-amber-50 text-amber-700 border-amber-200" },
-  { id:"r3",  type:"solicitud", title:"SOL-2023-460 — Oficina de Agua",               meta:"Compra de suministros de cloro",        badge:"Pendiente", badgeStyle:"bg-gray-100 text-gray-600 border-gray-200" },
-  { id:"r4",  type:"solicitud", title:"SOL-2023-461 — Policía Municipal",             meta:"Equipamiento de protección",           badge:"Entregado", badgeStyle:"bg-emerald-50 text-emerald-700 border-emerald-200" },
-  { id:"r5",  type:"solicitud", title:"SOL-2023-462 — Obras Públicas",               meta:"Materiales de construcción",           badge:"Parcial",   badgeStyle:"bg-amber-50 text-amber-700 border-amber-200" },
-  { id:"r6",  type:"proveedor", title:"Librería y Papelería Sololá",                  meta:"Categoría: Insumos de Oficina",         badge:"Activo",    badgeStyle:"bg-blue-50 text-blue-700 border-blue-200" },
-  { id:"r7",  type:"proveedor", title:"TecnoSupplies Guatemala",                      meta:"Categoría: Equipos Tecnológicos",       badge:"Activo",    badgeStyle:"bg-blue-50 text-blue-700 border-blue-200" },
-  { id:"r8",  type:"proveedor", title:"Distribuidora DAFIM",                          meta:"Categoría: Materiales Varios",          badge:"Activo",    badgeStyle:"bg-blue-50 text-blue-700 border-blue-200" },
-  { id:"r9",  type:"stock",     title:"Tóner HP LaserJet 85A",                        meta:"5 disponibles · Bodega Central B-05",  badge:"Stock Bajo",badgeStyle:"bg-orange-50 text-orange-600 border-orange-200" },
-  { id:"r10", type:"stock",     title:"Papel Bond A4 (Resmas)",                       meta:"12 disponibles · Bodega Central B-02", badge:"CRÍTICO",   badgeStyle:"bg-red-50 text-red-600 border-red-200" },
-  { id:"r11", type:"stock",     title:"Folder Manila Oficio",                         meta:"250 disponibles · Bodega Central B-01",badge:"Stock Bajo",badgeStyle:"bg-orange-50 text-orange-600 border-orange-200" },
-  { id:"r12", type:"solicitud", title:"SOL-2024-047 — Cultura",                       meta:"Insumos culturales y recreativos",     badge:"Pendiente", badgeStyle:"bg-gray-100 text-gray-600 border-gray-200" },
-];
+const ALL_SEARCH_RESULTS: SearchResult[] = [];
 
 const RESULT_ICON: Record<SearchResultType, JSX.Element> = {
   solicitud: <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.8}><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>,
@@ -302,8 +275,8 @@ function SearchBar() {
         {/* Keyboard shortcut hint (default state only) */}
         {!focused && !query && (
           <kbd className="hidden sm:flex items-center gap-0.5 text-[10px] font-semibold text-gray-400 shrink-0">
-            <span className="px-1.5 py-0.5 rounded border border-gray-200 bg-gray-50">⌘</span>
-            <span className="px-1.5 py-0.5 rounded border border-gray-200 bg-gray-50">K</span>
+<span className="px-1.5 py-0.5 rounded border border-gray-200 bg-gray-50">Ctrl</span>
+<span className="px-1.5 py-0.5 rounded border border-gray-200 bg-gray-50">+ K</span>
           </kbd>
         )}
       </div>
@@ -394,8 +367,8 @@ function SearchBar() {
                 onClick={() => setFocused(false)}
                 className="w-full flex items-center justify-between px-4 py-3 text-sm font-semibold transition-colors hover:bg-gray-50"
                 style={{ color: G }}>
-                <span>Ver todos los resultados ({ALL_SEARCH_RESULTS.length}) →</span>
-                <kbd className="text-[10px] font-semibold text-gray-400 px-1.5 py-0.5 rounded border border-gray-200 bg-gray-50">↵</kbd>
+                <span>Ver todos los resultados ({ALL_SEARCH_RESULTS.length}) â†’</span>
+                <kbd className="text-[10px] font-semibold text-gray-400 px-1.5 py-0.5 rounded border border-gray-200 bg-gray-50">â†µ</kbd>
               </button>
             </div>
           )}
@@ -405,15 +378,9 @@ function SearchBar() {
   );
 }
 
-// ─── Notification Bell ────────────────────────────────────────────────────────
+// â”€â”€â”€ Notification Bell â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 interface NotifItem { id: string; icon: string; title: string; body: string; time: string; unread: boolean; color: string; }
-const NOTIFS_DEFAULT: NotifItem[] = [
-  { id:"n1", icon:"🧾", title:"Nueva solicitud recibida",            body:"SOL-2024-047 de Oficina de Agua pendiente de aprobación.", time:"Hace 5 min",  unread:true,  color:"#1E5E2F" },
-  { id:"n2", icon:"⚠️", title:"Stock crítico de Papel Bond",         body:"Quedan solo 12 resmas. Por debajo del mínimo de 100.",     time:"Hace 18 min", unread:true,  color:"#DC2626" },
-  { id:"n3", icon:"📄", title:"Factura pendiente de aprobación",     body:"Factura #F-2024-129 de TecnoSupplies GT requiere firma.",   time:"Hace 1 h",   unread:true,  color:"#D97706" },
-  { id:"n4", icon:"✅", title:"Orden de compra procesada",            body:"OC-2024-088 enviada correctamente al proveedor.",          time:"Hace 2 h",   unread:false, color:"#059669" },
-  { id:"n5", icon:"📊", title:"Reporte mensual disponible",          body:"Informe de gastos de mayo 2026 listo para descarga.",      time:"Ayer",       unread:false, color:"#6366F1" },
-];
+const NOTIFS_DEFAULT: NotifItem[] = [];
 
 function NotificationBell({ onOpenAudit }: { onOpenAudit: () => void }) {
   const [open,     setOpen]     = useState(false);
@@ -514,7 +481,7 @@ function NotificationBell({ onOpenAudit }: { onOpenAudit: () => void }) {
   );
 }
 
-// ─── Help Button ──────────────────────────────────────────────────────────────
+// â”€â”€â”€ Help Button â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const FAQ_LINKS = [
   { q: "¿Cómo crear una solicitud?",          href: "#solicitudes" },
   { q: "Guía de Bodega y Stock",               href: "#bodega" },
@@ -624,7 +591,7 @@ function HelpButton({ onOpenTicket }: { onOpenTicket: () => void }) {
             <button onClick={() => { setOpen(false); onOpenTicket(); }}
               className="w-full py-2.5 rounded-xl text-xs font-bold transition-all hover:opacity-90 text-white"
               style={{ backgroundColor: G }}>
-              Abrir Ticket de Soporte →
+              Abrir Ticket de Soporte â†’
             </button>
           </div>
         </div>
@@ -633,7 +600,7 @@ function HelpButton({ onOpenTicket }: { onOpenTicket: () => void }) {
   );
 }
 
-// ─── Stock Item Detail Popover ────────────────────────────────────────────────
+// â”€â”€â”€ Stock Item Detail Popover â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function StockDetailPopover({ item, onClose, onRestock }: { item: StockItem; onClose: () => void; onRestock: (name: string) => void }) {
   const isCrit = item.level === "CRÍTICO";
   const barColor = isCrit ? "#EF4444" : "#F59E0B";
@@ -694,7 +661,7 @@ function StockDetailPopover({ item, onClose, onRestock }: { item: StockItem; onC
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-xs text-gray-500">Déficit</span>
-                <span className="text-sm font-bold text-red-600">−{(item.min - item.disp).toLocaleString()} {item.unit}</span>
+                <span className="text-sm font-bold text-red-600">âˆ’{(item.min - item.disp).toLocaleString()} {item.unit}</span>
               </div>
             </div>
           </div>
@@ -748,7 +715,7 @@ function StockDetailPopover({ item, onClose, onRestock }: { item: StockItem; onC
   );
 }
 
-// ─── Stock Alerts Card ────────────────────────────────────────────────────────
+// â”€â”€â”€ Stock Alerts Card â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function StockAlertsCard({ onRestock }: { onRestock: (items?: string) => void }) {
   const [hoveredItem,  setHoveredItem]  = useState<string | null>(null);
   const [detailItem,   setDetailItem]   = useState<StockItem | null>(null);
@@ -823,7 +790,7 @@ function StockAlertsCard({ onRestock }: { onRestock: (items?: string) => void })
                 {/* Disp / Min */}
                 <div className="flex justify-between">
                   <span className="text-[11px] text-gray-700">Disp: <b>{s.disp.toLocaleString()}</b></span>
-                  <span className="text-[11px] text-gray-500">Mín: <b>{s.min.toLocaleString()}</b></span>
+                  <span className="text-[11px] text-gray-500">Mí: <b>{s.min.toLocaleString()}</b></span>
                 </div>
               </div>
               {i < STOCK.length - 1 && <div className="h-px bg-gray-100"/>}
@@ -864,7 +831,7 @@ function StockAlertsCard({ onRestock }: { onRestock: (items?: string) => void })
   );
 }
 
-// ─── Support Card ─────────────────────────────────────────────────────────────
+// â”€â”€â”€ Support Card â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function SupportCard({ onOpenTicket }: { onOpenTicket: () => void }) {
   const [state, setState] = useState<"default"|"hover"|"pressed">("default");
 
@@ -933,7 +900,7 @@ function SupportCard({ onOpenTicket }: { onOpenTicket: () => void }) {
   );
 }
 
-// ─── Support Ticket Drawer ────────────────────────────────────────────────────
+// â”€â”€â”€ Support Ticket Drawer â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 type Priority = "Baja" | "Media" | "Alta" | "Urgente";
 type Category = "Técnico" | "Presupuesto" | "Solicitudes" | "Acceso" | "Otro";
 
@@ -942,8 +909,8 @@ function SupportTicketDrawer({ onClose, onSubmit }: { onClose: () => void; onSub
   const [categoria, setCategoria] = useState<Category>("Técnico");
   const [prioridad, setPrioridad] = useState<Priority>("Media");
   const [desc,      setDesc]      = useState("");
-  const [nombre,    setNombre]    = useState("Lic. Ricardo Gómez");
-  const [email,     setEmail]     = useState("rgomez@munipanajachel.gob.gt");
+  const [nombre,    setNombre]    = useState("");
+  const [email,     setEmail]     = useState("");
   const [visible,   setVisible]   = useState(false);
   const [focusField, setFocus]    = useState<string|null>(null);
 
@@ -1104,7 +1071,7 @@ function SupportTicketDrawer({ onClose, onSubmit }: { onClose: () => void; onSub
   );
 }
 
-// ─── Shared Dropdown ──────────────────────────────────────────────────────────
+// â”€â”€â”€ Shared Dropdown â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function Dropdown({ label, value, options, onChange }: {
   label: string; value: string; options: string[]; onChange: (v: string) => void;
 }) {
@@ -1143,7 +1110,7 @@ function Dropdown({ label, value, options, onChange }: {
   );
 }
 
-// ─── Toast ────────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Toast â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function Toast({ show, message, sub, onHide }: { show: boolean; message: string; sub?: string; onHide: () => void }) {
   useEffect(() => { if (show) { const t = setTimeout(onHide, 4500); return () => clearTimeout(t); } }, [show, onHide]);
   return (
@@ -1160,7 +1127,7 @@ function Toast({ show, message, sub, onHide }: { show: boolean; message: string;
   );
 }
 
-// ─── Audit Modal ──────────────────────────────────────────────────────────────
+// â”€â”€â”€ Audit Modal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function AuditModal({ onClose, onExport }: { onClose: () => void; onExport: () => void }) {
   const [usuario,    setUsuario]    = useState("A. Reyes");
   const [tipoAct,    setTipoAct]    = useState("Todas las actividades");
@@ -1223,7 +1190,7 @@ function AuditModal({ onClose, onExport }: { onClose: () => void; onExport: () =
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead><tr className="bg-gray-50 border-b border-gray-200">
-              {["FECHA Y HORA","USUARIO","ACTIVIDAD/SOLICITUD","DESCRIPCIÓN DETALLADA","ESTADO"].map(h=>(
+              {["FECHA Y HORA","USUARIO","ACTIVIDAD/SOLICITUD","DESCRIPCIÁ“N DETALLADA","ESTADO"].map(h=>(
                 <th key={h} className="px-4 py-3 text-left text-[10px] font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap">{h}</th>
               ))}
             </tr></thead>
@@ -1269,12 +1236,12 @@ function AuditModal({ onClose, onExport }: { onClose: () => void; onExport: () =
   );
 }
 
-// ─── Solicitud + Gastos Modals (compact) ──────────────────────────────────────
+// â”€â”€â”€ Solicitud + Gastos Modals (compact) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const DEPS_LIST   = ["Oficina de Agua","DAFIM","Secretaría General","Policía Municipal","Obras Públicas","Cultura"];
 const GASTOS_DATA = [
-  {mes:"Enero",   presupuesto:"Q 50,000.00",ejecutado:"Q 42,100.00",saldo:"Q 7,900.00", saldoC:"green"as const,estado:"Dentro de Límite"},
-  {mes:"Febrero", presupuesto:"Q 50,000.00",ejecutado:"Q 48,500.00",saldo:"Q 1,500.00", saldoC:"red"  as const,estado:"Al Límite"},
-  {mes:"Marzo",   presupuesto:"Q 50,000.00",ejecutado:"Q 35,000.00",saldo:"Q 15,000.00",saldoC:"green"as const,estado:"Dentro de Límite"},
+  {mes:"Enero",   presupuesto:"Q 0.00",ejecutado:"Q 0.00",saldo:"Q 0.00", saldoC:"green"as const,estado:"Dentro de Límite"},
+  {mes:"Febrero", presupuesto:"Q 0.00",ejecutado:"Q 0.00",saldo:"Q 0.00", saldoC:"red"  as const,estado:"Al Límite"},
+  {mes:"Marzo",   presupuesto:"Q 0.00",ejecutado:"Q 0.00",saldo:"Q 0.00",saldoC:"green"as const,estado:"Dentro de Límite"},
 ];
 const ESTADO_BADGE: Record<string,string> = {
   "Dentro de Límite":"bg-emerald-50 text-emerald-700 border border-emerald-200",
@@ -1283,9 +1250,9 @@ const ESTADO_BADGE: Record<string,string> = {
 
 function GastosModal({onClose,onPDF}:{onClose:()=>void;onPDF:()=>void}) {
   const [dep,setDep]=useState("Oficina de Agua");
-  const [año,setAño]=useState("2026");
+const [anio,setAnio]=useState("2026");
   const [mes,setMes]=useState("Todos los Meses");
-  const [añoOpen,setAñoOpen]=useState(true);
+  const [anioOpen,setAnioOpen]=useState(true);
   const overlayRef=useRef<HTMLDivElement>(null);
   const rows=mes==="Todos los Meses"?GASTOS_DATA:GASTOS_DATA.filter(r=>r.mes===mes);
   return (
@@ -1301,11 +1268,11 @@ function GastosModal({onClose,onPDF}:{onClose:()=>void;onPDF:()=>void}) {
             <div className="flex flex-col gap-1.5">
               <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Año Fiscal</label>
               <div className="relative">
-                <button onClick={()=>setAñoOpen(o=>!o)} className="w-full flex items-center justify-between px-3 py-2.5 text-sm bg-white border rounded-lg transition-all" style={{borderColor:añoOpen?G:"#D1D5DB",boxShadow:añoOpen?`0 0 0 3px ${G}22`:"none"}}>
-                  <span className="font-medium text-gray-800">{año}</span><span className="text-gray-400">{añoOpen?<Icons.ChevUp/>:<Icons.ChevDown/>}</span>
+<button onClick={()=>setAnioOpen(o=>!o)} className="w-full flex items-center justify-between px-3 py-2.5 text-sm bg-white border rounded-lg transition-all" style={{borderColor:anioOpen?G:"#D1D5DB",boxShadow:anioOpen?`0 0 0 3px ${G}22`:"none"}}>
+                  <span className="font-medium text-gray-800">{anio}</span><span className="text-gray-400">{anioOpen?<Icons.ChevUp/>:<Icons.ChevDown/>}</span>
                 </button>
-                {añoOpen&&<div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-xl z-[300] overflow-hidden" style={{animation:"dropIn 0.13s ease-out"}}>
-                  {["2026","2025","2024","2023"].map(y=><button key={y} onClick={()=>{setAño(y);setAñoOpen(false);}} className="w-full flex items-center justify-between px-3 py-2.5 text-sm text-left transition-colors" style={{backgroundColor:y===año?GL:"white",color:y===año?G:"#374151"}}><span className="font-medium">{y}</span>{y===año&&<span style={{color:G}}><Icons.CheckMark/></span>}</button>)}
+                {anioOpen&&<div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-xl z-[300] overflow-hidden" style={{animation:"dropIn 0.13s ease-out"}}>
+                  {["2026","2025","2024","2023"].map(y=><button key={y} onClick={()=>{setAnio(y);setAnioOpen(false);}} className="w-full flex items-center justify-between px-3 py-2.5 text-sm text-left transition-colors" style={{backgroundColor:y===anio?GL:"white",color:y===anio?G:"#374151"}}><span className="font-medium">{y}</span>{y===anio&&<span style={{color:G}}><Icons.CheckMark/></span>}</button>)}
                 </div>}
               </div>
             </div>
@@ -1333,7 +1300,7 @@ function GastosModal({onClose,onPDF}:{onClose:()=>void;onPDF:()=>void}) {
 }
 
 function SolicitudModal({onClose,onSubmit}:{onClose:()=>void;onSubmit:()=>void}) {
-  const [dep,setDep]=useState("Oficina de Agua");const [tipo,setTipo]=useState("Compra de Materiales");const [item,setItem]=useState("");const [cant,setCant]=useState("0");const [unidad,setUnidad]=useState("Resma");const [just,setJust]=useState("");const [notas,setNotas]=useState("");const [prio,setPrio]=useState<"Baja"|"Media"|"Alta">("Alta");
+  const [dep,setDep]=useState("");const [tipo,setTipo]=useState("");const [item,setItem]=useState("");const [cant,setCant]=useState("0");const [unidad,setUnidad]=useState("");const [just,setJust]=useState("");const [notas,setNotas]=useState("");const [prio,setPrio]=useState<"Baja"|"Media"|"Alta">("Baja");
   const overlayRef=useRef<HTMLDivElement>(null);
   const TIPOS=["Compra de Materiales","Servicio Técnico","Equipamiento","Mantenimiento"];const UNIDS=["Resma","Unidad","Caja","Paquete"];
   const FI=({label,children}:{label:string;children:React.ReactNode})=><div><label className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1.5">{label}</label>{children}</div>;
@@ -1347,7 +1314,7 @@ function SolicitudModal({onClose,onSubmit}:{onClose:()=>void;onSubmit:()=>void})
           <div className="grid grid-cols-2 gap-4"><Dropdown label="Dependencia / Unidad" value={dep} options={DEPS_LIST} onChange={setDep}/><Dropdown label="Tipo de Solicitud" value={tipo} options={TIPOS} onChange={setTipo}/></div>
           <div className="grid grid-cols-2 gap-4"><FI label="Nombre del Ítem"><TI ph="Ej. Papel Bond Carta" val={item} set={setItem}/></FI><div className="grid grid-cols-2 gap-3"><FI label="Cantidad"><TI ph="0" val={cant} set={setCant} type="number"/></FI><Dropdown label="Unidad" value={unidad} options={UNIDS} onChange={setUnidad}/></div></div>
           <FI label="Justificación"><TA ph="Describe la necesidad institucional..." val={just} set={setJust}/></FI>
-          <div className="flex items-start gap-3 rounded-lg px-4 py-3.5 border" style={{backgroundColor:GL,borderColor:GB}}><span style={{color:G}} className="mt-0.5 shrink-0"><Icons.Info/></span><div><p className="text-xs font-bold uppercase tracking-wider mb-0.5" style={{color:G}}>Presupuesto Asignado</p><p className="text-xs text-gray-700">Presupuesto restante = <b>Q 5,200</b></p></div></div>
+          <div className="flex items-start gap-3 rounded-lg px-4 py-3.5 border" style={{backgroundColor:GL,borderColor:GB}}><span style={{color:G}} className="mt-0.5 shrink-0"><Icons.Info/></span><div><p className="text-xs font-bold uppercase tracking-wider mb-0.5" style={{color:G}}>Presupuesto Asignado</p><p className="text-xs text-gray-700">Presupuesto restante = <b>Q 0</b></p></div></div>
           <FI label="Notas para Aprobación"><TA ph="Notas para Aprobación" val={notas} set={setNotas}/></FI>
           <div><label className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2">Prioridad</label><div className="flex items-center gap-6">{(["Baja","Media","Alta"]as const).map(p=><label key={p} className="flex items-center gap-2 cursor-pointer select-none" onClick={()=>setPrio(p)}><div className="w-4 h-4 rounded-full border-2 flex items-center justify-center transition-all" style={{borderColor:prio===p?G:"#D1D5DB",backgroundColor:prio===p?G:"white"}}>{prio===p&&<div className="w-1.5 h-1.5 rounded-full bg-white"/>}</div><span className={`text-sm font-medium ${prio===p?"text-gray-900":"text-gray-500"}`}>{p}</span></label>)}</div></div>
         </div>
@@ -1357,26 +1324,14 @@ function SolicitudModal({onClose,onSubmit}:{onClose:()=>void;onSubmit:()=>void})
   );
 }
 
-// ─── Jurisdiction Map Modal ───────────────────────────────────────────────────
+// â”€â”€â”€ Jurisdiction Map Modal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function JurisdictionModal({ onClose }: { onClose: () => void }) {
   const [visible, setVisible] = useState(false);
   const overlayRef = useRef<HTMLDivElement>(null);
   useEffect(() => { const t = setTimeout(() => setVisible(true), 10); return () => clearTimeout(t); }, []);
   const handleClose = () => { setVisible(false); setTimeout(onClose, 280); };
 
-  const BARRIOS = [
-    { name: "Barrio Jucanyá",     pop: "2,840", area: "1.2 km²", type: "Residencial" },
-    { name: "Barrio San Francisco",pop: "1,920", area: "0.8 km²", type: "Comercial" },
-    { name: "Barrio El Calvario",  pop: "3,100", area: "1.5 km²", type: "Mixto" },
-    { name: "Aldea Tzanjuyú",      pop: "1,240", area: "2.1 km²", type: "Rural" },
-    { name: "Aldea Santa Cruz",    pop: "890",   area: "1.8 km²", type: "Rural" },
-  ];
-  const STATS = [
-    { label: "Superficie total",   value: "13.4 km²" },
-    { label: "Población",          value: "15,200" },
-    { label: "Altitud",            value: "1,563 msnm" },
-    { label: "Departamento",       value: "Sololá" },
-  ];
+  const BARRIOS: {name:string; pop:string; area:string; type:string}[] = [];const STATS: {label:string; value:string}[] = [];
 
   return (
     <div ref={overlayRef} onClick={e => e.target === overlayRef.current && handleClose()}
@@ -1504,7 +1459,7 @@ function JurisdictionModal({ onClose }: { onClose: () => void }) {
   );
 }
 
-// ─── Branding Card ────────────────────────────────────────────────────────────
+// â”€â”€â”€ Branding Card â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function BrandingCard({ onOpenMap }: { onOpenMap: () => void }) {
   const [hovered, setHovered] = useState(false);
 
@@ -1538,14 +1493,14 @@ function BrandingCard({ onOpenMap }: { onOpenMap: () => void }) {
         />
       </div>
 
-      {/* Gradient overlay — deepens on hover */}
+      {/* Gradient overlay â€” deepens on hover */}
       <div className="absolute inset-0 transition-opacity duration-300"
         style={{
           background: "linear-gradient(to bottom, rgba(0,0,0,0.04) 0%, rgba(0,0,0,0.68) 100%)",
           opacity: hovered ? 0.95 : 0.85,
         }}/>
 
-      {/* "Ver mapa" badge — appears on hover */}
+      {/* "Ver mapa" badge â€” appears on hover */}
       <div className="absolute top-3 right-3 flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg backdrop-blur-sm transition-all duration-200"
         style={{
           backgroundColor: "rgba(255,255,255,0.18)",
@@ -1559,7 +1514,7 @@ function BrandingCard({ onOpenMap }: { onOpenMap: () => void }) {
         <span className="text-[10px] font-bold text-white whitespace-nowrap">Ver mapa</span>
       </div>
 
-      {/* Text content — bottom aligned */}
+      {/* Text content â€” bottom aligned */}
       <div className="absolute bottom-0 left-0 right-0 px-4 pb-4 pt-8">
         <p className="text-white/55 text-[9px] font-bold uppercase tracking-[1.8px] mb-0.5 leading-none">
           Jurisdicción Actual
@@ -1578,7 +1533,7 @@ function BrandingCard({ onOpenMap }: { onOpenMap: () => void }) {
   );
 }
 
-// ─── Dependencias data ────────────────────────────────────────────────────────
+// â”€â”€â”€ Dependencias data â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 type SolPrioridad = "Urgente" | "Media" | "Baja";
 type SolEstado    = "En Revisión" | "Aprobado" | "Pagado" | "Pendiente" | "Rechazado";
 interface SolicitudRow {
@@ -1586,23 +1541,7 @@ interface SolicitudRow {
   prioridad: SolPrioridad; estado: SolEstado; fecha: string;
   monto: string; solicitante: string; justificacion: string;
 }
-const ALL_DEPS_SOLICITUDES: SolicitudRow[] = [
-  { id:"SC-2024-042", dep:"Oficina de Agua",    item:"Cloro Granulado (Hipoclorito de Calcio 65%)",    cant:"15 Tambos",    prioridad:"Urgente", estado:"En Revisión", fecha:"24/05/2024", monto:"Q 12,450.00", solicitante:"Ing. Carlos Velásquez",  justificacion:"Mantenimiento urgente de planta de tratamiento de agua." },
-  { id:"SC-2024-039", dep:"Secretaría",         item:"Papelería y Útiles de Oficina",                  cant:"1 Lote",       prioridad:"Media",   estado:"Aprobado",    fecha:"22/05/2024", monto:"Q 3,200.00",  solicitante:"Lic. Ana González",     justificacion:"Suministros para operaciones de secretaría mes de mayo." },
-  { id:"SC-2024-035", dep:"DAFIM",              item:"Tóner para Impresora Láser HP LaserJet 85A",     cant:"4 Unidades",   prioridad:"Baja",    estado:"Pagado",      fecha:"15/05/2024", monto:"Q 1,140.00",  solicitante:"Lic. Mario Estrada",    justificacion:"Reposición de tóners para equipos de impresión de DAFIM." },
-  { id:"SC-2024-041", dep:"Oficina de Agua",    item:"Medidores de Caudal Digitales",                  cant:"6 Unidades",   prioridad:"Media",   estado:"Aprobado",    fecha:"23/05/2024", monto:"Q 8,400.00",  solicitante:"Ing. Carlos Velásquez",  justificacion:"Reemplazo de medidores obsoletos en red de distribución." },
-  { id:"SC-2024-040", dep:"Obras Públicas",     item:"Cemento Portland Tipo I (Sacos 42.5 kg)",        cant:"200 Sacos",    prioridad:"Urgente", estado:"En Revisión", fecha:"21/05/2024", monto:"Q 18,600.00", solicitante:"Ing. Roberto Alvarado", justificacion:"Reparación de calles en Barrio Jucanyá. Deterioro crítico." },
-  { id:"SC-2024-038", dep:"Secretaría",         item:"Sellos y Timbres Notariales",                   cant:"2 Juegos",     prioridad:"Baja",    estado:"Pagado",      fecha:"18/05/2024", monto:"Q 850.00",    solicitante:"Lic. Ana González",     justificacion:"Sellos reglamentarios para documentos oficiales municipales." },
-  { id:"SC-2024-037", dep:"DAFIM",              item:"Software de Contabilidad Gubernamental (Licencia)",cant:"1 Licencia", prioridad:"Media",   estado:"En Revisión", fecha:"17/05/2024", monto:"Q 6,500.00",  solicitante:"Lic. Mario Estrada",    justificacion:"Renovación anual de licencia sistema contable institucional." },
-  { id:"SC-2024-036", dep:"Policía Municipal",  item:"Uniformes Policiales Completos",                 cant:"12 Juegos",    prioridad:"Media",   estado:"Aprobado",    fecha:"16/05/2024", monto:"Q 4,800.00",  solicitante:"Com. Luis Pérez",       justificacion:"Dotación anual de uniformes para agentes de policía municipal." },
-  { id:"SC-2024-034", dep:"Obras Públicas",     item:"Varilla de Hierro Corrugado 3/8 pulgada",        cant:"50 Quintales", prioridad:"Media",   estado:"Pagado",      fecha:"14/05/2024", monto:"Q 22,500.00", solicitante:"Ing. Roberto Alvarado", justificacion:"Material para construcción de muros en zona de riesgo." },
-  { id:"SC-2024-033", dep:"Cultura",            item:"Sistema de Audio Profesional (Amplificadores)",  cant:"1 Sistema",    prioridad:"Baja",    estado:"Aprobado",    fecha:"12/05/2024", monto:"Q 9,200.00",  solicitante:"Prof. María Tzul",      justificacion:"Equipo para eventos culturales y festividades municipales." },
-  { id:"SC-2024-032", dep:"Policía Municipal",  item:"Vehículo Pickup Doble Cabina 4x4",               cant:"1 Unidad",     prioridad:"Urgente", estado:"En Revisión", fecha:"10/05/2024", monto:"Q 185,000.00",solicitante:"Com. Luis Pérez",       justificacion:"Reposición de vehículo dañado en servicio. Necesidad urgente." },
-  { id:"SC-2024-031", dep:"DAFIM",              item:"Archivadores Metálicos de 4 Gavetas",            cant:"6 Unidades",   prioridad:"Baja",    estado:"Pagado",      fecha:"08/05/2024", monto:"Q 3,600.00",  solicitante:"Lic. Mario Estrada",    justificacion:"Reorganización de archivos documentales departamento DAFIM." },
-  { id:"SC-2024-030", dep:"Oficina de Agua",    item:"Tubería PVC de 4 pulgadas SDR-26",               cant:"500 Metros",   prioridad:"Urgente", estado:"Aprobado",    fecha:"07/05/2024", monto:"Q 14,750.00", solicitante:"Ing. Carlos Velásquez",  justificacion:"Reposición de red de distribución. Tubería con fugas activas." },
-  { id:"SC-2024-029", dep:"Cultura",            item:"Disfraces y Vestuario Tradicional Maya",         cant:"30 Juegos",    prioridad:"Baja",    estado:"Pagado",      fecha:"05/05/2024", monto:"Q 6,000.00",  solicitante:"Prof. María Tzul",      justificacion:"Vestuario para festival cultural anual Día de la Madre." },
-  { id:"SC-2024-028", dep:"Secretaría",         item:"Computadoras de Escritorio (Core i5, 8GB RAM)",  cant:"3 Unidades",   prioridad:"Media",   estado:"Aprobado",    fecha:"03/05/2024", monto:"Q 12,900.00", solicitante:"Lic. Ana González",     justificacion:"Renovación de equipos de cómputo para personal administrativo." },
-];
+const ALL_DEPS_SOLICITUDES: SolicitudRow[] = [];
 
 const PRIORIDAD_STYLE: Record<SolPrioridad, string> = {
   Urgente: "bg-red-50 text-red-600 border border-red-200",
@@ -1619,14 +1558,14 @@ const ESTADO_SOL_STYLE: Record<SolEstado, string> = {
 const ALL_DEPS_NAMES = ["Todas las Dependencias","Oficina de Agua","Secretaría","DAFIM","Obras Públicas","Policía Municipal","Cultura"];
 const SOL_PAGE_SIZE  = 5;
 
-// ─── Solicitud Row Detail Modal ───────────────────────────────────────────────
+// â”€â”€â”€ Solicitud Row Detail Modal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function SolicitudDetailModal({ row, onClose, onEdit }: { row: SolicitudRow; onClose: () => void; onEdit: () => void }) {
   const overlayRef = useRef<HTMLDivElement>(null);
   const timeline = [
     { label: "Solicitud creada",      date: row.fecha, done: true  },
     { label: "En revisión DAFIM",     date: row.fecha, done: row.estado !== "Pendiente" },
-    { label: "Aprobación alcalde",    date: row.estado === "Aprobado" || row.estado === "Pagado" ? row.fecha : "—", done: row.estado === "Aprobado" || row.estado === "Pagado" },
-    { label: "Pago procesado",        date: row.estado === "Pagado" ? row.fecha : "—",                              done: row.estado === "Pagado" },
+    { label: "Aprobación alcalde",    date: row.estado === "Aprobado" || row.estado === "Pagado" ? row.fecha : "â€”", done: row.estado === "Aprobado" || row.estado === "Pagado" },
+    { label: "Pago procesado",        date: row.estado === "Pagado" ? row.fecha : "â€”",                              done: row.estado === "Pagado" },
   ];
   return (
     <div ref={overlayRef} onClick={e => e.target === overlayRef.current && onClose()}
@@ -1720,7 +1659,7 @@ function SolicitudDetailModal({ row, onClose, onEdit }: { row: SolicitudRow; onC
   );
 }
 
-// ─── Row context menu ──────────────────────────────────────────────────────────
+// â”€â”€â”€ Row context menu â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function RowMenu({ onVer, onEditar, onAprobar, onRechazar }: { onVer: () => void; onEditar: () => void; onAprobar: () => void; onRechazar: () => void }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -1758,7 +1697,7 @@ function RowMenu({ onVer, onEditar, onAprobar, onRechazar }: { onVer: () => void
   );
 }
 
-// ─── Dependencias View ────────────────────────────────────────────────────────
+// â”€â”€â”€ Dependencias View â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function DependenciasView({ onNewSolicitud, onToast }: { onNewSolicitud: () => void; onToast: (m: string, s: string) => void }) {
   const [depFilter,   setDepFilter]   = useState("Todas las Dependencias");
   const [depOpen,     setDepOpen]     = useState(false);
@@ -1790,10 +1729,10 @@ function DependenciasView({ onNewSolicitud, onToast }: { onNewSolicitud: () => v
   });
 
   const summaryMetrics = [
-    { title: "Total Solicitudes", value: "124",      sub: "↑ 12% vs mes anterior", subColor: "#16A34A" },
-    { title: "Pendientes",        value: "18",       sub: "Promedio 4.2 días",      subColor: "#D97706" },
-    { title: "Monto Solicitado",  value: "Q 45,280", sub: "Mes de Mayo 2024",       subColor: "#6B7280" },
-    { title: "Ejecución",         value: "88%",      sub: "Meta Institucional",     subColor: "#16A34A" },
+    { title: "Total Solicitudes", value: "0",      sub: "", subColor: "#16A34A" },
+    { title: "Pendientes",        value: "0",       sub: "",      subColor: "#D97706" },
+    { title: "Monto Solicitado",  value: "Q 0",     sub: "",       subColor: "#6B7280" },
+    { title: "Ejecución",         value: "0%",      sub: "",       subColor: "#16A34A" },
   ];
 
   return (
@@ -1951,7 +1890,7 @@ function DependenciasView({ onNewSolicitud, onToast }: { onNewSolicitud: () => v
             {/* Pagination footer */}
             <div className="flex items-center justify-between px-5 py-3.5 border-t border-gray-100 flex-wrap gap-3">
               <p className="text-xs text-gray-500">
-                Mostrando <b className="text-gray-700">{Math.min((page-1)*SOL_PAGE_SIZE+1, filtered.length)}–{Math.min(page*SOL_PAGE_SIZE, filtered.length)}</b> de <b className="text-gray-700">{filtered.length}</b> solicitudes
+                Mostrando <b className="text-gray-700">{Math.min((page-1)*SOL_PAGE_SIZE+1, filtered.length)}â€“{Math.min(page*SOL_PAGE_SIZE, filtered.length)}</b> de <b className="text-gray-700">{filtered.length}</b> solicitudes
               </p>
               <div className="flex items-center gap-1">
                 <button onClick={() => setPage(p => Math.max(1, p-1))} disabled={page===1}
@@ -1998,7 +1937,7 @@ function DependenciasView({ onNewSolicitud, onToast }: { onNewSolicitud: () => v
   );
 }
 
-// ─── Proveedores data ─────────────────────────────────────────────────────────
+// â”€â”€â”€ Proveedores data â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 type ConexionEstado = "Conectado" | "Sin Conexión" | "Acceso Bloqueado";
 type ProvRol = "Proveedor Premium" | "Proveedor Estándar" | "Distribuidor Mayorista" | "Bloqueado";
 interface Proveedor {
@@ -2008,20 +1947,7 @@ interface Proveedor {
   email: string; telefono: string; categoria: string;
 }
 const PROV_ROLES: ProvRol[] = ["Proveedor Estándar","Proveedor Premium","Distribuidor Mayorista","Bloqueado"];
-const ALL_PROVEEDORES: Proveedor[] = [
-  { id:"p1",  initials:"SL", avatarColor:"#D1FAE5", name:"Suministros El Lago",        nit:"459823-1", rol:"Proveedor Premium",      estado:"Conectado",       ultimaActividad:"Hoy, 10:24 AM",    email:"contacto@sumlagο.gt",      telefono:"7762-1100", categoria:"Insumos Generales" },
-  { id:"p2",  initials:"FS", avatarColor:"#D1FAE5", name:"Ferretería El Sol",           nit:"102938-4", rol:"Proveedor Estándar",      estado:"Sin Conexión",    ultimaActividad:"Hace 3 días",      email:"ventas@ferresol.gt",       telefono:"7762-4421", categoria:"Ferretería y Construcción" },
-  { id:"p3",  initials:"DM", avatarColor:"#D1FAE5", name:"Distribuidora Maya",          nit:"882736-2", rol:"Distribuidor Mayorista",  estado:"Conectado",       ultimaActividad:"Ayer, 04:15 PM",   email:"pedidos@distmaya.gt",      telefono:"7762-8830", categoria:"Distribución General" },
-  { id:"p4",  initials:"CC", avatarColor:"#F3F4F6", name:"Construcciones del Centro",   nit:"554433-K", rol:"Proveedor Premium",      estado:"Acceso Bloqueado", ultimaActividad:"21 Oct, 2023",    email:"info@constrcentro.gt",     telefono:"7762-5591", categoria:"Construcción" },
-  { id:"p5",  initials:"PS", avatarColor:"#D1FAE5", name:"Papelería y Suministros GT",  nit:"331209-7", rol:"Proveedor Estándar",      estado:"Conectado",       ultimaActividad:"Hoy, 08:15 AM",   email:"ventas@papelgt.com",       telefono:"7762-3302", categoria:"Papelería" },
-  { id:"p6",  initials:"TG", avatarColor:"#D1FAE5", name:"TecnoSupplies Guatemala",    nit:"778812-3", rol:"Proveedor Estándar",      estado:"Sin Conexión",    ultimaActividad:"Hace 1 semana",   email:"soporte@tecnogt.com",      telefono:"2338-7700", categoria:"Tecnología" },
-  { id:"p7",  initials:"AG", avatarColor:"#D1FAE5", name:"Agroservicios del Lago",      nit:"215544-8", rol:"Distribuidor Mayorista",  estado:"Conectado",       ultimaActividad:"Hace 2 días",     email:"pedidos@agrolago.gt",      telefono:"7762-0091", categoria:"Agropecuario" },
-  { id:"p8",  initials:"ME", avatarColor:"#D1FAE5", name:"Muebles y Equipos S.A.",      nit:"664431-2", rol:"Proveedor Estándar",      estado:"Conectado",       ultimaActividad:"Hace 4 días",     email:"ventas@muebequipos.gt",    telefono:"7762-1198", categoria:"Mobiliario" },
-  { id:"p9",  initials:"LQ", avatarColor:"#FEF3C7", name:"Lubricantes y Químicos Xela", nit:"992210-5", rol:"Proveedor Estándar",     estado:"Sin Conexión",    ultimaActividad:"Hace 2 semanas",  email:"quimicos@lqxela.com",      telefono:"7761-4422", categoria:"Químicos" },
-  { id:"p10", initials:"SP", avatarColor:"#D1FAE5", name:"Servicios Profesionales GT",  nit:"119876-4", rol:"Proveedor Premium",      estado:"Conectado",       ultimaActividad:"Hoy, 09:40 AM",   email:"servicios@spgt.com.gt",    telefono:"2234-9900", categoria:"Servicios" },
-  { id:"p11", initials:"RB", avatarColor:"#FEE2E2", name:"Repuestos y Bocinas Sololá",  nit:"441122-9", rol:"Bloqueado",              estado:"Acceso Bloqueado", ultimaActividad:"12 Sep, 2023",    email:"repuestos@rbsolola.gt",    telefono:"7762-5500", categoria:"Automotriz" },
-  { id:"p12", initials:"EC", avatarColor:"#D1FAE5", name:"Electrónica y Comunicaciones", nit:"663300-1",rol:"Proveedor Estándar",     estado:"Conectado",       ultimaActividad:"Ayer, 02:00 PM",  email:"electronica@ecgt.com.gt",  telefono:"2244-1133", categoria:"Electrónica" },
-];
+const ALL_PROVEEDORES: Proveedor[] = [];
 const PROV_PAGE_SIZE = 4;
 
 const CONEXION_STYLE: Record<ConexionEstado, { bg: string; text: string; dot: string }> = {
@@ -2030,7 +1956,7 @@ const CONEXION_STYLE: Record<ConexionEstado, { bg: string; text: string; dot: st
   "Acceso Bloqueado":{ bg: "#FEE2E2", text: "#DC2626", dot: "#EF4444" },
 };
 
-// ─── Conectar Proveedor Modal ──────────────────────────────────────────────────
+// â”€â”€â”€ Conectar Proveedor Modal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function ConectarProveedorModal({ onClose, onSubmit }: { onClose: () => void; onSubmit: () => void }) {
   const [nombre,   setNombre]   = useState("");
   const [nit,      setNit]      = useState("");
@@ -2096,7 +2022,7 @@ function ConectarProveedorModal({ onClose, onSubmit }: { onClose: () => void; on
   );
 }
 
-// ─── Role dropdown cell ────────────────────────────────────────────────────────
+// â”€â”€â”€ Role dropdown cell â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function RolCell({ value, onChange }: { value: ProvRol; onChange: (v: ProvRol) => void }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -2130,7 +2056,7 @@ function RolCell({ value, onChange }: { value: ProvRol; onChange: (v: ProvRol) =
   );
 }
 
-// ─── Proveedores View ─────────────────────────────────────────────────────────
+// â”€â”€â”€ Proveedores View â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function ProveedoresView({ onToast }: { onToast: (m: string, s: string) => void }) {
   const [tab,          setTab]          = useState<"Todos"|"Activos"|"Inactivos">("Todos");
   const [page,         setPage]         = useState(1);
@@ -2165,7 +2091,7 @@ function ProveedoresView({ onToast }: { onToast: (m: string, s: string) => void 
           {/* Page header */}
           <div className="flex items-start justify-between gap-4 flex-wrap">
             <div>
-              <h1 className="text-2xl font-extrabold text-gray-900 leading-tight">Gestión de Accesos — Proveedores</h1>
+              <h1 className="text-2xl font-extrabold text-gray-900 leading-tight">Gestión de Accesos - Proveedores</h1>
               <p className="text-sm text-gray-500 mt-1">Administración de roles, credenciales y conexión al portal municipal.</p>
             </div>
             <button onClick={() => setShowConectar(true)}
@@ -2181,7 +2107,7 @@ function ProveedoresView({ onToast }: { onToast: (m: string, s: string) => void 
             {[
               { label:"TOTAL USUARIOS",   value: ALL_PROVEEDORES.length.toString(), icon: <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.8}><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg> },
               { label:"ACTIVOS PORTAL",   value: activos.toString(),                icon: <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.8}><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg> },
-              { label:"SIN CONEXIÓN",     value: ALL_PROVEEDORES.filter(p=>p.estado==="Sin Conexión").length.toString(), icon: <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.8}><line x1="1" y1="1" x2="23" y2="23"/><path d="M16.72 11.06A10.94 10.94 0 0119 12.55"/><path d="M5 12.55a10.94 10.94 0 015.17-2.39"/><path d="M10.71 5.05A16 16 0 0122.56 9"/><path d="M1.42 9a15.91 15.91 0 014.7-2.88"/><path d="M8.53 16.11a6 6 0 016.95 0"/><line x1="12" y1="20" x2="12.01" y2="20"/></svg> },
+              { label:"SIN CONEXIÁ“N",     value: ALL_PROVEEDORES.filter(p=>p.estado==="Sin Conexión").length.toString(), icon: <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.8}><line x1="1" y1="1" x2="23" y2="23"/><path d="M16.72 11.06A10.94 10.94 0 0119 12.55"/><path d="M5 12.55a10.94 10.94 0 015.17-2.39"/><path d="M10.71 5.05A16 16 0 0122.56 9"/><path d="M1.42 9a15.91 15.91 0 014.7-2.88"/><path d="M8.53 16.11a6 6 0 016.95 0"/><line x1="12" y1="20" x2="12.01" y2="20"/></svg> },
               { label:"ACCESO BLOQUEADO", value: ALL_PROVEEDORES.filter(p=>p.estado==="Acceso Bloqueado").length.toString(), icon: <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.8}><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg> },
             ].map((k, i) => {
               const colors = [G, G, "#D97706", "#DC2626"];
@@ -2229,7 +2155,7 @@ function ProveedoresView({ onToast }: { onToast: (m: string, s: string) => void 
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-gray-100 bg-gray-50">
-                    {["NOMBRE DEL PROVEEDOR / NIT","ROL ASIGNADO","ESTADO DE CONEXIÓN","ÚLTIMA ACTIVIDAD","ACCIONES DE SEGURIDAD"].map(h => (
+                    {["NOMBRE DEL PROVEEDOR / NIT","ROL ASIGNADO","ESTADO DE CONEXIÁ“N","ÚLTIMA ACTIVIDAD","ACCIONES DE SEGURIDAD"].map(h => (
                       <th key={h} className="px-4 py-3 text-left text-[10px] font-bold text-gray-400 uppercase tracking-wider whitespace-nowrap">{h}</th>
                     ))}
                   </tr>
@@ -2261,7 +2187,7 @@ function ProveedoresView({ onToast }: { onToast: (m: string, s: string) => void 
                         <td className="px-4 py-4">
                           <RolCell value={roles[p.id]} onChange={v => {
                             setRoles(r => ({ ...r, [p.id]: v }));
-                            onToast("Rol actualizado", `${p.name} → ${v}`);
+                            onToast("Rol actualizado", `${p.name} â†’ ${v}`);
                           }}/>
                         </td>
 
@@ -2305,7 +2231,7 @@ function ProveedoresView({ onToast }: { onToast: (m: string, s: string) => void 
                             )}
                             {/* Three-dot menu */}
                             <RowMenu
-                              onVer={() => onToast("Perfil del proveedor", `${p.name} — ${p.email}`)}
+                              onVer={() => onToast("Perfil del proveedor", `${p.name} â€” ${p.email}`)}
                               onEditar={() => onToast("Editando proveedor", `${p.name} abierto para edición.`)}
                               onAprobar={() => onToast("Acceso aprobado", `${p.name} habilitado en el portal.`)}
                               onRechazar={() => onToast("Acceso denegado", `${p.name} fue desconectado.`)}
@@ -2346,7 +2272,7 @@ function ProveedoresView({ onToast }: { onToast: (m: string, s: string) => void 
 
           {/* Footer note */}
           <p className="text-center text-[11px] text-gray-400 pb-2">
-            © 2023 Municipalidad de Panajachel — Sistema de Gestión Administrativa. Todos los derechos reservados.
+            © 2023 Municipalidad de Panajachel – Sistema de Gestión Administrativa. Todos los derechos reservados.
           </p>
         </div>
       </div>
@@ -2361,30 +2287,17 @@ function ProveedoresView({ onToast }: { onToast: (m: string, s: string) => void 
   );
 }
 
-// ─── Proformas / Comparativa data ─────────────────────────────────────────────
+// â”€â”€â”€ Proformas / Comparativa data â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 interface ProveComparativa {
   id: string; name: string; provId: string; rating: number;
   items: { unit: number; total: number }[];
   entrega: string;
 }
-const COMP_ITEMS = [
-  { label: "Papel Bond Carta 80g",       desc: "Resma de 500 hojas",  cant: 50  },
-  { label: "Tóner HP Laser 58A",         desc: "Original, Negro",     cant: 5   },
-  { label: "Archivadores de Palanca",    desc: "Lomo ancho, azul",    cant: 30  },
-];
-const COMP_PROVS: ProveComparativa[] = [
-  { id:"p1", name:"Ferretería El Sol",       provId:"PROV-001", rating:4.8, items:[{unit:45,total:2250},{unit:850,total:4250},{unit:28,total:840}],   entrega:"3 días hábiles"      },
-  { id:"p2", name:"Distribuidora Panajachel",provId:"PROV-045", rating:4.5, items:[{unit:42.5,total:2125},{unit:890,total:4450},{unit:32,total:960}],  entrega:"Inmediata (24 hrs)"  },
-  { id:"p3", name:"Suministros Lago",        provId:"PROV-112", rating:4.2, items:[{unit:48,total:2400},{unit:875,total:4375},{unit:25.5,total:765}],  entrega:"5 días hábiles"      },
-];
-// best price per item (lowest total)
-const BEST_PER_ITEM = COMP_ITEMS.map((_, i) => {
-  const totals = COMP_PROVS.map(p => p.items[i].total);
-  const min = Math.min(...totals);
-  return COMP_PROVS.filter(p => p.items[i].total === min).map(p => p.id);
-});
+const COMP_ITEMS = [];
 
-// ─── Confirmar Adjudicación modal ──────────────────────────────────────────────
+const COMP_PROVS: ProveComparativa[] = [];
+
+// â”€â”€â”€ Confirmar Adjudicación modal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function ConfirmarAdjudicacionModal({ winner, onClose, onConfirm }: { winner: string; onClose: () => void; onConfirm: () => void }) {
   const [visible, setVisible] = useState(false);
   useEffect(() => { const t = setTimeout(() => setVisible(true), 10); return () => clearTimeout(t); }, []);
@@ -2415,7 +2328,7 @@ function ConfirmarAdjudicacionModal({ winner, onClose, onConfirm }: { winner: st
               </div>
               <div>
                 <p className="text-sm font-bold text-gray-900">{prov.name}</p>
-                <p className="text-xs text-gray-500">{prov.provId} · ★ {prov.rating}</p>
+                <p className="text-xs text-gray-500">{prov.provId} · â˜… {prov.rating}</p>
                 <p className="text-lg font-extrabold mt-1" style={{ color: G }}>Q {total.toLocaleString("es-GT", { minimumFractionDigits: 2 })}</p>
               </div>
             </div>
@@ -2446,7 +2359,7 @@ function ConfirmarAdjudicacionModal({ winner, onClose, onConfirm }: { winner: st
   );
 }
 
-// ─── Proformas View ────────────────────────────────────────────────────────────
+// â”€â”€â”€ Proformas View â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function ProformasView({ onToast, onNav }: { onToast: (m: string, s: string) => void; onNav: (key: string) => void }) {
   const [winner,       setWinner]       = useState<string | null>(null);
   const [showConfirm,  setShowConfirm]  = useState(false);
@@ -2496,7 +2409,7 @@ function ProformasView({ onToast, onNav }: { onToast: (m: string, s: string) => 
               <p className="text-sm text-gray-500 mt-1">Análisis comparativo para la adjudicación de suministros de oficina.</p>
             </div>
             <div className="flex items-center gap-3 shrink-0">
-              <button onClick={() => onToast("Exportando cuadro comparativo…", "El archivo Excel se descargará en un momento.")}
+              <button onClick={() => onToast("Exportando cuadro comparativo...", "El archivo Excel se descargará en un momento.")}
                 className="flex items-center gap-2 px-4 py-2.5 text-sm font-semibold rounded-xl border transition-all hover:bg-gray-50"
                 style={{ color: G, borderColor: G }}>
                 <Icons.PDF /> Exportar Cuadro
@@ -2523,7 +2436,7 @@ function ProformasView({ onToast, onNav }: { onToast: (m: string, s: string) => 
               </div>
               <span className="text-xs font-extrabold px-3 py-1 rounded-full text-white uppercase tracking-wide"
                 style={{ backgroundColor: adjudicado ? "#16A34A" : "#22C55E" }}>
-                {adjudicado ? "FASE: ADJUDICADO" : "FASE: COMPARACIÓN"}
+                {adjudicado ? "FASE: ADJUDICADO" : "FASE: COMPARACIÁ“N"}
               </span>
             </div>
             <div className="grid grid-cols-2 md:grid-cols-4 divide-x divide-gray-100">
@@ -2565,7 +2478,7 @@ function ProformasView({ onToast, onNav }: { onToast: (m: string, s: string) => 
                           <p className="text-sm font-extrabold leading-none" style={{ color: G }}>{prov.name}</p>
                           <div className="flex items-center gap-2 mt-1.5">
                             <span className="text-[10px] font-bold px-1.5 py-0.5 rounded border text-gray-600 border-gray-200 bg-gray-50">{prov.provId}</span>
-                            <span className="text-[11px] font-semibold text-amber-500">★ {prov.rating}</span>
+                            <span className="text-[11px] font-semibold text-amber-500">â˜… {prov.rating}</span>
                           </div>
                         </th>
                       );
@@ -2735,21 +2648,14 @@ function ProformasView({ onToast, onNav }: { onToast: (m: string, s: string) => 
   );
 }
 
-// ─── Facturacion data ─────────────────────────────────────────────────────────
+// â”€â”€â”€ Facturacion data â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 type FactEstado = "VENCIDO" | "PENDIENTE" | "PAGADO";
 interface Factura {
   id: string; num: string; proveedor: string; fecha: string;
   monto: number; estado: FactEstado;
   nit: string; concepto: string; xml: string;
 }
-const ALL_FACTURAS: Factura[] = [
-  { id:"f1", num:"FEL-49201", proveedor:"Suministros Eléctricos S.A.", fecha:"25/09/2023", monto:45200,   estado:"VENCIDO",   nit:"289301-4", concepto:"Material eléctrico para alumbrado",   xml:"XML-49201" },
-  { id:"f2", num:"FEL-38492", proveedor:"Constructora del Lago",       fecha:"01/10/2023", monto:128000,  estado:"PENDIENTE",  nit:"102938-4", concepto:"Construcción muro perimetral",      xml:"XML-38492" },
-  { id:"f3", num:"FEL-38481", proveedor:"Papelería El Centro",         fecha:"20/09/2023", monto:4150,    estado:"PAGADO",     nit:"334455-K", concepto:"Suministros de papelería Q3",       xml:"XML-38481" },
-  { id:"f4", num:"FEL-38477", proveedor:"Distribuidora Panajachel",    fecha:"18/09/2023", monto:12800,   estado:"PAGADO",     nit:"459823-1", concepto:"Distribución de insumos limpieza", xml:"XML-38477" },
-  { id:"f5", num:"FEL-38455", proveedor:"Mantenimiento Global S.A.",   fecha:"15/09/2023", monto:33000,   estado:"PENDIENTE",  nit:"778899-2", concepto:"Mantenimiento edificio municipal", xml:"XML-38455" },
-  { id:"f6", num:"FEL-38400", proveedor:"Seguridad Total",             fecha:"10/09/2023", monto:25000,   estado:"PAGADO",     nit:"112233-6", concepto:"Servicio mensual de seguridad",     xml:"XML-38400" },
-];
+const ALL_FACTURAS: Factura[] = [];
 
 const ESTADO_STYLE: Record<FactEstado, { bg: string; color: string }> = {
   VENCIDO:   { bg: "#FEE2E2", color: "#DC2626" },
@@ -2762,7 +2668,7 @@ const CAL_DAYS = [
   { d: 2,  wk: true, cur: true }, { d: 3, wk: true }, { d: 4, wk: true }, { d: 5, wk: true, dot: true }, { d: 6, wk: true }, { d: 7, wk: false, red: true }, { d: 8, wk: false, red: true },
 ];
 
-// ─── Nueva Orden de Pago modal ─────────────────────────────────────────────────
+// â”€â”€â”€ Nueva Orden de Pago modal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function NuevaOrdenModal({ onClose, onToast }: { onClose: () => void; onToast: (m: string, s: string) => void }) {
   const [visible, setVisible] = useState(false);
   useEffect(() => { const t = setTimeout(() => setVisible(true), 10); return () => clearTimeout(t); }, []);
@@ -2839,7 +2745,7 @@ function NuevaOrdenModal({ onClose, onToast }: { onClose: () => void; onToast: (
   );
 }
 
-// ─── Factura Detail Drawer ─────────────────────────────────────────────────────
+// â”€â”€â”€ Factura Detail Drawer â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function FacturaDrawer({ factura, onClose, onToast }: { factura: Factura; onClose: () => void; onToast: (m: string, s: string) => void }) {
   const [open, setOpen] = useState(false);
   useEffect(() => { const t = setTimeout(() => setOpen(true), 10); return () => clearTimeout(t); }, []);
@@ -2884,7 +2790,7 @@ function FacturaDrawer({ factura, onClose, onToast }: { factura: Factura; onClos
           {/* Metadata */}
           <div className="grid grid-cols-2 gap-3">
             {[
-              { label: "N.° Factura",    value: factura.num         },
+              { label: "N.º Factura",    value: factura.num         },
               { label: "NIT Proveedor",  value: factura.nit         },
               { label: "Fecha Emisión",  value: factura.fecha       },
               { label: "Monto Total",    value: fmt(factura.monto), accent: true },
@@ -2922,7 +2828,7 @@ function FacturaDrawer({ factura, onClose, onToast }: { factura: Factura; onClos
   );
 }
 
-// ─── Facturación View ──────────────────────────────────────────────────────────
+// â”€â”€â”€ Facturación View â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function FacturacionView({ onToast, onNav }: { onToast: (m: string, s: string) => void; onNav: (k: string) => void }) {
   const [showNuevaOrden, setShowNuevaOrden] = useState(false);
   const [selectedFactura, setSelectedFactura] = useState<Factura | null>(null);
@@ -2954,7 +2860,7 @@ function FacturacionView({ onToast, onNav }: { onToast: (m: string, s: string) =
               <p className="text-sm text-gray-500 mt-1">Gestión administrativa de compromisos financieros municipales.</p>
             </div>
             <div className="flex items-center gap-3 shrink-0">
-              <button onClick={() => onToast("Exportando reporte…", "El archivo se descargará en breve.")}
+              <button onClick={() => onToast("Exportando reporteâ€¦", "El archivo se descargará en breve.")}
                 className="flex items-center gap-2 px-4 py-2.5 text-sm font-semibold rounded-xl border transition-all hover:bg-gray-50"
                 style={{ color: G, borderColor: G }}>
                 <Icons.PDF /> Exportar Reporte
@@ -2977,8 +2883,8 @@ function FacturacionView({ onToast, onNav }: { onToast: (m: string, s: string) =
                   <Icons.Facturacion />
                 </div>
               </div>
-              <p className="text-2xl font-extrabold text-gray-900 mt-3 font-mono leading-none">Q<br/>1,245,800.50</p>
-              <p className="text-xs font-bold mt-1.5" style={{ color: G }}>↑ +12% vs mes anterior</p>
+              <p className="text-2xl font-extrabold text-gray-900 mt-3 font-mono leading-none">Q<br/>0.00</p>
+              <p className="text-xs font-bold mt-1.5" style={{ color: G }}>0% vs mes anterior</p>
             </div>
             {/* KPI 2 */}
             <div className="bg-white rounded-xl border border-gray-100 shadow-sm px-5 py-4">
@@ -2988,8 +2894,8 @@ function FacturacionView({ onToast, onNav }: { onToast: (m: string, s: string) =
                   <svg className="w-4 h-4" fill="none" stroke={G} viewBox="0 0 24 24" strokeWidth={2}><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
                 </div>
               </div>
-              <p className="text-4xl font-extrabold text-gray-900 mt-3 font-mono">42</p>
-              <p className="text-xs text-gray-500 mt-1.5">15 en revisión técnica</p>
+<p className="text-4xl font-extrabold text-gray-900 mt-3 font-mono">0</p>
+<p className="text-xs text-gray-500 mt-1.5">0 en revisión técnica</p>
             </div>
             {/* KPI 3 */}
             <div className="bg-white rounded-xl border border-gray-100 shadow-sm px-5 py-4">
@@ -2999,8 +2905,8 @@ function FacturacionView({ onToast, onNav }: { onToast: (m: string, s: string) =
                   <svg className="w-4 h-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><path d="M17 16l-3-3-3 3"/></svg>
                 </div>
               </div>
-              <p className="text-4xl font-extrabold font-mono mt-3 text-red-600">08</p>
-              <p className="text-xs font-semibold text-red-500 mt-1.5">Requiere acción inmediata</p>
+<p className="text-4xl font-extrabold font-mono mt-3 text-red-600">0</p>
+<p className="text-xs font-semibold text-red-500 mt-1.5">Sin vencimientos próximos</p>
             </div>
             {/* Upload card */}
             <div className="rounded-xl text-white px-5 py-4 flex flex-col gap-3" style={{ backgroundColor: G }}>
@@ -3055,22 +2961,22 @@ function FacturacionView({ onToast, onNav }: { onToast: (m: string, s: string) =
                 ))}
               </div>
               {/* Alerts */}
-              <div className="space-y-2.5 mt-4">
-                <div className="rounded-lg px-3 py-2.5 border-l-4 border-red-400 bg-red-50">
+<div className="space-y-2.5 mt-4">
+                  <div className="rounded-lg px-3 py-2.5 border-l-4 border-red-400 bg-red-50">
                   <div className="flex items-center gap-1.5 mb-0.5">
                     <svg className="w-3.5 h-3.5 text-red-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-                    <p className="text-[11px] font-extrabold text-red-600">Vence Mañana</p>
+                    <p className="text-[11px] font-extrabold text-red-600">Sin vencimientos próximos</p>
                   </div>
-                  <p className="text-[11px] text-red-700 leading-snug">Suministros Eléctricos S.A.</p>
-                  <p className="text-[11px] font-bold text-red-600">Q 45,200.00</p>
+                  <p className="text-[11px] text-red-700 leading-snug">No hay facturas con vencimiento</p>
+                  <p className="text-[11px] font-bold text-red-600">Q 0.00</p>
                 </div>
                 <div className="rounded-lg px-3 py-2.5 border-l-4 bg-emerald-50" style={{ borderColor: G }}>
                   <div className="flex items-center gap-1.5 mb-0.5">
                     <svg className="w-3.5 h-3.5 shrink-0" fill="none" stroke={G} viewBox="0 0 24 24" strokeWidth={2}><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-                    <p className="text-[11px] font-extrabold" style={{ color: G }}>Pago Programado (Oct 05)</p>
+                    <p className="text-[11px] font-extrabold" style={{ color: G }}>Pago Programado</p>
                   </div>
-                  <p className="text-[11px] leading-snug" style={{ color: "#166534" }}>Constructora del Lago</p>
-                  <p className="text-[11px] font-bold" style={{ color: G }}>Q 128,000.00</p>
+                  <p className="text-[11px] leading-snug" style={{ color: "#166534" }}>No hay pagos programados</p>
+                  <p className="text-[11px] font-bold" style={{ color: G }}>Q 0.00</p>
                 </div>
               </div>
             </div>
@@ -3140,7 +3046,7 @@ function FacturacionView({ onToast, onNav }: { onToast: (m: string, s: string) =
               </div>
               {/* Footer */}
               <div className="flex items-center justify-between px-5 py-3.5 border-t border-gray-100 flex-wrap gap-3">
-                <p className="text-xs text-gray-500">Mostrando <b className="text-gray-700">{filtered.length}</b> de <b className="text-gray-700">128</b> facturas</p>
+                <p className="text-xs text-gray-500">Mostrando <b className="text-gray-700">0</b> de <b className="text-gray-700">0</b> facturas</p>
                 <div className="flex items-center gap-1.5">
                   <button className="px-3 py-1.5 text-xs font-semibold text-gray-500 border border-gray-200 rounded-lg hover:bg-gray-50 transition-all">Anterior</button>
                   {[1,2,3].map(p => (
@@ -3189,24 +3095,15 @@ function FacturacionView({ onToast, onNav }: { onToast: (m: string, s: string) =
   );
 }
 
-// ─── Bodega data ──────────────────────────────────────────────────────────────
+// â”€â”€â”€ Bodega data â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 type VerifState = "RECIBIDO" | "RECHAZADO" | "FALTANTE" | null;
 interface RecepcionItem { id: string; name: string; sku: string; esperado: string; }
-const OC_ITEMS: RecepcionItem[] = [
-  { id: "i1", name: "Resmas de Papel Bond A4 (75g)",   sku: "SKU: IN-001-PB", esperado: "50 u."  },
-  { id: "i2", name: "Marcadores Permanentes (Negro)",   sku: "SKU: IN-012-MP", esperado: "24 u."  },
-  { id: "i3", name: "Folders Manilas Oficio",           sku: "SKU: IN-045-FM", esperado: "500 u." },
-];
+const OC_ITEMS: RecepcionItem[] = [];
 type HistEstado = "COMPLETO" | "CON RECHAZO";
 interface HistEntry { id: string; fecha: string; estado: HistEstado; empresa: string; oc: string; detalle: string; link: string; }
-const HIST_ENTRIES: HistEntry[] = [
-  { id:"h1", fecha:"OCT 24, 2023 · 09:45 AM", estado:"COMPLETO",    empresa:"Suministros Ofimática S.A.", oc:"OC-2023-042", detalle:"5 ítems recibidos sin novedad.",                      link:"Ver detalles" },
-  { id:"h2", fecha:"OCT 22, 2023 · 14:20 PM", estado:"CON RECHAZO", empresa:"Limpieza Profesional GT",    oc:"OC-2023-039", detalle:"2 Galones de Cloro rechazados por derrame.",            link:"Ver reporte"  },
-  { id:"h3", fecha:"OCT 21, 2023 · 11:10 AM", estado:"COMPLETO",    empresa:"Mantenimiento Global",       oc:"OC-2023-038", detalle:"Repuestos para bomba de agua.",                         link:"Ver detalles" },
-  { id:"h4", fecha:"OCT 19, 2023 · 08:30 AM", estado:"COMPLETO",    empresa:"Insumos El Lago",            oc:"OC-2023-035", detalle:"12 Baterías de alto rendimiento.",                      link:"Ver detalles" },
-];
+const HIST_ENTRIES: HistEntry[] = [];
 
-// ─── Nueva Recepción modal ─────────────────────────────────────────────────────
+// â”€â”€â”€ Nueva Recepción modal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function NuevaRecepcionModal({ onClose, onToast }: { onClose: () => void; onToast: (m: string, s: string) => void }) {
   const [visible, setVisible] = useState(false);
   useEffect(() => { const t = setTimeout(() => setVisible(true), 10); return () => clearTimeout(t); }, []);
@@ -3236,7 +3133,7 @@ function NuevaRecepcionModal({ onClose, onToast }: { onClose: () => void; onToas
           </div>
           <div className="px-6 py-5 space-y-4">
             <div>
-              <label className="text-xs font-bold text-gray-600 block mb-1.5">N.° Orden de Compra *</label>
+              <label className="text-xs font-bold text-gray-600 block mb-1.5">N. Orden de Compra *</label>
               <input value={oc} onChange={e => setOc(e.target.value)} placeholder="Ej. OC-2023-046"
                 className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:border-green-600 transition-colors" />
             </div>
@@ -3263,7 +3160,7 @@ function NuevaRecepcionModal({ onClose, onToast }: { onClose: () => void; onToas
   );
 }
 
-// ─── Finalizar Ingreso modal ───────────────────────────────────────────────────
+// â”€â”€â”€ Finalizar Ingreso modal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function FinalizarIngresoModal({ states, onClose, onToast }: { states: Record<string, VerifState>; onClose: () => void; onToast: (m: string, s: string) => void }) {
   const [visible, setVisible] = useState(false);
   useEffect(() => { const t = setTimeout(() => setVisible(true), 10); return () => clearTimeout(t); }, []);
@@ -3310,7 +3207,7 @@ function FinalizarIngresoModal({ states, onClose, onToast }: { states: Record<st
   );
 }
 
-// ─── Bodega View ───────────────────────────────────────────────────────────────
+// â”€â”€â”€ Bodega View â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function BodegaView({ onToast }: { onToast: (m: string, s: string) => void }) {
   const [verifStates, setVerifStates] = useState<Record<string, VerifState>>({});
   const [showNuevaRec, setShowNuevaRec] = useState(false);
@@ -3349,9 +3246,9 @@ function BodegaView({ onToast }: { onToast: (m: string, s: string) => void }) {
                 <svg className="w-5 h-5 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
               </div>
               <div className="space-y-2.5">
-                {[
-                  { icon: "📄", name: "Papel Bond A4",  sub: "Mín: 50 | Actual: 12", badge: "Crítico", bg: "#FEE2E2", color: "#DC2626" },
-                  { icon: "🖨",  name: "Tóner HP-415X", sub: "Mín: 5 | Actual: 4",   badge: "Bajo",    bg: "#DCFCE7", color: "#16A34A" },
+{[
+                  { name: "Papel Bond A4",  sub: "Mín: 50 | Actual: 12", badge: "Crítico", bg: "#FEE2E2", color: "#DC2626" },
+                  { name: "Tóner HP-415X", sub: "Mín: 5 | Actual: 4",   badge: "Bajo",    bg: "#DCFCE7", color: "#16A34A" },
                 ].map(a => (
                   <div key={a.name} className="flex items-center gap-3 px-3 py-2.5 rounded-xl border border-gray-100 bg-gray-50">
                     <span className="text-lg shrink-0">{a.icon}</span>
@@ -3377,10 +3274,10 @@ function BodegaView({ onToast }: { onToast: (m: string, s: string) => void }) {
                 <p className="text-sm font-semibold text-gray-400">Octubre 2023</p>
               </div>
               <div className="grid grid-cols-3 divide-x divide-gray-100 mt-2">
-                {[
-                  { value: "24", label: "Recepciones Exitosas", color: G        },
-                  { value: "03", label: "Devoluciones",         color: "#DC2626" },
-                  { value: "12", label: "Órdenes Pendientes",   color: G        },
+{[
+                  { value: "0", label: "Recepciones Exitosas", color: G        },
+                  { value: "0", label: "Devoluciones",         color: "#DC2626" },
+                  { value: "0", label: "Órdenes Pendientes",   color: G        },
                 ].map(s => (
                   <div key={s.label} className="flex flex-col items-center px-3 py-3 text-center">
                     <p className="text-4xl font-extrabold font-mono leading-none" style={{ color: s.color }}>{s.value}</p>
@@ -3520,7 +3417,7 @@ function BodegaView({ onToast }: { onToast: (m: string, s: string) => void }) {
   );
 }
 
-// ─── Reportes data ────────────────────────────────────────────────────────────
+// â”€â”€â”€ Reportes data â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const CHART_DATA_BY_MONTH: Record<string, { name: string; value: number }[]> = {
   "Octubre 2023": [
     { name: "Construcciones\nPanajachel",   value: 142000 },
@@ -3548,19 +3445,14 @@ const MONTHS_REPORT = ["Octubre 2023", "Septiembre 2023", "Agosto 2023"];
 
 type DeptoEstado = "Dentro de Límite" | "Excedido" | "En Proceso";
 interface DeptoRow { dep: string; resp: string; presupuesto: number; gasto: number; estado: DeptoEstado; }
-const DEPTO_ROWS: DeptoRow[] = [
-  { dep: "Obras Públicas",    resp: "Ing. Carlos Méndez",    presupuesto: 500000, gasto: 425000, estado: "Dentro de Límite" },
-  { dep: "Servicios Públicos",resp: "Licda. Elena Soto",     presupuesto: 250000, gasto: 265000, estado: "Excedido"          },
-  { dep: "Administración",    resp: "Don Roberto García",    presupuesto: 150000, gasto: 138500, estado: "En Proceso"        },
-  { dep: "Turismo y Cultura", resp: "Sofía Alvarado",        presupuesto: 80000,  gasto: 72100,  estado: "Dentro de Límite" },
-];
+const DEPTO_ROWS: DeptoRow[] = [];
 const DEPTO_ESTADO_STYLE: Record<DeptoEstado, { bg: string; color: string }> = {
   "Dentro de Límite": { bg: "#DCFCE7", color: "#16A34A" },
   "Excedido":         { bg: "#FEE2E2", color: "#DC2626" },
   "En Proceso":       { bg: "#FEF9C3", color: "#92400E" },
 };
 
-// ─── Filtrar Reportes flyout ───────────────────────────────────────────────────
+// â”€â”€â”€ Filtrar Reportes flyout â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function FiltrarReportesModal({ onClose, onApply }: { onClose: () => void; onApply: (estado: DeptoEstado | "Todos") => void }) {
   const [visible, setVisible] = useState(false);
   useEffect(() => { const t = setTimeout(() => setVisible(true), 10); return () => clearTimeout(t); }, []);
@@ -3613,7 +3505,7 @@ function FiltrarReportesModal({ onClose, onApply }: { onClose: () => void; onApp
   );
 }
 
-// ─── Custom bar chart tick ─────────────────────────────────────────────────────
+// â”€â”€â”€ Custom bar chart tick â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function MultiLineTick({ x, y, payload }: { x?: number; y?: number; payload?: { value: string } }) {
   if (x === undefined || y === undefined || !payload) return null;
   const lines = (payload.value ?? "").split("\n");
@@ -3624,7 +3516,7 @@ function MultiLineTick({ x, y, payload }: { x?: number; y?: number; payload?: { 
   );
 }
 
-// ─── Reportes View ─────────────────────────────────────────────────────────────
+// â”€â”€â”€ Reportes View â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function ReportesView({ onToast }: { onToast: (m: string, s: string) => void }) {
   const [month, setMonth]           = useState("Octubre 2023");
   const [showMonthDD, setShowMonthDD] = useState(false);
@@ -3639,7 +3531,7 @@ function ReportesView({ onToast }: { onToast: (m: string, s: string) => void }) 
     return () => document.removeEventListener("mousedown", h);
   }, []);
 
-  const chartData = CHART_DATA_BY_MONTH[month];
+  const chartData = [] as { name: string; value: number }[];
   const fmtQ = (n: number) => `Q ${n.toLocaleString("es-GT", { minimumFractionDigits: 2 })}`;
   const fmtShort = (n: number) => n >= 1000 ? `Q${(n / 1000).toFixed(0)}k` : `Q${n}`;
   const filteredRows = estadoFilter === "Todos" ? DEPTO_ROWS : DEPTO_ROWS.filter(r => r.estado === estadoFilter);
@@ -3667,7 +3559,7 @@ function ReportesView({ onToast }: { onToast: (m: string, s: string) => void }) 
               <h1 className="text-2xl font-extrabold text-gray-900 leading-tight">Reportes</h1>
               <p className="text-sm text-gray-500 mt-1">Análisis de ejecución presupuestaria y parámetros del sistema.</p>
             </div>
-            <button onClick={() => onToast("Generando reporte PDF…", "Ejecución Presupuestaria — el archivo se descargará en breve.")}
+            <button onClick={() => onToast("Generando reporte PDFâ€¦", "Ejecución Presupuestaria â€” el archivo se descargará en breve.")}
               className="flex items-center gap-2 px-5 py-2.5 text-sm font-bold text-white rounded-xl shadow-sm transition-all hover:opacity-90 shrink-0"
               style={{ backgroundColor: G }}>
               <Icons.PDF /> Exportar a PDF
@@ -3738,13 +3630,13 @@ function ReportesView({ onToast }: { onToast: (m: string, s: string) => void }) 
             {/* Right stat cards */}
             <div className="flex flex-col gap-4 w-full xl:w-64 shrink-0">
 
-              {/* Total gasto card — dark green */}
+              {/* Total gasto card â€” dark green */}
               <div className="rounded-xl p-5 text-white flex flex-col gap-2" style={{ backgroundColor: G }}>
                 <p className="text-[10px] font-extrabold uppercase tracking-widest opacity-75">Total Gasto Mensual</p>
-                <p className="text-3xl font-extrabold leading-tight font-mono">Q395,750.00</p>
+                <p className="text-3xl font-extrabold leading-tight font-mono">Q0.00</p>
                 <p className="text-xs opacity-80 flex items-center gap-1">
                   <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
-                  12.5% respecto al mes anterior
+                  0% respecto al mes anterior
                 </p>
               </div>
 
@@ -3752,12 +3644,12 @@ function ReportesView({ onToast }: { onToast: (m: string, s: string) => void }) 
               <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5 flex flex-col gap-3">
                 <p className="text-sm font-extrabold text-gray-900">Eficiencia Presupuestaria</p>
                 {/* Progress bar */}
-                <div className="h-3 rounded-full bg-gray-100 overflow-hidden">
-                  <div className="h-full rounded-full transition-all duration-700" style={{ width: "78%", backgroundColor: G }}/>
+<div className="h-3 rounded-full bg-gray-100 overflow-hidden">
+                  <div className="h-full rounded-full transition-all duration-700" style={{ width: "0%", backgroundColor: G }}/>
                 </div>
                 <div className="flex items-center justify-between text-xs font-bold">
-                  <span style={{ color: G }}>Ejecutado: 78%</span>
-                  <span className="text-gray-400">Restante: 22%</span>
+                  <span style={{ color: G }}>Ejecutado: 0%</span>
+                  <span className="text-gray-400">Restante: 100%</span>
                 </div>
               </div>
             </div>
@@ -3778,7 +3670,7 @@ function ReportesView({ onToast }: { onToast: (m: string, s: string) => void }) 
                 {estadoFilter !== "Todos" && (
                   <button onClick={() => setEstadoFilter("Todos")}
                     className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold transition-colors hover:bg-red-100 border border-gray-200 text-gray-500">
-                    ✕
+                    âœ•
                   </button>
                 )}
               </div>
@@ -3833,7 +3725,7 @@ function ReportesView({ onToast }: { onToast: (m: string, s: string) => void }) 
   );
 }
 
-// ─── Cerrar Sesión Modal ──────────────────────────────────────────────────────
+// â”€â”€â”€ Cerrar Sesión Modal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function CerrarSesionModal({ onClose, onConfirm }: { onClose: () => void; onConfirm: () => void }) {
   const [visible, setVisible] = useState(false);
   useEffect(() => { const t = setTimeout(() => setVisible(true), 10); return () => clearTimeout(t); }, []);
@@ -3873,7 +3765,7 @@ function CerrarSesionModal({ onClose, onConfirm }: { onClose: () => void; onConf
   );
 }
 
-// ─── Configuración View ───────────────────────────────────────────────────────
+// â”€â”€â”€ Configuración View â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 type ConfigTab = "apariencia" | "perfil" | "notificaciones" | "seguridad" | "auditoria";
 
 const CONFIG_TABS: { key: ConfigTab; label: string }[] = [
@@ -3966,7 +3858,7 @@ function ConfiguracionView({ onToast, onLogout, dark, onDark, accent, onAccent, 
             })}
           </div>
 
-          {/* ── Apariencia y Tema ── */}
+          {/* â”€â”€ Apariencia y Tema â”€â”€ */}
           {activeTab === "apariencia" && (
             <div className="p-6 space-y-6">
 
@@ -4081,7 +3973,7 @@ function ConfiguracionView({ onToast, onLogout, dark, onDark, accent, onAccent, 
             </div>
           )}
 
-          {/* ── Perfil de Usuario ── */}
+          {/* â”€â”€ Perfil de Usuario â”€â”€ */}
           {activeTab === "perfil" && (
             <div className="p-6 space-y-6">
               <div>
@@ -4125,7 +4017,7 @@ function ConfiguracionView({ onToast, onLogout, dark, onDark, accent, onAccent, 
             </div>
           )}
 
-          {/* ── Notificaciones ── */}
+          {/* â”€â”€ Notificaciones â”€â”€ */}
           {activeTab === "notificaciones" && (
             <div className="p-6 space-y-5">
               <div>
@@ -4145,14 +4037,14 @@ function ConfiguracionView({ onToast, onLogout, dark, onDark, accent, onAccent, 
             </div>
           )}
 
-          {/* ── Seguridad ── */}
+          {/* â”€â”€ Seguridad â”€â”€ */}
           {activeTab === "seguridad" && (
             <div className="p-6 space-y-6">
               <div>
                 <p className="text-[10px] font-extrabold uppercase tracking-widest text-gray-400 mb-3">Contraseña</p>
                 <div className="rounded-xl border border-gray-100 p-5 space-y-4">
                   {[
-                    { label: "Contraseña actual",       ph: "••••••••" },
+                    { label: "Contraseña actual",       ph: "********" },
                     { label: "Nueva contraseña",        ph: "Mínimo 8 caracteres" },
                     { label: "Confirmar contraseña",    ph: "Repetir nueva contraseña" },
                   ].map(f => (
@@ -4184,7 +4076,7 @@ function ConfiguracionView({ onToast, onLogout, dark, onDark, accent, onAccent, 
             </div>
           )}
 
-          {/* ── Auditoría ── */}
+          {/* â”€â”€ Auditoría â”€â”€ */}
           {activeTab === "auditoria" && (
             <div className="p-6">
               <div className="rounded-xl border border-gray-100 overflow-hidden">
@@ -4223,7 +4115,7 @@ function ConfiguracionView({ onToast, onLogout, dark, onDark, accent, onAccent, 
   );
 }
 
-// ─── Supplier Portal ──────────────────────────────────────────────────────────
+// â”€â”€â”€ Supplier Portal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 type SupplierNav = "oportunidades" | "ordenes" | "entregas" | "configuracion";
 type SolEstadoProv = "En Licitación" | "Cotización Enviada" | "Adjudicado";
 
@@ -4234,13 +4126,9 @@ const SOL_ESTADO_PROV: Record<SolEstadoProv, { bg: string; color: string; text?:
 };
 
 interface SolProv { id: string; num: string; cat: string; limite: string; presupuesto: string; estado: SolEstadoProv; }
-const SOL_PROV: SolProv[] = [
-  { id:"s1", num:"#SOL-2026-089", cat:"Suministros de Oficina",    limite:"28/08/2026", presupuesto:"Q 12,500.00", estado:"En Licitación"     },
-  { id:"s2", num:"#SOL-2026-084", cat:"Materiales de Construcción",limite:"30/08/2026", presupuesto:"Q 45,000.00", estado:"Cotización Enviada" },
-  { id:"s3", num:"#SOL-2026-078", cat:"Repuestos de Maquinaria",   limite:"15/08/2026", presupuesto:"Q 8,200.00",  estado:"Adjudicado"        },
-];
+const SOL_PROV: SolProv[] = [];
 
-// ─── Nueva Proforma modal ──────────────────────────────────────────────────────
+// â”€â”€â”€ Nueva Proforma modal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function NuevaProformaModal({ sol, dark, onClose, onToast }: { sol: SolProv; dark: boolean; onClose: () => void; onToast: (m: string, s: string) => void }) {
   const [visible, setVisible] = useState(false);
   useEffect(() => { const t = setTimeout(() => setVisible(true), 10); return () => clearTimeout(t); }, []);
@@ -4297,7 +4185,7 @@ function NuevaProformaModal({ sol, dark, onClose, onToast }: { sol: SolProv; dar
   );
 }
 
-// ─── Subir Proforma modal ──────────────────────────────────────────────────────
+// â”€â”€â”€ Subir Proforma modal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function SubirProformaModal({ dark, onClose, onToast }: { dark: boolean; onClose: () => void; onToast: (m: string, s: string) => void }) {
   const [visible, setVisible] = useState(false);
   const [dragging, setDragging] = useState(false);
@@ -4355,7 +4243,7 @@ function SubirProformaModal({ dark, onClose, onToast }: { dark: boolean; onClose
   );
 }
 
-// ─── Supplier Portal root ──────────────────────────────────────────────────────
+// â”€â”€â”€ Supplier Portal root â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function SupplierPortal({ onLogout }: { onLogout: () => void }) {
   const [activeNav,        setActiveNav]        = useState<SupplierNav>("oportunidades");
   const [dark,             setDark]             = useState(false);
@@ -4457,17 +4345,17 @@ function SupplierPortal({ onLogout }: { onLogout: () => void }) {
   return (
     <div className="flex h-screen overflow-hidden" style={{ background: bg }}>
 
-      {/* ── Mobile sidebar overlay ── */}
+      {/* â”€â”€ Mobile sidebar overlay â”€â”€ */}
       {mobileSidebarOpen && (
         <div className="sidebar-overlay lg:hidden" onClick={() => setMobileSidebarOpen(false)}/>
       )}
 
-      {/* ── Mobile sidebar drawer ── */}
+      {/* â”€â”€ Mobile sidebar drawer â”€â”€ */}
       <div className={`sidebar-drawer lg:hidden ${mobileSidebarOpen ? "open" : ""}`} style={{ backgroundColor: sidebarBg, borderRight: `1px solid ${border}` }}>
         <SupplierSidebarContent inDrawer={true}/>
       </div>
 
-      {/* ── Desktop sidebar ── */}
+      {/* â”€â”€ Desktop sidebar â”€â”€ */}
       <aside className="hidden lg:flex flex-col shrink-0 border-r relative transition-all duration-300"
         style={{ width: sidebarCollapsed ? 56 : 224, backgroundColor: sidebarBg, borderColor: border }}>
         <SupplierSidebarContent/>
@@ -4480,7 +4368,7 @@ function SupplierPortal({ onLogout }: { onLogout: () => void }) {
         </button>
       </aside>
 
-      {/* ── Main ── */}
+      {/* â”€â”€ Main â”€â”€ */}
       <div className="flex-1 flex flex-col overflow-hidden min-w-0">
 
         {/* Top bar */}
@@ -4521,7 +4409,7 @@ function SupplierPortal({ onLogout }: { onLogout: () => void }) {
         <div className="flex-1 overflow-auto" style={{ background:bg }}>
           <div className="px-4 sm:px-6 py-5 space-y-5 pb-24 lg:pb-5">
 
-            {/* ── Mis Oportunidades ── */}
+            {/* â”€â”€ Mis Oportunidades â”€â”€ */}
             {activeNav === "oportunidades" && (
               <>
                 {/* Page header */}
@@ -4540,9 +4428,9 @@ function SupplierPortal({ onLogout }: { onLogout: () => void }) {
                 {/* KPI cards */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                   {[
-                    { icon:<Icons.Solicitudes/>, label:"COTIZACIONES ENVIADAS", value:"18", sub2:"4 en revisión técnica",         subColor: sub    },
-                    { icon:<Icons.Proformas/>,   label:"ÓRDENES ADJUDICADAS",   value:"05", sub2:"Q 85,400.00 en ejecución",       subColor: G      },
-                    { icon:<Icons.Facturacion/>, label:"FACTURAS PENDIENTES",   value:"02", sub2:"Próximo pago: 25/08/2026",        subColor:"#D97706" },
+                    { icon:<Icons.Solicitudes/>, label:"COTIZACIONES ENVIADAS", value:"0", sub2:"0 en revisión técnica",         subColor: sub    },
+                    { icon:<Icons.Proformas/>,   label:"ÓRDENES ADJUDICADAS",   value:"0", sub2:"Q 0.00 en ejecución",       subColor: G      },
+                    { icon:<Icons.Facturacion/>, label:"FACTURAS PENDIENTES",   value:"0", sub2:"Sin pagos programados",        subColor:"#D97706" },
                   ].map(k => (
                     <div key={k.label} className="rounded-xl border p-5" style={{ backgroundColor:card, borderColor:border }}>
                       <div className="flex items-start justify-between mb-3">
@@ -4663,7 +4551,7 @@ function SupplierPortal({ onLogout }: { onLogout: () => void }) {
                   <div className="w-full xl:w-64 shrink-0 rounded-xl border overflow-hidden" style={{ backgroundColor:card, borderColor:border }}>
                     <div className="px-5 pt-5 pb-4 border-b" style={{ borderColor:border }}>
                       <p className="text-sm font-extrabold" style={{ color:text }}>Carga Rápida de Factura FEL</p>
-                      <p className="text-xs mt-0.5" style={{ color:sub }}>Envíe su factura electrónica directamente.</p>
+                      <p className="text-xs mt-0.5" style={{ color:sub }}>Envía su factura electrónica directamente.</p>
                     </div>
                     <div className="p-5 space-y-4">
                       <div
@@ -4674,7 +4562,7 @@ function SupplierPortal({ onLogout }: { onLogout: () => void }) {
                         className="rounded-xl border-2 border-dashed flex flex-col items-center justify-center py-8 gap-2 cursor-pointer transition-all"
                         style={{ borderColor:isDraggingFEL?G:dark?"#334155":"#CBD5E1", backgroundColor:isDraggingFEL?dark?"rgba(30,94,47,0.15)":"#F0FDF4":dark?"#0F172A":"#F9FAFB" }}>
                         <svg className="w-9 h-9" fill="none" stroke={isDraggingFEL?G:sub} viewBox="0 0 24 24" strokeWidth={1.5}><polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.39 18.39A5 5 0 0018 9h-1.26A8 8 0 103 16.3"/></svg>
-                        <p className="text-xs text-center leading-snug font-semibold" style={{ color:sub }}>Arrastre aquí su factura digital<br/>(PDF / XML)</p>
+                        <p className="text-xs text-center leading-snug font-semibold" style={{ color:sub }}>Arrastre Aquí su factura digital<br/>(PDF / XML)</p>
                       </div>
                       <button onClick={() => fireToast("Factura enviada","Tu factura FEL fue enviada a revisión de pago.")}
                         className="w-full py-2.5 text-sm font-bold text-white rounded-xl transition-all hover:opacity-90 shadow-sm"
@@ -4687,17 +4575,13 @@ function SupplierPortal({ onLogout }: { onLogout: () => void }) {
               </>
             )}
 
-            {/* ── Órdenes y Facturas ── */}
+            {/* â”€â”€ Órdenes y Facturas â”€â”€ */}
             {activeNav === "ordenes" && (
               <div className="space-y-4">
                 <h1 className="text-2xl font-extrabold" style={{ color:text }}>Órdenes y Facturas</h1>
                 <p className="text-sm" style={{ color:sub }}>Historial de órdenes de compra adjudicadas y estado de pago de sus facturas.</p>
-                <div className="rounded-xl border overflow-hidden" style={{ backgroundColor:card, borderColor:border }}>
-                  {[
-                    { oc:"OC-2026-042", desc:"Suministros de limpieza",   monto:"Q 8,400.00",  estado:"Pagado",    fecha:"12/08/2026" },
-                    { oc:"OC-2026-038", desc:"Papelería y suministros",   monto:"Q 12,100.00", estado:"Pendiente", fecha:"25/08/2026" },
-                    { oc:"OC-2026-031", desc:"Repuestos eléctricos",      monto:"Q 64,900.00", estado:"En Proceso",fecha:"30/08/2026" },
-                  ].map((r,i) => (
+<div className="rounded-xl border overflow-hidden" style={{ backgroundColor:card, borderColor:border }}>
+                  {[].map((r, i) => (
                     <div key={i} className="flex items-center gap-4 px-5 py-4 border-b last:border-b-0 transition-colors"
                       style={{ borderColor:border }}
                       onMouseEnter={e=>(e.currentTarget.style.backgroundColor=dark?"rgba(255,255,255,0.03)":"#F9FFF9")}
@@ -4721,17 +4605,13 @@ function SupplierPortal({ onLogout }: { onLogout: () => void }) {
               </div>
             )}
 
-            {/* ── Entregas en Bodega ── */}
+            {/* â”€â”€ Entregas en Bodega â”€â”€ */}
             {activeNav === "entregas" && (
               <div className="space-y-4">
                 <h1 className="text-2xl font-extrabold" style={{ color:text }}>Entregas en Bodega</h1>
-                <p className="text-sm" style={{ color:sub }}>Programación y estado de sus entregas físicas en la bodega municipal.</p>
-                <div className="rounded-xl border overflow-hidden" style={{ backgroundColor:card, borderColor:border }}>
-                  {[
-                    { oc:"OC-2026-042", items:"12 cajas papelería",   fecha:"14/08/2026 09:00", estado:"Programada",  bodeguero:"Enc. Ramírez"  },
-                    { oc:"OC-2026-031", items:"Caja repuestos x4",    fecha:"18/08/2026 14:00", estado:"Completada",   bodeguero:"Enc. López"     },
-                    { oc:"OC-2026-028", items:"Suministros limpieza", fecha:"20/08/2026 10:30", estado:"Pendiente",    bodeguero:"Por asignar"    },
-                  ].map((r,i) => (
+                <p className="text-sm" style={{ color:sub }}>Programación y estado de sus entregas fí­sicas en la bodega municipal.</p>
+<div className="rounded-xl border overflow-hidden" style={{ backgroundColor:card, borderColor:border }}>
+                  {[].map((r,i) => (
                     <div key={i} className="flex items-center gap-4 px-5 py-4 border-b last:border-b-0 transition-colors"
                       style={{ borderColor:border }}
                       onMouseEnter={e=>(e.currentTarget.style.backgroundColor=dark?"rgba(255,255,255,0.03)":"#F9FFF9")}
@@ -4753,7 +4633,7 @@ function SupplierPortal({ onLogout }: { onLogout: () => void }) {
               </div>
             )}
 
-            {/* ── Configuración ── */}
+            {/* â”€â”€ Configuración â”€â”€ */}
             {activeNav === "configuracion" && (
               <div className="space-y-5 max-w-lg">
                 <h1 className="text-2xl font-extrabold" style={{ color:text }}>Configuración</h1>
@@ -4813,7 +4693,7 @@ function SupplierPortal({ onLogout }: { onLogout: () => void }) {
   );
 }
 
-// ─── Forgot Password modal ────────────────────────────────────────────────────
+// â”€â”€â”€ Forgot Password modal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function ForgotPasswordModal({ onClose }: { onClose: () => void }) {
   const [visible, setVisible] = useState(false);
   const [sent, setSent] = useState(false);
@@ -4874,7 +4754,7 @@ function ForgotPasswordModal({ onClose }: { onClose: () => void }) {
   );
 }
 
-// ─── Login Screen ──────────────────────────────────────────────────────────────
+// â”€â”€â”€ Login Screen â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const LAKE_IMG = "https://images.unsplash.com/photo-1669025467316-a1bff8696c36?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixlib=rb-4.1.0&q=80&w=1400";
 
 function LoginScreen({ onLogin }: { onLogin: (pw: string) => void }) {
@@ -4903,7 +4783,7 @@ function LoginScreen({ onLogin }: { onLogin: (pw: string) => void }) {
   return (
     <div className="min-h-screen flex" style={{ background: "#F8F9FA" }}>
 
-      {/* ── Left hero panel ── */}
+      {/* â”€â”€ Left hero panel â”€â”€ */}
       <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden flex-col">
         {/* Background photo */}
         <img src={LAKE_IMG} alt="Lago de Atitlán" className="absolute inset-0 w-full h-full object-cover"/>
@@ -4954,7 +4834,7 @@ function LoginScreen({ onLogin }: { onLogin: (pw: string) => void }) {
         </div>
       </div>
 
-      {/* ── Right form panel ── */}
+      {/* â”€â”€ Right form panel â”€â”€ */}
       <div className="w-full lg:w-1/2 flex items-center justify-center px-6 py-12">
         <div className="w-full max-w-md">
 
@@ -5006,7 +4886,7 @@ function LoginScreen({ onLogin }: { onLogin: (pw: string) => void }) {
                   onFocus={() => setFocusField("password")} onBlur={() => setFocusField(null)}
                   onKeyDown={e => e.key === "Enter" && handleLogin()}
                   type={showPass ? "text" : "password"}
-                  placeholder="••••••••••••"
+                  placeholder="********"
                   className="w-full pl-10 pr-11 py-3 text-sm border-2 rounded-xl bg-white focus:outline-none"
                   style={fieldStyle("password")}/>
                 <button onClick={() => setShowPass(v => !v)}
@@ -5061,7 +4941,7 @@ function LoginScreen({ onLogin }: { onLogin: (pw: string) => void }) {
               {loading ? (
                 <>
                   <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/></svg>
-                  Verificando…
+                  Verificandoâ€¦
                 </>
               ) : (
                 <>
@@ -5087,7 +4967,7 @@ function LoginScreen({ onLogin }: { onLogin: (pw: string) => void }) {
   );
 }
 
-// ─── KPI Card ─────────────────────────────────────────────────────────────────
+// â”€â”€â”€ KPI Card â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function KpiCard({title,value,sub,subColor,icon,progress}:{title:string;value:string;sub:string;subColor?:string;icon:React.ReactNode;progress?:number}) {
   return(
     <div className="bg-white rounded-xl border border-gray-100 p-5 flex flex-col gap-3 shadow-sm">
@@ -5098,7 +4978,7 @@ function KpiCard({title,value,sub,subColor,icon,progress}:{title:string;value:st
   );
 }
 
-// ─── App ──────────────────────────────────────────────────────────────────────
+// â”€â”€â”€ App â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 export default function App() {
   const [screen,          setScreen]          = useState<"login"|"admin"|"supplier">("login");
   const [activeNav,       setActiveNav]       = useState("dashboard");
@@ -5206,7 +5086,7 @@ export default function App() {
 
       <div className="flex h-screen overflow-hidden" style={{ background: thBg }}>
 
-        {/* ── Mobile sidebar overlay ── */}
+        {/* â”€â”€ Mobile sidebar overlay â”€â”€ */}
         {mobileSidebar && (
           <div className="sidebar-overlay lg:hidden" onClick={() => setMobileSidebar(false)}/>
         )}
@@ -5215,7 +5095,7 @@ export default function App() {
           <SidebarContent mobile />
         </div>
 
-        {/* ── Desktop sidebar ── */}
+        {/* â”€â”€ Desktop sidebar â”€â”€ */}
         <aside className="hidden lg:flex flex-col shrink-0 border-r shadow-sm transition-all duration-300"
           style={{ width: sidebarCollapsed ? 56 : 208, backgroundColor: thNav, borderColor: thBorder }}>
           {/* Collapse toggle */}
@@ -5229,7 +5109,7 @@ export default function App() {
           <SidebarContent />
         </aside>
 
-        {/* ── Main ── */}
+        {/* â”€â”€ Main â”€â”€ */}
         <div className="flex-1 flex flex-col overflow-hidden min-w-0">
           {/* Top bar */}
           <header className="shrink-0 border-b px-4 md:px-6 flex items-center gap-3 shadow-sm" style={{ height:56, backgroundColor: thSurface, borderColor: thBorder }}>
@@ -5245,35 +5125,35 @@ export default function App() {
               <div className="h-8 w-px mx-2" style={{ backgroundColor: thBorder }}/>
               <div className="flex items-center gap-2.5 pl-1">
                 <div className="text-right hidden sm:block">
-                  <p className="text-xs font-bold leading-none" style={{ color: thText }}>Lic. Ricardo Gómez</p>
-                  <p className="text-[10px] font-semibold uppercase tracking-wide mt-0.5" style={{ color: ac }}>Administrador General</p>
+                  <p className="text-xs font-bold leading-none" style={{ color: thText }}>{mockData.user.name}</p>
+                  <p className="text-[10px] font-semibold uppercase tracking-wide mt-0.5" style={{ color: ac }}>{mockData.user.role}</p>
                 </div>
                 <div className="w-8 h-8 rounded-full overflow-hidden border-2 shrink-0" style={{ borderColor: thBorder }}>
-                  <img src="https://images.unsplash.com/photo-1560250097-0b93528c311a?w=64&h=64&fit=crop&auto=format" alt="Lic. Ricardo Gómez" className="w-full h-full object-cover"/>
+                  <img src={mockData.user.avatar} alt={mockData.user.name} className="w-full h-full object-cover"/>
                 </div>
               </div>
             </div>
           </header>
 
-          {/* KPI strip — dashboard only */}
+          {/* KPI strip â€” dashboard only */}
           {activeNav === "dashboard" && (
           <div className="shrink-0 border-b px-6 py-4 flex items-center gap-8 flex-wrap"
             style={{ backgroundColor: thSurface, borderColor: thBorder }}>
             <div>
               <p className="text-[10px] font-bold uppercase tracking-wider" style={{ color: thSub }}>Total Solicitudes</p>
               <div className="flex items-baseline gap-2 mt-0.5">
-                <span className="text-2xl font-extrabold" style={{ color: thText }}>1,248</span>
-                <span className="text-xs font-semibold text-emerald-500">+8% este mes</span>
+                <span className="text-2xl font-extrabold" style={{ color: thText }}>{mockData.kpis.totalSolicitudes.value}</span>
+                <span className="text-xs font-semibold text-emerald-500">{mockData.kpis.totalSolicitudes.change}</span>
               </div>
             </div>
             <div className="h-10 w-px" style={{ backgroundColor: thBorder }}/>
             <div className="flex-1 max-w-xs">
               <p className="text-[10px] font-bold uppercase tracking-wider" style={{ color: thSub }}>Presupuesto Ejecutado</p>
               <div className="flex items-center gap-3 mt-1">
-                <span className="text-2xl font-extrabold" style={{ color: thText }}>64.5%</span>
-                <div className="flex-1 h-2 rounded-full overflow-hidden" style={{ backgroundColor: DK?"#334155":"#F3F4F6" }}>
-                  <div className="h-full rounded-full" style={{ width:"64.5%", backgroundColor: ac }}/>
-                </div>
+<span className="text-2xl font-extrabold" style={{ color: thText }}>{mockData.kpis.presupuestoEjecutado.value}</span>
+                    <div className="flex-1 h-2 rounded-full overflow-hidden" style={{ backgroundColor: DK?"#334155":"#F3F4F6" }}>
+                      <div className="h-full rounded-full" style={{ width:mockData.kpis.presupuestoEjecutado.value.replace("%",""), backgroundColor: ac }}/>
+                    </div>
               </div>
             </div>
             <div className="ml-auto flex items-center gap-3">
@@ -5283,7 +5163,7 @@ export default function App() {
           </div>
           )}
 
-          {/* Body — conditional view */}
+          {/* Body â€” conditional view */}
           {activeNav === "dependencias" ? (
             <DependenciasView
               onNewSolicitud={() => setShowSolModal(true)}
@@ -5313,10 +5193,10 @@ export default function App() {
               {/* Main col */}
               <div className="flex-1 min-w-0 flex flex-col gap-5">
                 <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
-                  <KpiCard title="Total Solicitudes"  value="1,248" sub="↑ +8% este mes"              subColor="text-emerald-600" icon={<Icons.Solicitudes/>}/>
-                  <KpiCard title="Órdenes Pendientes" value="42"    sub="Q 245,300.00 en trámite"                                 icon={<Icons.Bodega/>}/>
-                  <KpiCard title="Entregas Parciales" value="18"    sub="⚠ 8 requieren seguimiento"  subColor="text-amber-500"   icon={<Icons.Proformas/>}/>
-                  <KpiCard title="Presupuesto Ejec."  value="64.5%" sub="Q 2.9M de Q 4.5M"            subColor="text-gray-500"   icon={<Icons.Facturacion/>} progress={64.5}/>
+                  <KpiCard title="Total Solicitudes"  value={mockData.kpis.totalSolicitudes.value} sub={mockData.kpis.totalSolicitudes.change}              subColor="text-emerald-600" icon={<Icons.Solicitudes/>}/>
+                  <KpiCard title="Órdenes Pendientes" value={mockData.kpis.ordenesPendientes.value} sub={mockData.kpis.ordenesPendientes.subtotal}                                 icon={<Icons.Bodega/>}/>
+                  <KpiCard title="Entregas Parciales" value={mockData.kpis.entregasParciales.value} sub={mockData.kpis.entregasParciales.alert}  subColor="text-amber-500"   icon={<Icons.Proformas/>}/>
+                  <KpiCard title="Presupuesto Ejec."  value={mockData.kpis.presupuestoEjecutado.value} sub={mockData.kpis.presupuestoEjecutado.total + " de " + mockData.kpis.presupuestoEjecutado.max}            subColor="text-gray-500"   icon={<Icons.Facturacion/>} progress={parseFloat(mockData.kpis.presupuestoEjecutado.value)}/>
                 </div>
                 <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
                   <div className="flex items-center justify-between mb-1">
@@ -5324,7 +5204,7 @@ export default function App() {
                     <div className="flex items-center gap-1.5 border border-gray-200 rounded-lg px-3 py-1.5 text-sm text-gray-600 cursor-pointer hover:border-gray-300 transition-colors">Octubre 2026 <Icons.ChevDown/></div>
                   </div>
                   <ResponsiveContainer width="100%" height={190}>
-                    <BarChart data={CHART_DATA} barSize={34} margin={{top:8,right:0,bottom:0,left:-10}} onClick={()=>setShowGasModal(true)}>
+                    <BarChart data={mockData.chartData} barSize={34} margin={{top:8,right:0,bottom:0,left:-10}} onClick={()=>setShowGasModal(true)}>
                       <CartesianGrid vertical={false} stroke="#F3F4F6"/>
                       <XAxis dataKey="dept" tick={{fontSize:10,fill:"#9CA3AF",fontFamily:"Inter"}} axisLine={false} tickLine={false}/>
                       <YAxis tick={{fontSize:10,fill:"#9CA3AF",fontFamily:"Inter"}} axisLine={false} tickLine={false} tickFormatter={v=>`Q${(v/1000).toFixed(0)}k`}/>
@@ -5342,17 +5222,17 @@ export default function App() {
                   </div>
                   <div className="overflow-x-auto">
                     <table className="w-full">
-                      <thead><tr className="bg-gray-50 border-b border-gray-100">{["NO. SOLICITUD","DEPENDENCIA","MONTO","ESTADO","ACCIÓN"].map(h=><th key={h} className="px-5 py-3 text-left text-[10px] font-bold text-gray-400 uppercase tracking-wider whitespace-nowrap">{h}</th>)}</tr></thead>
+                      <thead><tr className="bg-gray-50 border-b border-gray-100">{["NO. SOLICITUD","DEPENDENCIA","MONTO","ESTADO","ACCIÁ“N"].map(h=><th key={h} className="px-5 py-3 text-left text-[10px] font-bold text-gray-400 uppercase tracking-wider whitespace-nowrap">{h}</th>)}</tr></thead>
                       <tbody>
-                        {ACTIVITY.map(row=>(
-                          <tr key={row.sol} className="border-b border-gray-50 hover:bg-gray-50/60 transition-colors">
-                            <td className="px-5 py-3.5 text-sm font-semibold text-gray-900 font-mono">{row.sol}</td>
-                            <td className="px-5 py-3.5 text-sm text-gray-700">{row.dep}</td>
-                            <td className="px-5 py-3.5 text-sm font-semibold text-gray-900 font-mono whitespace-nowrap">{row.monto}</td>
-                            <td className="px-5 py-3.5"><span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${STATUS_BADGE[row.status]}`}>{row.status}</span></td>
-                            <td className="px-5 py-3.5"><button className="p-1.5 rounded-lg transition-colors hover:opacity-70" style={{color:G}}><Icons.Eye/></button></td>
-                          </tr>
-                        ))}
+{mockData.activity.map((row: { sol: string; dep: string; monto: string; status: string })=>(
+                           <tr key={row.sol} className="border-b border-gray-50 hover:bg-gray-50/60 transition-colors">
+                             <td className="px-5 py-3.5 text-sm font-semibold text-gray-900 font-mono">{row.sol}</td>
+                             <td className="px-5 py-3.5 text-sm text-gray-700">{row.dep}</td>
+                             <td className="px-5 py-3.5 text-sm font-semibold text-gray-900 font-mono whitespace-nowrap">{row.monto}</td>
+                             <td className="px-5 py-3.5"><span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${mockData.statusBadge[row.status]}`}>{row.status}</span></td>
+                             <td className="px-5 py-3.5"><button className="p-1.5 rounded-lg transition-colors hover:opacity-70" style={{color:G}}><Icons.Eye/></button></td>
+                           </tr>
+                         ))}
                       </tbody>
                     </table>
                   </div>
@@ -5369,10 +5249,10 @@ export default function App() {
                   fireToast(msg, "La solicitud fue enviada a bodega central.");
                 }} />
 
-                {/* ── Branding Card (interactive component) ── */}
+                {/* â”€â”€ Branding Card (interactive component) â”€â”€ */}
                 <BrandingCard onOpenMap={() => setShowMapModal(true)} />
 
-                {/* ── Support Card (interactive component) ── */}
+                {/* â”€â”€ Support Card (interactive component) â”€â”€ */}
                 <SupportCard onOpenTicket={() => setShowTicketDrawer(true)} />
               </div>
             </div>
@@ -5381,7 +5261,7 @@ export default function App() {
         </div>
       </div>
 
-      {/* ── Modals & Drawers ── */}
+      {/* â”€â”€ Modals & Drawers â”€â”€ */}
       {showSolModal    && <SolicitudModal onClose={()=>setShowSolModal(false)}   onSubmit={()=>{ setShowSolModal(false); setTimeout(()=>fireToast("Solicitud creada exitosamente","SOL-2024-046 enviada para aprobación."),150); }}/>}
       {showGasModal    && <GastosModal    onClose={()=>setShowGasModal(false)}   onPDF={()=>{ setShowGasModal(false); setTimeout(()=>fireToast("Reporte descargado con éxito","El archivo PDF fue generado correctamente."),150); }}/>}
       {showAuditModal  && <AuditModal     onClose={()=>setShowAuditModal(false)} onExport={()=>{ setShowAuditModal(false); setTimeout(()=>fireToast("Audit log exportado","El archivo CSV/PDF fue descargado correctamente."),150); }}/>}
@@ -5389,11 +5269,12 @@ export default function App() {
       {showMapModal     && <JurisdictionModal   onClose={()=>setShowMapModal(false)}  />}
       {showLogoutModal  && <CerrarSesionModal  onClose={()=>setShowLogoutModal(false)} onConfirm={()=>{ setShowLogoutModal(false); setTimeout(()=>{ setScreen("login"); setActiveNav("dashboard"); },280); }}/>}
 
-      {/* ── Toast ── */}
+      {/* â”€â”€ Toast â”€â”€ */}
       <Toast show={toast.show} message={toast.message} sub={toast.sub} onHide={hideToast}/>
 
-      {/* ── FAB ── */}
+      {/* â”€â”€ FAB â”€â”€ */}
       <button onClick={()=>setActiveNav("dependencias")} className="fixed bottom-5 right-5 w-12 h-12 text-white rounded-full shadow-lg flex items-center justify-center transition-all hover:opacity-90 z-50" style={{backgroundColor:G}} title="Nueva Solicitud"><Icons.Plus/></button>
     </>
   );
 }
+
