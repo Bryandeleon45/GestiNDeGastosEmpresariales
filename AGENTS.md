@@ -1,60 +1,41 @@
 # figma-make-app
 
-Aplicación React + Vite + Tailwind CSS que se ejecuta dentro de Figma Make.
+React + Vite + Tailwind CSS project running inside Figma Make.
 
-## Servidor de Desarrollo
+## Development Server
 
-Un servidor de desarrollo Vite **ya está ejecutándose** en `$PORT` (predeterminado 8443). No necesitas iniciarlo manualmente.
+A Vite development server is **already running** on `$PORT` (default 8443). You don't need to start it manually.
 
-- URL de vista previa: el usuario puede acceder a la aplicación ejecutándose a través del panel de vista previa
-- Recarga caliente: los cambios en los archivos de origen se reflejan de inmediato
+- Preview URL: The user can access the running app through the preview panel
+- Hot reload: Changes to source files are reflected immediately
 
-## Estructura del Proyecto
+## Project Structure
 
-Archivos clave (orden canónico):
+This is the canonical project structure. Start with task-relevant files below. Only follow imports or inspect other files when required, when a documented path is missing, or when the repository contradicts this guide.
 
-- `src/main.tsx` — Punto de entrada de React; monta `src/App.tsx` en `#root`
-- `src/App.tsx` — Componente principal de la aplicación
-- `src/index.css` — CSS global + importación de Tailwind CSS v4
-- `vite.config.ts` — Configuración de Vite con React, Tailwind v4 y plugins de Figma Make
-- `package.json` — Dependencias y scripts
-- `index.html` — Cáscara HTML de Vite con `#root`
+- `src/main.tsx` - React entrypoint; imports `src/index.css` and mounts `src/App.tsx` into the `#root` element
+- `src/App.tsx` - Primary application component and the usual starting point for UI work
+- `src/index.css` - Global CSS entrypoint and Tailwind CSS v4 import
+- `index.html` - Vite HTML shell containing the `#root` element and loading `src/main.tsx`
+- `package.json` - Project dependencies and the Vite build, development, preview, and formatting scripts
+- `vite.config.ts` - Vite configuration with React, Tailwind CSS v4, and Figma Make plugins plus the `@` alias for `src`
+- `.mise.toml` - Toolchain versions for Node.js and pnpm
 
-### Alias
+## Dependencies
 
-- `'@'` se resuelve a `import.meta.dirname` + `/src` (línea 29 de `vite.config.ts`)
-- **No uses `__dirname`** — fue reemplazado con `import.meta.dirname` para corregir advertencias de Vite
+- Runtime: React 19 and React DOM 19
+- Styling: Tailwind CSS v4 with the `@tailwindcss/vite` plugin
+- Build tooling: Vite 8, TypeScript 5.7, and `@vitejs/plugin-react`
+- Formatting: oxfmt
 
-### Dependencias
+## Styling
 
-- Tiempo de ejecución: React 19, React DOM 19, Recharts
-- Estilizado: Tailwind CSS v4 con plugin `@tailwindcss/vite`
-- Herramientas de construcción: Vite 8, TypeScript 5.7, `@vitejs/plugin-react`
-- Formato: oxfmt
+This project uses **Tailwind CSS v4** through the `@tailwindcss/vite` plugin configured in `vite.config.ts`. `src/index.css` imports Tailwind with `@import 'tailwindcss';`. Use Tailwind utility classes directly in JSX and put global CSS or Tailwind v4 theme customization in `src/index.css`. This scaffold does not need a Tailwind config file or PostCSS config.
 
-### Scripts
+`src/main.tsx` imports `src/index.css`, so global font wiring belongs in `src/index.css`. Keep CSS `@import` statements first, then add any `@font-face` rules and font-family defaults there.
 
-- `dev` — inicia el servidor Vite (host: 0.0.0.0)
-- `build` — `vite build`
-- `preview` — `vite preview`
-- `format` — `oxfmt` (formatea todos los archivos)
+## Code quality
 
-### Estilizado
-
-- Tailwind CSS v4 — no se necesita configuración PostCSS
-- Utiliza clases utility de Tailwind en JSX
-- CSS global o personalización de tema Tailwind v4 va en `src/index.css`
-- Mantén las declaraciones `@import` al principio en `src/index.css`
-
-### Calidad de Código
-
-- Usa **comillas dobles** para cadenas que contengan apóstrofes (`"we're"`). Una apóstrofe sin escapar en cadenas entre comillas simples rompe el build.
-- Asegúrate de que las etiquetas JSX estén cerradas y las llaves estén balanceadas.
-- Exporta los componentes como **exportaciones por defecto**.
-
-### Advertencias de Vite corregidas (2024)
-
-Dos advertencias fueron eliminadas con estos cambios:
-
-1. **Línea 6**: `import siteConfiguration from './.figma/make/site.json' with { type: 'json' }` — se agregaron los atributos de importación JSON
-2. **Línea 29**: `'@': path.resolve(import.meta.dirname, './src')` — reemplazó `__dirname` con `import.meta.dirname`
+- Use double quotes for strings containing apostrophes (`"We're here to help"`), or escape them in single-quoted strings. An unescaped apostrophe in a single-quoted string breaks the build.
+- Ensure JSX tags are closed and braces are balanced.
+- Export components as default exports.
