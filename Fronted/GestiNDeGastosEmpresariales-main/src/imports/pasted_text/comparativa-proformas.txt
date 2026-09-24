@@ -1,0 +1,105 @@
+Create a fully functional, production-ready screen in Figma for "Comparativa de Proformas / Comparativa de Precios" (Supplier Bids Comparison Module) for "Municipalidad de Panajachel - Gestión Municipal". Built using Auto-Layout, dynamic component sets, interactive comparative tables, award buttons, and connected prototyping interactions.
+
+==================================================
+1. LAYOUT & COLOR PALETTE
+==================================================
+- Theme: Clean, modern civic administration portal.
+- Palette: 
+  * Background: Light grey (#F8F9FA)
+  * Primary Brand: Forest Green (#1E5E2F)
+  * Text: Dark Charcoal (#212529) and Muted Slate (#6C757D)
+  * Status Badges: "FASE: COMPARACIÓN" (Bright green pill badge #22C55E / light text).
+  * Best Price Tag ("MEJOR PRECIO"): Soft green tint with trending down arrow icon (#16A34A).
+  * Awarded Button: Solid dark green background (#1E5E2F) with checkmark icon and white text.
+
+==================================================
+2. INTERACTIVE SIDEBAR NAVIGATION (Left Panel)
+==================================================
+- Top Header: Municipal emblem logo + "Gestión Municipal" (Panajachel, Sololá).
+- Menu Items (Create interactive states):
+  1. "Dashboard", "Dependencias", "Proveedores" (Hoverable menu items).
+  2. "Proformas" (Active/Selected state - solid forest green background, white icon and text).
+  3. "Facturación", "Bodega", "Reportes", "Configuración" (Hoverable menu items).
+- Bottom Action: "Cerrar Sesión" (Red exit icon and text with hover state).
+
+==================================================
+3. TOP HEADER BAR & BREADCRUMBS
+==================================================
+- Top Bar Layout: Search input "Buscar solicitudes..." | Notification bell with red badge | Help question mark icon | User profile avatar.
+- Breadcrumbs Path: "Adquisiciones > Proformas > Comparativa de Precios" (Muted grey text with green active terminal link).
+- Title Section:
+  * Title: "Comparativa de Proformas" (Bold 24px dark text).
+  * Subtitle: "Análisis comparativo para la adjudicación de suministros de oficina."
+  * Right Action Buttons (Horizontal Auto-Layout):
+    - Outlined Button: "📄 Exportar Cuadro" (Green border and text).
+    - Primary Button: "Finalizar Comparativa" (Solid forest green button).
+
+==================================================
+4. REQUISITION SUMMARY CARD ("Solicitud de Compra #SOL-2023-084")
+==================================================
+- Card Container: White card background, rounded corners (12px), subtle border stroke (#E2E8F0).
+- Header Line: Document icon + Title "Solicitud de Compra #SOL-2023-084" | Subtext: "RESUMEN DEL REQUERIMIENTO" | Right Badge: "FASE: COMPARACIÓN".
+- Data Fields (4-Column Horizontal Layout):
+  * Dependencia Solicitante: "Dirección Administrativa"
+  * Fecha de Solicitud: "12 de Octubre, 2023"
+  * Presupuesto Estimado: "Q 12,500.00" (Bold green value)
+  * Categoría: "Suministros de Oficina"
+
+==================================================
+5. COMPARATIVE BIDDING TABLE ("Cuadro Comparativo")
+==================================================
+- Multi-Column Grid Structure (Auto-Layout):
+  * Column 1 (Item Details): Header "Ítem / Descripción" & "Cant."
+  * Column 2 (Supplier 1): "Ferretería El Sol" | ID: PROV-001 | Rating: ⭐ 4.8
+  * Column 3 (Supplier 2 - Highlighted Winner): "Distribuidora Panajachel" | ID: PROV-045 | Rating: ⭐ 4.5
+  * Column 4 (Supplier 3): "Suministros Lago" | ID: PROV-112 | Rating: ⭐ 4.2
+
+- Line Items Comparison (Horizontal Cell Rows):
+  1. Item 1: "Papel Bond Carta 80g (Resma de 500 hojas)" | Cant: 50
+     * Prov 1: Unit Q 45.00 | Total: Q 2,250.00
+     * Prov 2: Unit Q 42.50 | Total: Q 2,125.00 (Badge: "📉 MEJOR PRECIO")
+     * Prov 3: Unit Q 48.00 | Total: Q 2,400.00
+  2. Item 2: "Tóner HP Laser 58A (Original, Negro)" | Cant: 05
+     * Prov 1: Unit Q 850.00 | Total: Q 4,250.00 (Badge: "📉 MEJOR PRECIO")
+     * Prov 2: Unit Q 890.00 | Total: Q 4,450.00
+     * Prov 3: Unit Q 875.00 | Total: Q 4,375.00
+  3. Item 3: "Archivadores de Palanca (Lomo ancho, azul)" | Cant: 30
+     * Prov 1: Unit Q 28.00 | Total: Q 840.00
+     * Prov 2: Unit Q 32.00 | Total: Q 960.00
+     * Prov 3: Unit Q 25.50 | Total: Q 765.00 (Badge: "📉 MEJOR PRECIO")
+
+- Summary Comparison Rows:
+  * "Tiempo de Entrega": Prov 1 = "3 días hábiles" | Prov 2 = "Inmediata (24 hrs)" | Prov 3 = "5 días hábiles"
+  * "TOTAL GENERAL": 
+    - Prov 1 = "Q 7,340.00"
+    - Prov 2 = "Q 7,535.00" (Highlighted)
+    - Prov 3 = "Q 7,540.00"
+  * Award Action Buttons (Bottom Row):
+    - Prov 1: Outlined button "Seleccionar Ganadora"
+    - Prov 2: Solid green button "✔ Adjudicar Oferta"
+    - Prov 3: Outlined button "Seleccionar Ganadora"
+
+==================================================
+6. DECISION ANALYSIS CARDS (3 Bottom Cards)
+==================================================
+1. Card 1 - "OFERTA MÁS ECONÓMICA": Green icon | Title "Ferretería El Sol" | Subtext "Ahorro del 2.5% respecto a la media de mercado en esta cotización."
+2. Card 2 - "MEJOR TIEMPO DE ENTREGA": Green icon | Title "Distribuidora Panajachel" | Subtext "Entrega garantizada en menos de 24 horas para todos los ítems."
+3. Card 3 - "CUMPLIMIENTO TÉCNICO": Green icon | Status "🟢 Todos los proveedores cumplen" | Subtext "Se verificó la vigencia de RTU y patente de comercio de los 3 proveedores."
+
+==================================================
+7. ADMINISTRATIVE NOTES (Bottom Box)
+==================================================
+- Box Style: Border dashed line (#CBD5E1), light grey tint.
+- Header: "NOTAS ADMINISTRATIVAS:"
+- Body Bullets:
+  * "Los precios incluyen IVA (12%) conforme a la legislación guatemalteca vigente."
+  * "La validez de las proformas es de 30 días calendario a partir de la fecha de recepción."
+  * "Se recomienda la adjudicación a Distribuidora Panajachel debido a la urgencia del requerimiento a pesar de no ser el precio más bajo absoluto."
+
+==================================================
+8. PROTOTYPING & FUNCTIONAL CONNECTIONS
+==================================================
+- Award Button Interactivity: Clicking "Seleccionar Ganadora" under any supplier switches that column to the active/selected state ("✔ Adjudicar Oferta") and updates the decision card dynamically.
+- Finalize Action: Clicking "Finalizar Comparativa" triggers an overlay modal: "Confirmar Adjudicación de Compra #SOL-2023-084" with options to generate a Purchase Order.
+- Export Action: Clicking "Exportar Cuadro" triggers a download notification or opens a PDF/Excel preview modal overlay.
+- Sidebar Routing: Clicking "Proformas", "Dependencias", or "Dashboard" seamlessly routes to their corresponding views.
