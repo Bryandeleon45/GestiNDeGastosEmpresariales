@@ -1,0 +1,92 @@
+Create a fully functional, interactive UI screen in Figma based on the attached image for "Bodega y Recepción" (Municipal Warehouse & Inventory Reception Portal) for "Municipalidad de Panajachel - Gestión Municipal", built using Auto-Layout, dynamic component sets, verification action buttons, alert cards, and prototype connections.
+
+1. LAYOUT & COLOR PALETTE
+
+* Theme: Clean, modern civic administration portal.
+* Palette:
+* Background: Light grey (#F8F9FA)
+* Primary Brand: Forest Green (#1E5E2F)
+* Text: Dark Charcoal (#212529) and Muted Slate (#6C757D)
+* Badges:
+* Crítico: Soft red badge (#FEE2E2) with bold red text.
+* Bajo: Soft green/yellow badge (#DCFCE7) with dark green text.
+* EN PROCESO: Soft green pill badge (#DCFCE7) with green text (#16A34A).
+* COMPLETO: Soft green badge (#DCFCE7) with green text.
+* CON RECHAZO: Soft red badge (#FEE2E2) with red text.
+
+
+
+
+
+2. INTERACTIVE SIDEBAR NAVIGATION (Left Panel)
+
+* Header: Municipal emblem logo + "Gestión Municipal" (Panajachel, Sololá).
+* Menu Items: "Dashboard", "Dependencias", "Proveedores", "Proformas", "Facturación" (Hoverable menu items).
+* Active Item: "Bodega" (Active state - solid forest green background, white warehouse/box icon and text).
+* Secondary Items: "Reportes", "Configuración" (Hoverable menu items).
+* Bottom Action: "Cerrar Sesión" (Red exit icon and text with hover state).
+
+3. TOP HEADER BAR
+
+* Top Bar Layout: Search input "Buscar pedido o insumo..." | Notification bell with red badge | Help icon | User profile avatar.
+* Main Title Section:
+* Page Title: "Bodega y Recepción"
+* Subtitle: "Control de ingresos de mercancía e inventario de insumos."
+* Action Button: Primary button "+ Nueva Recepción" (Solid forest green button).
+
+
+
+4. TOP CONTROL PANELS (Stock Alerts & Monthly Overview)
+
+* Left Card ("Alertas de Stock"):
+* Header: Warning triangle icon + Title "Alertas de Stock"
+* Item 1: Icon | "Papel Bond A4" | "Mín: 50 | Actual: 12" | Badge: "Crítico" (Red).
+* Item 2: Icon | "Tóner HP-415X" | "Mín: 5 | Actual: 4" | Badge: "Bajo" (Green).
+* Action Button: Outlined green button "Ver Inventario Completo".
+
+
+* Right Card ("Resumen Mensual"):
+* Header: "Resumen Mensual" | Right label: "Octubre 2023"
+* Metrics (3 Columns):
+* Recepciones Exitosas: "24" (Green bold text)
+* Devoluciones: "03" (Red bold text)
+* Órdenes Pendientes: "12" (Green bold text)
+
+
+
+
+
+5. GOODS RECEIPT VERIFICATION PANEL ("Recepción de Pedido: OC-2023-045")
+
+* Card Container: White card background, rounded corners (12px), title "Recepción de Pedido: OC-2023-045", subtitle "Proveedor: Papelería del Lago S.A.", right badge "EN PROCESO".
+* Column Headers: "PRODUCTO / INSUMO", "ESPERADO", "ACCIONES DE VERIFICACIÓN".
+* Verification Rows:
+1. "Resmas de Papel Bond A4 (75g)" (SKU: IN-001-PB) | Esperado: "50 u." (Green bold) | Actions: Solid green button "✔ Recibido", Outlined red button "✖ Rechazar", Outlined grey button "? Faltante".
+2. "Marcadores Permanentes (Negro)" (SKU: IN-012-MP) | Esperado: "24 u." (Green bold) | Actions: Solid green button "✔ Recibido", Outlined red button "✖ Rechazar", Outlined grey button "? Faltante".
+3. "Folders Manilas Oficio" (SKU: IN-045-FM) | Esperado: "500 u." (Green bold) | Actions: Solid green button "✔ Recibido", Outlined red button "✖ Rechazar", Outlined grey button "? Faltante".
+
+
+* Action Footer:
+* Left Button: Text button "Cancelar Recepción" (Dark grey text).
+* Right Button: Primary button "💾 Finalizar y Cargar a Inventario" (Solid forest green button).
+
+
+
+6. RECENT HISTORY SIDEBAR WIDGET ("Historial Reciente")
+
+* Container: White card background, rounded corners (12px), title "Historial Reciente".
+* Item List:
+* Item 1: Date "OCT 24, 2023 - 09:45 AM" | Badge "COMPLETO" | Title "Suministros Ofimática S.A." | Subtext "OC-2023-042 | 5 ítems recibidos sin novedad." | Link "👁 Ver detalles".
+* Item 2: Date "OCT 22, 2023 - 14:20 PM" | Badge "CON RECHAZO" | Title "Limpieza Profesional GT" | Subtext "OC-2023-039 | 2 Galones de Cloro rechazados por derrame." | Link "👁 Ver reporte".
+* Item 3: Date "OCT 21, 2023 - 11:10 AM" | Badge "COMPLETO" | Title "Mantenimiento Global" | Subtext "OC-2023-038 | Repuestos para bomba de agua." | Link "👁 Ver detalles".
+* Item 4: Date "OCT 19, 2023 - 08:30 AM" | Badge "COMPLETO" | Title "Insumos El Lago" | Subtext "OC-2023-035 | 12 Baterías de alto rendimiento." | Link "👁 Ver detalles".
+
+
+* Bottom Action: Text link "VER HISTORIAL COMPLETO" | Floating Action Button: Green floating warehouse icon.
+
+7. PROTOTYPING & FUNCTIONAL CONNECTIONS
+
+* Verification Toggle Buttons: Clicking "✔ Recibido", "✖ Rechazar", or "? Faltante" switches the active button state and updates item reception status.
+* Primary Action: Clicking "Finalizar y Cargar a Inventario" triggers an overlay modal "Ingreso a Inventario Confirmado" and updates the inventory stock count.
+* Add Button Action: Clicking "+ Nueva Recepción" opens a "Buscar Orden de Compra para Recepción" modal overlay.
+* Navigation Routing: Clicking "Facturación", "Dependencias", or "Dashboard" routes directly to their corresponding screen.
