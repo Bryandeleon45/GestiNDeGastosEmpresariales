@@ -1,6 +1,6 @@
 import { G } from "@/constants/theme"
 import { Icons } from "@/components/common/Icons"
-import { OC_ITEMS, HIST_ENTRIES } from "@/models/bodega"
+import { OC_ITEMS, HIST_ENTRIES, STOCK_ALERTAS, RESUMEN_MENSUAL } from "@/models/bodega"
 import NuevaRecepcionModal from "@/views/bodega/NuevaRecepcionModal"
 import FinalizarIngresoModal from "@/views/bodega/FinalizarIngresoModal"
 import { useBodegaController } from "@/controllers/useBodegaController"
@@ -61,24 +61,7 @@ export default function BodegaView({
                 </svg>
               </div>
               <div className="space-y-2.5">
-                {[
-                  {
-                    icon: "📄",
-                    name: "Papel Bond A4",
-                    sub: "Mín: 50 | Actual: 12",
-                    badge: "Crítico",
-                    bg: "#FEE2E2",
-                    color: "#DC2626",
-                  },
-                  {
-                    icon: "🖨",
-                    name: "Tóner HP-415X",
-                    sub: "Mín: 5 | Actual: 4",
-                    badge: "Bajo",
-                    bg: "#DCFCE7",
-                    color: "#16A34A",
-                  },
-                ].map((a) => (
+                {STOCK_ALERTAS.map((a) => (
                   <div
                     key={a.name}
                     className="flex items-center gap-3 px-3 py-2.5 rounded-xl border border-gray-100 bg-gray-50"
@@ -123,11 +106,7 @@ export default function BodegaView({
                 </p>
               </div>
               <div className="grid grid-cols-3 divide-x divide-gray-100 mt-2">
-                {[
-                  { value: "24", label: "Recepciones Exitosas", color: G },
-                  { value: "03", label: "Devoluciones", color: "#DC2626" },
-                  { value: "12", label: "Órdenes Pendientes", color: G },
-                ].map((s) => (
+                {RESUMEN_MENSUAL.map((s) => (
                   <div
                     key={s.label}
                     className="flex flex-col items-center px-3 py-3 text-center"

@@ -1,8 +1,41 @@
-import { useState } from "react"
-import { USUARIOS_INIT, type UsuarioRecord } from "@/models/usuarios"
+import { useEffect, useState, useCallback } from "react"
+import { type UsuarioRecord, type UsuarioFormData } from "@/models/usuarios"
+import {
+  listarUsuarios,
+  crearUsuario,
+  editarUsuario,
+  cambiarEstadoUsuario,
+  type UsuarioApi,
+} from "@/api/usuarios"
+
+function mapApiToRecord(u: UsuarioApi): UsuarioRecord {
+  return {
+    id: String(u.id_empleado),
+    codigo: u.codigo,
+    nombre: u.nombre,
+    dpi: u.dpi,
+    estado: u.estado,
+    telefono: u.telefono ?? "",
+    ingreso: u.ingreso ? new Date(u.ingreso).toLocaleDateString("es-GT") : "",
+    tieneAcceso: u.tieneAcceso,
+    primer_nombre: u.primer_nombre,
+    apellido: u.apellido,
+    id_empleado: u.id_empleado,
+    id_usuario: u.id_usuario,
+    nombre_usuario: u.nombre_usuario,
+    correo: u.correo,
+    id_rol: u.id_rol,
+    rol: u.rol,
+    id_dependencia: u.id_dependencia,
+    dependencia: u.dependencia,
+    id_puesto: u.id_puesto,
+    puesto: u.puesto,
+  }
+}
 
 export function useUsuariosController(onToast: (m: string, s: string) => void) {
-  const [usuarios, setUsuarios] = useState<UsuarioRecord[]>(USUARIOS_INIT)
+  const [usuarios, setUsuarios] = useState<UsuarioRecord[]>([])
+  const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState("")
   const [filterEst, setFilterEst] = useState("todos")
   const [page, setPage] = useState(1)
@@ -10,6 +43,22 @@ export function useUsuariosController(onToast: (m: string, s: string) => void) {
     undefined,
   )
   const PAGE_SIZE = 6
+
+  const load = useCallback(async () => {
+    setLoading(true)
+    try {
+      const { data } = await listarUsuarios({ pageSize: 100 })
+      setUsuarios(data.map(mapApiToRecord))
+    } catch (e) {
+      onToast("Error", e instanceof Error ? e.message : "No se pudo cargar")
+    } finally {
+      setLoading(false)
+    }
+  }, [onToast])
+
+  useEffect(() => {
+    load()
+  }, [load])
 
   const filtered = usuarios.filter((u) => {
     const q = search.toLowerCase()
@@ -31,29 +80,35 @@ export function useUsuariosController(onToast: (m: string, s: string) => void) {
     setPage(1)
   }
 
-  const handleSave = (u: UsuarioRecord) => {
-    setUsuarios((prev) =>
-      prev.some((p) => p.id === u.id)
-        ? prev.map((p) => (p.id === u.id ? u : p))
-        : [...prev, u],
+  const handleSave = async (form: UsuarioFormData) => {
+    const nombreCompleto = `${form.nombre} ${form.apellido}`.trim()
+    if (modalUser?.id_empleado) {
+      await editarUsuario(modalUser.id_empleado, form)
+    } else {
+      await crearUsuario(form)
+    }
+    await load()
+    onToast(
+      modalUser ? "Usuario actualizado" : "Usuario registrado",
+      nombreCompleto,
     )
-    onToast(modalUser ? "Usuario actualizado" : "Usuario registrado", u.nombre)
     setPage(1)
   }
 
-  const toggleEstado = (id: string) => {
-    setUsuarios((prev) =>
-      prev.map((u) =>
-        u.id === id
-          ? { ...u, estado: u.estado === "Activo" ? "Inactivo" : "Activo" }
-          : u,
-      ),
-    )
-    const u = usuarios.find((u) => u.id === id)!
-    onToast(
-      `Usuario ${u.estado === "Activo" ? "desactivado" : "activado"}`,
-      u.nombre,
-    )
+  const toggleEstado = async (id: string) => {
+    const u = usuarios.find((x) => x.id === id)
+    if (!u) return
+    const activar = u.estado === "Inactivo"
+    try {
+      await cambiarEstadoUsuario(id, activar ? "activar" : "desactivar")
+      await load()
+      onToast(
+        `Usuario ${activar ? "activado" : "desactivado"}`,
+        u.nombre,
+      )
+    } catch (e) {
+      onToast("Error", e instanceof Error ? e.message : "No se pudo actualizar")
+    }
   }
 
   const totActivos = usuarios.filter((u) => u.estado === "Activo").length
@@ -63,6 +118,7 @@ export function useUsuariosController(onToast: (m: string, s: string) => void) {
   return {
     usuarios,
     setUsuarios,
+    loading,
     search,
     setSearch,
     filterEst,

@@ -5,6 +5,9 @@ import {
   ACCENT_COLORS,
   IDIOMAS,
   ZONAS,
+  PERFIL_FIELDS,
+  PASSWORD_FIELDS,
+  AUDITORIA_LOG,
   type ConfigTab,
 } from "@/models/configuracion"
 import ToggleSwitch from "@/views/common/ToggleSwitch"
@@ -378,18 +381,7 @@ export default function ConfiguracionView({
                     </div>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
-                    {[
-                      {
-                        label: "Nombre completo",
-                        value: "Ricardo Gómez Barrios",
-                      },
-                      { label: "Cargo", value: "Director Administrativo" },
-                      {
-                        label: "Correo electrónico",
-                        value: "r.gomez@munipanajachel.gob.gt",
-                      },
-                      { label: "Extensión", value: "Ext. 214" },
-                    ].map((f) => (
+                    {PERFIL_FIELDS.map((f) => (
                       <div key={f.label}>
                         <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-1.5">
                           {f.label}
@@ -477,14 +469,7 @@ export default function ConfiguracionView({
                   Contraseña
                 </p>
                 <div className="rounded-xl border border-gray-100 p-5 space-y-4">
-                  {[
-                    { label: "Contraseña actual", ph: "••••••••" },
-                    { label: "Nueva contraseña", ph: "Mínimo 8 caracteres" },
-                    {
-                      label: "Confirmar contraseña",
-                      ph: "Repetir nueva contraseña",
-                    },
-                  ].map((f) => (
+                  {PASSWORD_FIELDS.map((f) => (
                     <div key={f.label}>
                       <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-1.5">
                         {f.label}
@@ -560,38 +545,7 @@ export default function ConfiguracionView({
                   </button>
                 </div>
                 <div className="divide-y divide-gray-50">
-                  {[
-                    {
-                      time: "Hoy 09:42",
-                      action: "Inicio de sesión",
-                      user: "Lic. Ricardo Gómez",
-                      status: "exitoso",
-                    },
-                    {
-                      time: "Ayer 17:18",
-                      action: "Exportación de reporte PDF",
-                      user: "Lic. Ricardo Gómez",
-                      status: "exitoso",
-                    },
-                    {
-                      time: "Ayer 14:05",
-                      action: "Modificación de proveedor",
-                      user: "Asistente Sánchez",
-                      status: "exitoso",
-                    },
-                    {
-                      time: "22/10 11:30",
-                      action: "Intento de acceso denegado",
-                      user: "Usuario desconocido",
-                      status: "denegado",
-                    },
-                    {
-                      time: "21/10 08:00",
-                      action: "Inicio de sesión",
-                      user: "Lic. Ricardo Gómez",
-                      status: "exitoso",
-                    },
-                  ].map((e, i) => (
+                  {AUDITORIA_LOG.map((e, i) => (
                     <div
                       key={i}
                       className="flex items-center gap-4 px-5 py-3.5 hover:bg-gray-50 transition-colors"

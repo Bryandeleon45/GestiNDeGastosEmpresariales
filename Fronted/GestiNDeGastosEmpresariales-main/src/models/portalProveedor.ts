@@ -94,3 +94,17 @@ export const ENTREGAS_PROV = [
     bodeguero: "Por asignar",
   },
 ]
+
+export interface PortalKpi {
+  key: string
+  label: string
+  value: string
+  sub2: string
+  subColor?: string
+}
+
+export const PORTAL_KPIS: PortalKpi[] = [
+  { key: "cotizaciones", label: "COTIZACIONES ENVIADAS", value: "18", sub2: "4 en revisión técnica" },
+  { key: "adjudicadas", label: "ÓRDENES ADJUDICADAS", value: "05", sub2: "Q 85,400.00 en ejecución", subColor: "#1E5E2F" },
+  { key: "facturas", label: "FACTURAS PENDIENTES", value: "02", sub2: "Próximo pago: 25/08/2026", subColor: "#D97706" },
+]

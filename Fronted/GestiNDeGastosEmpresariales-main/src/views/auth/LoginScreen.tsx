@@ -7,7 +7,7 @@ import ForgotPasswordModal from "@/views/auth/ForgotPasswordModal"
 export default function LoginScreen({
   onLogin,
 }: {
-  onLogin: (pw: string) => void
+  onLogin: (usuario: string, password: string) => Promise<void>
 }) {
   const [usuario, setUsuario] = useState("")
   const [password, setPassword] = useState("")
@@ -18,17 +18,20 @@ export default function LoginScreen({
   const [showForgot, setShowForgot] = useState(false)
   const [error, setError] = useState("")
 
-  const handleLogin = () => {
+  const handleLogin = async () => {
     setError("")
     if (!usuario || !password) {
       setError("Por favor complete todos los campos.")
       return
     }
     setLoading(true)
-    setTimeout(() => {
+    try {
+      await onLogin(usuario, password)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Error al iniciar sesión.")
+    } finally {
       setLoading(false)
-      onLogin(password)
-    }, 900)
+    }
   }
 
   const fieldStyle = (name: string) => ({

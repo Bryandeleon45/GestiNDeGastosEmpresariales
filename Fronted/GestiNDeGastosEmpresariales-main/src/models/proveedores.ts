@@ -208,3 +208,17 @@ export const PROV_CATEGORIAS = [
   "Electrónica",
   "Construcción",
 ]
+
+export interface ProvKpiMeta {
+  key: string
+  label: string
+  color: string
+  bg: string
+}
+
+export const PROV_KPI_META: ProvKpiMeta[] = [
+  { key: "total", label: "TOTAL USUARIOS", color: "#1E5E2F", bg: "#E8F5ED" },
+  { key: "activos", label: "ACTIVOS PORTAL", color: "#1E5E2F", bg: "#E8F5ED" },
+  { key: "sinconexion", label: "SIN CONEXIÓN", color: "#D97706", bg: "#FEF3C7" },
+  { key: "bloqueado", label: "ACCESO BLOQUEADO", color: "#DC2626", bg: "#FEE2E2" },
+]

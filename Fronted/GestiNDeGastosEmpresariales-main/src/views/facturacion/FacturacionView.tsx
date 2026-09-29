@@ -5,6 +5,7 @@ import {
   ESTADO_STYLE,
   MONTHS,
   CAL_DAYS,
+  CAL_ALERTS,
 } from "@/models/facturacion"
 import NuevaOrdenModal from "@/views/facturacion/NuevaOrdenModal"
 import FacturaDrawer from "@/views/facturacion/FacturaDrawer"
@@ -295,64 +296,62 @@ export default function FacturacionView({
                 ))}
               </div>
               <div className="space-y-2.5 mt-4">
-                <div className="rounded-lg px-3 py-2.5 border-l-4 border-red-400 bg-red-50">
-                  <div className="flex items-center gap-1.5 mb-0.5">
-                    <svg
-                      className="w-3.5 h-3.5 text-red-500 shrink-0"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                      strokeWidth={2}
-                    >
-                      <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
-                      <line x1="12" y1="9" x2="12" y2="13" />
-                      <line x1="12" y1="17" x2="12.01" y2="17" />
-                    </svg>
-                    <p className="text-[11px] font-extrabold text-red-600">
-                      Vence Mañana
-                    </p>
-                  </div>
-                  <p className="text-[11px] text-red-700 leading-snug">
-                    Suministros Eléctricos S.A.
-                  </p>
-                  <p className="text-[11px] font-bold text-red-600">
-                    Q 45,200.00
-                  </p>
-                </div>
-                <div
-                  className="rounded-lg px-3 py-2.5 border-l-4 bg-emerald-50"
-                  style={{ borderColor: G }}
-                >
-                  <div className="flex items-center gap-1.5 mb-0.5">
-                    <svg
-                      className="w-3.5 h-3.5 shrink-0"
-                      fill="none"
-                      stroke={G}
-                      viewBox="0 0 24 24"
-                      strokeWidth={2}
-                    >
-                      <rect x="3" y="4" width="18" height="18" rx="2" />
-                      <line x1="16" y1="2" x2="16" y2="6" />
-                      <line x1="8" y1="2" x2="8" y2="6" />
-                      <line x1="3" y1="10" x2="21" y2="10" />
-                    </svg>
-                    <p
-                      className="text-[11px] font-extrabold"
-                      style={{ color: G }}
-                    >
-                      Pago Programado (Oct 05)
-                    </p>
-                  </div>
-                  <p
-                    className="text-[11px] leading-snug"
-                    style={{ color: "#166534" }}
+                {CAL_ALERTS.map((a) => (
+                  <div
+                    key={a.title}
+                    className="rounded-lg px-3 py-2.5 border-l-4"
+                    style={
+                      a.kind === "danger"
+                        ? { backgroundColor: "#FEF2E2", borderColor: "#F87171" }
+                        : { backgroundColor: "#ECFDF5", borderColor: G }
+                    }
                   >
-                    Constructora del Lago
-                  </p>
-                  <p className="text-[11px] font-bold" style={{ color: G }}>
-                    Q 128,000.00
-                  </p>
-                </div>
+                    <div className="flex items-center gap-1.5 mb-0.5">
+                      <svg
+                        className="w-3.5 h-3.5 shrink-0"
+                        fill="none"
+                        stroke={a.kind === "danger" ? "#EF4444" : G}
+                        viewBox="0 0 24 24"
+                        strokeWidth={2}
+                      >
+                        {a.kind === "danger" ? (
+                          <>
+                            <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+                            <line x1="12" y1="9" x2="12" y2="13" />
+                            <line x1="12" y1="17" x2="12.01" y2="17" />
+                          </>
+                        ) : (
+                          <>
+                            <rect x="3" y="4" width="18" height="18" rx="2" />
+                            <line x1="16" y1="2" x2="16" y2="6" />
+                            <line x1="8" y1="2" x2="8" y2="6" />
+                            <line x1="3" y1="10" x2="21" y2="10" />
+                          </>
+                        )}
+                      </svg>
+                      <p
+                        className="text-[11px] font-extrabold"
+                        style={{ color: a.kind === "danger" ? "#DC2626" : G }}
+                      >
+                        {a.title}
+                      </p>
+                    </div>
+                    <p
+                      className="text-[11px] leading-snug"
+                      style={{
+                        color: a.kind === "danger" ? "#B91C1C" : "#166534",
+                      }}
+                    >
+                      {a.proveedor}
+                    </p>
+                    <p
+                      className="text-[11px] font-bold"
+                      style={{ color: a.kind === "danger" ? "#DC2626" : G }}
+                    >
+                      {a.monto}
+                    </p>
+                  </div>
+                ))}
               </div>
             </div>
 

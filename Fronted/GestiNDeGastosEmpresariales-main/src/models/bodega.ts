@@ -79,3 +79,14 @@ export const HIST_ENTRIES: HistEntry[] = [
     link: "Ver detalles",
   },
 ]
+
+export const STOCK_ALERTAS = [
+  { icon: "📄", name: "Papel Bond A4", sub: "Mín: 50 | Actual: 12", badge: "Crítico", bg: "#FEE2E2", color: "#DC2626" },
+  { icon: "🖨", name: "Tóner HP-415X", sub: "Mín: 5 | Actual: 4", badge: "Bajo", bg: "#DCFCE7", color: "#16A34A" },
+]
+
+export const RESUMEN_MENSUAL = [
+  { value: "24", label: "Recepciones Exitosas", color: "#1E5E2F" },
+  { value: "03", label: "Devoluciones", color: "#DC2626" },
+  { value: "12", label: "Órdenes Pendientes", color: "#1E5E2F" },
+]

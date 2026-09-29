@@ -1,10 +1,72 @@
-import { G, GL } from "@/constants/theme"
+import { G } from "@/constants/theme"
 import { Icons } from "@/components/common/Icons"
-import { ALL_PROVEEDORES, CONEXION_STYLE } from "@/models/proveedores"
+import {
+  ALL_PROVEEDORES,
+  CONEXION_STYLE,
+  PROV_KPI_META,
+} from "@/models/proveedores"
 import RolCell from "@/views/proveedores/RolCell"
 import ConectarProveedorModal from "@/views/proveedores/ConectarProveedorModal"
 import RowMenu from "@/views/common/RowMenu"
 import { useProveedoresController } from "@/controllers/useProveedoresController"
+
+const KPI_ICONS: Record<string, React.ReactNode> = {
+  total: (
+    <svg
+      className="w-6 h-6"
+      fill="none"
+      stroke="currentColor"
+      viewBox="0 0 24 24"
+      strokeWidth={1.8}
+    >
+      <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" />
+      <circle cx="9" cy="7" r="4" />
+      <path d="M23 21v-2a4 4 0 00-3-3.87" />
+      <path d="M16 3.13a4 4 0 010 7.75" />
+    </svg>
+  ),
+  activos: (
+    <svg
+      className="w-6 h-6"
+      fill="none"
+      stroke="currentColor"
+      viewBox="0 0 24 24"
+      strokeWidth={1.8}
+    >
+      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+      <polyline points="9 12 11 14 15 10" />
+    </svg>
+  ),
+  sinconexion: (
+    <svg
+      className="w-6 h-6"
+      fill="none"
+      stroke="currentColor"
+      viewBox="0 0 24 24"
+      strokeWidth={1.8}
+    >
+      <line x1="1" y1="1" x2="23" y2="23" />
+      <path d="M16.72 11.06A10.94 10.94 0 0119 12.55" />
+      <path d="M5 12.55a10.94 10.94 0 015.17-2.39" />
+      <path d="M10.71 5.05A16 16 0 0122.56 9" />
+      <path d="M1.42 9a15.91 15.91 0 014.7-2.88" />
+      <path d="M8.53 16.11a6 6 0 016.95 0" />
+      <line x1="12" y1="20" x2="12.01" y2="20" />
+    </svg>
+  ),
+  bloqueado: (
+    <svg
+      className="w-6 h-6"
+      fill="none"
+      stroke="currentColor"
+      viewBox="0 0 24 24"
+      strokeWidth={1.8}
+    >
+      <rect x="3" y="11" width="18" height="11" rx="2" />
+      <path d="M7 11V7a5 5 0 0110 0v4" />
+    </svg>
+  ),
+}
 
 export default function ProveedoresView({
   onToast,
@@ -27,6 +89,17 @@ export default function ProveedoresView({
     pageRows,
     activos,
   } = useProveedoresController()
+
+  const KPI_VALUES: Record<string, string> = {
+    total: ALL_PROVEEDORES.length.toString(),
+    activos: activos.toString(),
+    sinconexion: ALL_PROVEEDORES.filter(
+      (p) => p.estado === "Sin Conexión",
+    ).length.toString(),
+    bloqueado: ALL_PROVEEDORES.filter(
+      (p) => p.estado === "Acceso Bloqueado",
+    ).length.toString(),
+  }
 
   return (
     <>
@@ -70,113 +143,30 @@ export default function ProveedoresView({
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-            {[
-              {
-                label: "TOTAL USUARIOS",
-                value: ALL_PROVEEDORES.length.toString(),
-                icon: (
-                  <svg
-                    className="w-6 h-6"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                    strokeWidth={1.8}
-                  >
-                    <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" />
-                    <circle cx="9" cy="7" r="4" />
-                    <path d="M23 21v-2a4 4 0 00-3-3.87" />
-                    <path d="M16 3.13a4 4 0 010 7.75" />
-                  </svg>
-                ),
-              },
-              {
-                label: "ACTIVOS PORTAL",
-                value: activos.toString(),
-                icon: (
-                  <svg
-                    className="w-6 h-6"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                    strokeWidth={1.8}
-                  >
-                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-                    <polyline points="9 12 11 14 15 10" />
-                  </svg>
-                ),
-              },
-              {
-                label: "SIN CONEXIÓN",
-                value: ALL_PROVEEDORES.filter(
-                  (p) => p.estado === "Sin Conexión",
-                ).length.toString(),
-                icon: (
-                  <svg
-                    className="w-6 h-6"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                    strokeWidth={1.8}
-                  >
-                    <line x1="1" y1="1" x2="23" y2="23" />
-                    <path d="M16.72 11.06A10.94 10.94 0 0119 12.55" />
-                    <path d="M5 12.55a10.94 10.94 0 015.17-2.39" />
-                    <path d="M10.71 5.05A16 16 0 0122.56 9" />
-                    <path d="M1.42 9a15.91 15.91 0 014.7-2.88" />
-                    <path d="M8.53 16.11a6 6 0 016.95 0" />
-                    <line x1="12" y1="20" x2="12.01" y2="20" />
-                  </svg>
-                ),
-              },
-              {
-                label: "ACCESO BLOQUEADO",
-                value: ALL_PROVEEDORES.filter(
-                  (p) => p.estado === "Acceso Bloqueado",
-                ).length.toString(),
-                icon: (
-                  <svg
-                    className="w-6 h-6"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                    strokeWidth={1.8}
-                  >
-                    <rect x="3" y="11" width="18" height="11" rx="2" />
-                    <path d="M7 11V7a5 5 0 0110 0v4" />
-                  </svg>
-                ),
-              },
-            ].map((k, i) => {
-              const colors = [G, G, "#D97706", "#DC2626"]
-              return (
+            {PROV_KPI_META.map((k) => (
+              <div
+                key={k.key}
+                className="bg-white rounded-xl border border-gray-100 shadow-sm px-5 py-4 flex items-center gap-4"
+              >
                 <div
-                  key={k.label}
-                  className="bg-white rounded-xl border border-gray-100 shadow-sm px-5 py-4 flex items-center gap-4"
+                  className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0"
+                  style={{ backgroundColor: k.bg, color: k.color }}
                 >
-                  <div
-                    className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0"
-                    style={{
-                      backgroundColor:
-                        i === 2 ? "#FEF3C7" : i === 3 ? "#FEE2E2" : GL,
-                      color: colors[i],
-                    }}
-                  >
-                    {k.icon}
-                  </div>
-                  <div>
-                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
-                      {k.label}
-                    </p>
-                    <p
-                      className="text-3xl font-extrabold leading-none mt-0.5"
-                      style={{ color: colors[i] }}
-                    >
-                      {k.value}
-                    </p>
-                  </div>
+                  {KPI_ICONS[k.key]}
                 </div>
-              )
-            })}
+                <div>
+                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+                    {k.label}
+                  </p>
+                  <p
+                    className="text-3xl font-extrabold leading-none mt-0.5"
+                    style={{ color: k.color }}
+                  >
+                    {KPI_VALUES[k.key]}
+                  </p>
+                </div>
+              </div>
+            ))}
           </div>
 
           <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">

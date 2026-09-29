@@ -82,7 +82,7 @@ export const ALL_FACTURAS: Factura[] = [
   },
 ]
 
-export const ESTADO_STYLE: Record<FactEstado, { bg: string color: string }> = {
+export const ESTADO_STYLE: Record<FactEstado, { bg: string; color: string }> = {
   VENCIDO: { bg: "#FEE2E2", color: "#DC2626" },
   PENDIENTE: { bg: "#FEF9C3", color: "#854D0E" },
   PAGADO: { bg: "#DCFCE7", color: "#16A34A" },
@@ -113,4 +113,16 @@ export const CAL_DAYS: CalDay[] = [
   { d: 6, wk: true },
   { d: 7, wk: false, red: true },
   { d: 8, wk: false, red: true },
+]
+
+export interface CalAlert {
+  kind: "danger" | "success"
+  title: string
+  proveedor: string
+  monto: string
+}
+
+export const CAL_ALERTS: CalAlert[] = [
+  { kind: "danger", title: "Vence Mañana", proveedor: "Suministros Eléctricos S.A.", monto: "Q 45,200.00" },
+  { kind: "success", title: "Pago Programado (Oct 05)", proveedor: "Constructora del Lago", monto: "Q 128,000.00" },
 ]

@@ -33,7 +33,7 @@ export function useDependenciasController() {
     page * SOL_PAGE_SIZE,
   )
 
-  const grouped: Array<{ type: "header" dep: string idx: number } | {
+  const grouped: Array<{ type: "header"; dep: string; idx: number } | {
     type: "row"
     row: SolicitudRow
     idx: number

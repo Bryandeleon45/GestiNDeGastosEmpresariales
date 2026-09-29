@@ -4,7 +4,7 @@ export interface ProveComparativa {
   name: string
   provId: string
   rating: number
-  items: { unit: number total: number }[]
+  items: { unit: number; total: number }[]
   entrega: string
 }
 
@@ -59,3 +59,30 @@ export const BEST_PER_ITEM = COMP_ITEMS.map((_, i) => {
   const min = Math.min(...totals)
   return COMP_PROVS.filter((p) => p.items[i].total === min).map((p) => p.id)
 })
+
+export const PROFORMA_SUMMARY_FIELDS = [
+  { label: "Dependencia Solicitante", value: "Dirección Administrativa", accent: false },
+  { label: "Fecha de Solicitud", value: "12 de Octubre, 2023", accent: false },
+  { label: "Presupuesto Estimado", value: "Q 12,500.00", accent: true },
+  { label: "Categoría", value: "Suministros de Oficina", accent: false },
+]
+
+export interface DecisionCard {
+  key: string
+  label: string
+  title: string | null
+  body: string
+  status?: string
+}
+
+export const DECISION_CARDS: DecisionCard[] = [
+  { key: "economica", label: "OFERTA MÁS ECONÓMICA", title: "Ferretería El Sol", body: "Ahorro del 2.5% respecto a la media de mercado en esta cotización." },
+  { key: "entrega", label: "MEJOR TIEMPO DE ENTREGA", title: "Distribuidora Panajachel", body: "Entrega garantizada en menos de 24 horas para todos los ítems." },
+  { key: "tecnico", label: "CUMPLIMIENTO TÉCNICO", title: null, body: "Se verificó la vigencia de RTU y patente de comercio de los 3 proveedores.", status: "Todos los proveedores cumplen" },
+]
+
+export const ADMIN_NOTAS = [
+  "Los precios incluyen IVA (12%) conforme a la legislación guatemalteca vigente.",
+  "La validez de las proformas es de 30 días calendario a partir de la fecha de recepción.",
+  "Se recomienda la adjudicación a Distribuidora Panajachel debido a la urgencia del requerimiento a pesar de no ser el precio más bajo absoluto.",
+]

@@ -1,8 +1,56 @@
 import { G, GL } from "@/constants/theme"
 import { Icons } from "@/components/common/Icons"
-import { COMP_ITEMS, COMP_PROVS, BEST_PER_ITEM } from "@/models/proformas"
+import {
+  COMP_ITEMS,
+  COMP_PROVS,
+  BEST_PER_ITEM,
+  DECISION_CARDS,
+  PROFORMA_SUMMARY_FIELDS,
+  ADMIN_NOTAS,
+} from "@/models/proformas"
 import ConfirmarAdjudicacionModal from "@/views/proformas/ConfirmarAdjudicacionModal"
 import { useProformasController } from "@/controllers/useProformasController"
+
+const DECISION_ICONS: Record<string, React.ReactNode> = {
+  economica: (
+    <svg
+      className="w-5 h-5"
+      fill="none"
+      stroke="currentColor"
+      viewBox="0 0 24 24"
+      strokeWidth={1.8}
+    >
+      <circle cx="12" cy="12" r="10" />
+      <path d="M12 8v4l3 3" />
+    </svg>
+  ),
+  entrega: (
+    <svg
+      className="w-5 h-5"
+      fill="none"
+      stroke="currentColor"
+      viewBox="0 0 24 24"
+      strokeWidth={1.8}
+    >
+      <rect x="1" y="3" width="15" height="13" rx="1" />
+      <path d="M16 8l5 5-5 5" />
+      <path d="M10 16v5" />
+      <path d="M6 16v5" />
+    </svg>
+  ),
+  tecnico: (
+    <svg
+      className="w-5 h-5"
+      fill="none"
+      stroke="currentColor"
+      viewBox="0 0 24 24"
+      strokeWidth={1.8}
+    >
+      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+      <polyline points="9 12 11 14 15 10" />
+    </svg>
+  ),
+}
 
 export default function ProformasView({
   onToast,
@@ -24,63 +72,6 @@ export default function ProformasView({
 
   const fmt = (n: number) =>
     `Q ${n.toLocaleString("es-GT", { minimumFractionDigits: 2 })}`
-
-  const DECISION_CARDS = [
-    {
-      icon: (
-        <svg
-          className="w-5 h-5"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-          strokeWidth={1.8}
-        >
-          <circle cx="12" cy="12" r="10" />
-          <path d="M12 8v4l3 3" />
-        </svg>
-      ),
-      label: "OFERTA MÁS ECONÓMICA",
-      title: "Ferretería El Sol",
-      body: "Ahorro del 2.5% respecto a la media de mercado en esta cotización.",
-    },
-    {
-      icon: (
-        <svg
-          className="w-5 h-5"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-          strokeWidth={1.8}
-        >
-          <rect x="1" y="3" width="15" height="13" rx="1" />
-          <path d="M16 8l5 5-5 5" />
-          <path d="M10 16v5" />
-          <path d="M6 16v5" />
-        </svg>
-      ),
-      label: "MEJOR TIEMPO DE ENTREGA",
-      title: "Distribuidora Panajachel",
-      body: "Entrega garantizada en menos de 24 horas para todos los ítems.",
-    },
-    {
-      icon: (
-        <svg
-          className="w-5 h-5"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-          strokeWidth={1.8}
-        >
-          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-          <polyline points="9 12 11 14 15 10" />
-        </svg>
-      ),
-      label: "CUMPLIMIENTO TÉCNICO",
-      title: null,
-      body: "Se verificó la vigencia de RTU y patente de comercio de los 3 proveedores.",
-      status: "Todos los proveedores cumplen",
-    },
-  ]
 
   return (
     <>
@@ -162,28 +153,7 @@ export default function ProformasView({
               </span>
             </div>
             <div className="grid grid-cols-2 md:grid-cols-4 divide-x divide-gray-100">
-              {[
-                {
-                  label: "Dependencia Solicitante",
-                  value: "Dirección Administrativa",
-                  accent: false,
-                },
-                {
-                  label: "Fecha de Solicitud",
-                  value: "12 de Octubre, 2023",
-                  accent: false,
-                },
-                {
-                  label: "Presupuesto Estimado",
-                  value: "Q 12,500.00",
-                  accent: true,
-                },
-                {
-                  label: "Categoría",
-                  value: "Suministros de Oficina",
-                  accent: false,
-                },
-              ].map((f) => (
+              {PROFORMA_SUMMARY_FIELDS.map((f) => (
                 <div key={f.label} className="px-5 py-4">
                   <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
                     {f.label}
@@ -436,7 +406,7 @@ export default function ProformasView({
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {DECISION_CARDS.map((card) => (
               <div
-                key={card.label}
+                key={card.key}
                 className="bg-white rounded-xl border border-gray-100 shadow-sm p-5"
               >
                 <div className="flex items-center gap-2.5 mb-3">
@@ -444,7 +414,7 @@ export default function ProformasView({
                     className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
                     style={{ backgroundColor: GL, color: G }}
                   >
-                    {card.icon}
+                    {DECISION_ICONS[card.key]}
                   </div>
                   <p className="text-[10px] font-extrabold uppercase tracking-widest text-gray-500">
                     {card.label}
@@ -478,11 +448,7 @@ export default function ProformasView({
               Notas Administrativas:
             </p>
             <ul className="space-y-1.5">
-              {[
-                "Los precios incluyen IVA (12%) conforme a la legislación guatemalteca vigente.",
-                "La validez de las proformas es de 30 días calendario a partir de la fecha de recepción.",
-                "Se recomienda la adjudicación a Distribuidora Panajachel debido a la urgencia del requerimiento a pesar de no ser el precio más bajo absoluto.",
-              ].map((note) => (
+              {ADMIN_NOTAS.map((note) => (
                 <li
                   key={note}
                   className="flex items-start gap-2 text-xs text-gray-600 leading-relaxed"

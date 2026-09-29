@@ -5,6 +5,7 @@ import {
   SOL_ESTADO_PROV,
   ORDENES_PROV,
   ENTREGAS_PROV,
+  PORTAL_KPIS,
   type SupplierNav,
 } from "@/models/portalProveedor"
 import CerrarSesionModal from "@/views/common/CerrarSesionModal"
@@ -12,6 +13,12 @@ import Toast from "@/views/common/Toast"
 import NuevaProformaModal from "@/views/portal/NuevaProformaModal"
 import SubirProformaModal from "@/views/portal/SubirProformaModal"
 import { useSupplierPortalController } from "@/controllers/useSupplierPortalController"
+
+const PORTAL_KPI_ICONS: Record<string, React.ReactNode> = {
+  cotizaciones: <Icons.Solicitudes />,
+  adjudicadas: <Icons.Proformas />,
+  facturas: <Icons.Facturacion />,
+}
 
 export default function SupplierPortal({ onLogout }: { onLogout: () => void }) {
   const {
@@ -46,7 +53,7 @@ export default function SupplierPortal({ onLogout }: { onLogout: () => void }) {
   const sub = dark ? "#94A3B8" : "#6B7280"
   const sidebarBg = dark ? "#1E293B" : "#FFFFFF"
 
-  const NAV_PROV: { key: SupplierNav label: string icon: React.ReactNode }[] = [
+  const NAV_PROV: { key: SupplierNav; label: string; icon: React.ReactNode }[] = [
     {
       key: "oportunidades",
       label: "Mis Oportunidades",
@@ -332,31 +339,9 @@ export default function SupplierPortal({ onLogout }: { onLogout: () => void }) {
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {[
-                    {
-                      icon: <Icons.Solicitudes />,
-                      label: "COTIZACIONES ENVIADAS",
-                      value: "18",
-                      sub2: "4 en revisión técnica",
-                      subColor: sub,
-                    },
-                    {
-                      icon: <Icons.Proformas />,
-                      label: "ÓRDENES ADJUDICADAS",
-                      value: "05",
-                      sub2: "Q 85,400.00 en ejecución",
-                      subColor: G,
-                    },
-                    {
-                      icon: <Icons.Facturacion />,
-                      label: "FACTURAS PENDIENTES",
-                      value: "02",
-                      sub2: "Próximo pago: 25/08/2026",
-                      subColor: "#D97706",
-                    },
-                  ].map((k) => (
+                  {PORTAL_KPIS.map((k) => (
                     <div
-                      key={k.label}
+                      key={k.key}
                       className="rounded-xl border p-5"
                       style={{ backgroundColor: card, borderColor: border }}
                     >
@@ -374,7 +359,7 @@ export default function SupplierPortal({ onLogout }: { onLogout: () => void }) {
                             color: G,
                           }}
                         >
-                          {k.icon}
+                          {PORTAL_KPI_ICONS[k.key]}
                         </div>
                       </div>
                       <p
@@ -385,7 +370,7 @@ export default function SupplierPortal({ onLogout }: { onLogout: () => void }) {
                       </p>
                       <p
                         className="text-xs font-semibold mt-1.5"
-                        style={{ color: k.subColor }}
+                        style={{ color: k.subColor ?? sub }}
                       >
                         {k.sub2}
                       </p>

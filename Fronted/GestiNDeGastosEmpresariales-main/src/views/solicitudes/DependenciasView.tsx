@@ -4,6 +4,7 @@ import {
   ALL_DEPS_NAMES,
   PRIORIDAD_STYLE,
   ESTADO_SOL_STYLE,
+  SUMMARY_METRICS,
 } from "@/models/solicitudes"
 import RowMenu from "@/views/common/RowMenu"
 import SolicitudDetailModal from "@/views/solicitudes/SolicitudDetailModal"
@@ -33,33 +34,6 @@ export default function DependenciasView({
     pageRows,
     grouped,
   } = useDependenciasController()
-
-  const summaryMetrics = [
-    {
-      title: "Total Solicitudes",
-      value: "124",
-      sub: "↑ 12% vs mes anterior",
-      subColor: "#16A34A",
-    },
-    {
-      title: "Pendientes",
-      value: "18",
-      sub: "Promedio 4.2 días",
-      subColor: "#D97706",
-    },
-    {
-      title: "Monto Solicitado",
-      value: "Q 45,280",
-      sub: "Mes de Mayo 2024",
-      subColor: "#6B7280",
-    },
-    {
-      title: "Ejecución",
-      value: "88%",
-      sub: "Meta Institucional",
-      subColor: "#16A34A",
-    },
-  ]
 
   return (
     <>
@@ -396,7 +370,7 @@ export default function DependenciasView({
           </div>
 
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            {summaryMetrics.map((m) => (
+            {SUMMARY_METRICS.map((m) => (
               <div
                 key={m.title}
                 className="bg-white rounded-xl border border-gray-100 shadow-sm p-5"

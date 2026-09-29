@@ -238,3 +238,10 @@ export const DEPS_LIST = [
   "Obras Públicas",
   "Cultura",
 ]
+
+export const SUMMARY_METRICS = [
+  { title: "Total Solicitudes", value: "124", sub: "↑ 12% vs mes anterior", subColor: "#16A34A" },
+  { title: "Pendientes", value: "18", sub: "Promedio 4.2 días", subColor: "#D97706" },
+  { title: "Monto Solicitado", value: "Q 45,280", sub: "Mes de Mayo 2024", subColor: "#6B7280" },
+  { title: "Ejecución", value: "88%", sub: "Meta Institucional", subColor: "#16A34A" },
+]

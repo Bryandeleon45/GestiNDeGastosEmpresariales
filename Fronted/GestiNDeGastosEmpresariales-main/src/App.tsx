@@ -1,8 +1,9 @@
+import { useState } from "react"
 import { G, GL } from "@/constants/theme"
 import { Icons } from "@/components/common/Icons"
 import MunicipalSeal from "@/components/common/MunicipalSeal"
 import { DashboardBarChart } from "@/components/charts/DashboardCharts"
-import { ACTIVITY, STATUS_BADGE } from "@/models/dashboard"
+import { ACTIVITY, STATUS_BADGE, DASHBOARD_KPIS } from "@/models/dashboard"
 import { useAppController } from "@/controllers/useAppController"
 
 import SearchBar from "@/views/dashboard/SearchBar"
@@ -24,11 +25,21 @@ import BodegaView from "@/views/bodega/BodegaView"
 import ReportesView from "@/views/reportes/ReportesView"
 import ConfiguracionView from "@/views/configuracion/ConfiguracionView"
 import UsuariosView from "@/views/usuarios/UsuariosView"
+import RolesView from "@/views/usuarios/RolesView"
+import BitacoraView from "@/views/auditoria/BitacoraView"
 import SupplierPortal from "@/views/portal/SupplierPortal"
 import LoginScreen from "@/views/auth/LoginScreen"
 import CerrarSesionModal from "@/views/common/CerrarSesionModal"
 import Toast from "@/views/common/Toast"
 import KpiCard from "@/views/common/KpiCard"
+import { login as apiLogin, logout as apiLogout, getStoredUser } from "@/api/auth"
+
+const DASH_KPI_ICONS: Record<string, React.ReactNode> = {
+  solicitudes: <Icons.Solicitudes />,
+  ordenes: <Icons.Bodega />,
+  entregas: <Icons.Proformas />,
+  presupuesto: <Icons.Facturacion />,
+}
 
 const NAV_MAIN = [
   { key: "dashboard", label: "Dashboard", Icon: Icons.Dashboard },
@@ -39,6 +50,8 @@ const NAV_MAIN = [
   { key: "bodega", label: "Bodega", Icon: Icons.Bodega },
   { key: "reportes", label: "Reportes", Icon: Icons.Reportes },
   { key: "usuarios", label: "Usuarios", Icon: Icons.Users },
+  { key: "roles", label: "Roles", Icon: Icons.Shield },
+  { key: "bitacora", label: "Bitácora", Icon: Icons.Activity },
   { key: "configuracion", label: "Configuración", Icon: Icons.Config },
 ]
 
@@ -86,10 +99,16 @@ export default function App() {
     goToDash,
   } = useAppController()
 
+  const [currentUser, setCurrentUser] = useState(getStoredUser())
+
   if (screen === "login")
     return (
       <LoginScreen
-        onLogin={(pw) => setScreen(pw === "123456" ? "supplier" : "admin")}
+        onLogin={async (usuario, password) => {
+          await apiLogin(usuario, password)
+          setCurrentUser(getStoredUser())
+          setScreen("admin")
+        }}
       />
     )
   if (screen === "supplier")
@@ -286,13 +305,13 @@ export default function App() {
                     className="text-xs font-bold leading-none"
                     style={{ color: thText }}
                   >
-                    Lic. Ricardo Gómez
+                    {currentUser?.nombre_completo || "Administrador"}
                   </p>
                   <p
                     className="text-[10px] font-semibold uppercase tracking-wide mt-0.5"
                     style={{ color: ac }}
                   >
-                    Administrador General
+                    {currentUser?.rol || "Municipalidad"}
                   </p>
                 </div>
                 <div
@@ -301,7 +320,7 @@ export default function App() {
                 >
                   <img
                     src="https://images.unsplash.com/photo-1560250097-0b93528c311a?w=64&h=64&fit=crop&auto=format"
-                    alt="Lic. Ricardo Gómez"
+                    alt={currentUser?.nombre_completo || "Usuario"}
                     className="w-full h-full object-cover"
                   />
                 </div>
@@ -406,6 +425,10 @@ export default function App() {
             <ReportesView onToast={(m, s) => fireToast(m, s)} />
           ) : activeNav === "usuarios" ? (
             <UsuariosView onToast={(m, s) => fireToast(m, s)} />
+          ) : activeNav === "roles" ? (
+            <RolesView onToast={(m, s) => fireToast(m, s)} />
+          ) : activeNav === "bitacora" ? (
+            <BitacoraView onToast={(m, s) => fireToast(m, s)} />
           ) : activeNav === "configuracion" ? (
             <ConfiguracionView
               onToast={(m, s) => fireToast(m, s)}
@@ -427,34 +450,17 @@ export default function App() {
               <div className="flex gap-5 min-h-full">
                 <div className="flex-1 min-w-0 flex flex-col gap-5">
                   <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
-                    <KpiCard
-                      title="Total Solicitudes"
-                      value="1,248"
-                      sub="↑ +8% este mes"
-                      subColor="text-emerald-600"
-                      icon={<Icons.Solicitudes />}
-                    />
-                    <KpiCard
-                      title="Órdenes Pendientes"
-                      value="42"
-                      sub="Q 245,300.00 en trámite"
-                      icon={<Icons.Bodega />}
-                    />
-                    <KpiCard
-                      title="Entregas Parciales"
-                      value="18"
-                      sub="⚠ 8 requieren seguimiento"
-                      subColor="text-amber-500"
-                      icon={<Icons.Proformas />}
-                    />
-                    <KpiCard
-                      title="Presupuesto Ejec."
-                      value="64.5%"
-                      sub="Q 2.9M de Q 4.5M"
-                      subColor="text-gray-500"
-                      icon={<Icons.Facturacion />}
-                      progress={64.5}
-                    />
+                    {DASHBOARD_KPIS.map((k) => (
+                      <KpiCard
+                        key={k.key}
+                        title={k.title}
+                        value={k.value}
+                        sub={k.sub}
+                        subColor={k.subColor}
+                        icon={DASH_KPI_ICONS[k.key]}
+                        progress={k.progress}
+                      />
+                    ))}
                   </div>
                   <DashboardBarChart onBarClick={() => setShowGasModal(true)} />
                   <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
@@ -621,6 +627,8 @@ export default function App() {
           onClose={() => setShowLogoutModal(false)}
           onConfirm={() => {
             setShowLogoutModal(false)
+            apiLogout()
+            setCurrentUser(null)
             setTimeout(() => {
               setScreen("login")
               setActiveNav("dashboard")

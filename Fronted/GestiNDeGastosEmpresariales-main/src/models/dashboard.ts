@@ -102,3 +102,19 @@ export const STOCK: StockItem[] = [
     costo: "Q 1.50 / pieza",
   },
 ]
+
+export interface DashboardKpi {
+  key: string
+  title: string
+  value: string
+  sub: string
+  subColor?: string
+  progress?: number
+}
+
+export const DASHBOARD_KPIS: DashboardKpi[] = [
+  { key: "solicitudes", title: "Total Solicitudes", value: "1,248", sub: "↑ +8% este mes", subColor: "text-emerald-600" },
+  { key: "ordenes", title: "Órdenes Pendientes", value: "42", sub: "Q 245,300.00 en trámite" },
+  { key: "entregas", title: "Entregas Parciales", value: "18", sub: "⚠ 8 requieren seguimiento", subColor: "text-amber-500" },
+  { key: "presupuesto", title: "Presupuesto Ejec.", value: "64.5%", sub: "Q 2.9M de Q 4.5M", subColor: "text-gray-500", progress: 64.5 },
+]
