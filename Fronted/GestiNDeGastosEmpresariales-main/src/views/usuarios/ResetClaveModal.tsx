@@ -1,16 +1,16 @@
 import { useState, useEffect } from "react"
-import { G, GL } from "@/constants/theme"
+import { G, GL, GB } from "@/constants/theme"
 import { Icons } from "@/components/common/Icons"
 import type { UsuarioRecord } from "@/models/usuarios"
 
 export default function ResetClaveModal({
   usuario,
   onClose,
-  onSave,
+  onReset,
 }: {
   usuario: UsuarioRecord
   onClose: () => void
-  onSave: (clave: string) => Promise<void>
+  onReset: () => Promise<string | null>
 }) {
   const [visible, setVisible] = useState(false)
   useEffect(() => {
@@ -18,42 +18,39 @@ export default function ResetClaveModal({
     return () => clearTimeout(t)
   }, [])
 
-  const [pass, setPass] = useState("")
-  const [passConf, setPassConf] = useState("")
-  const [showPass, setShowPass] = useState(false)
-  const [errors, setErrors] = useState<Record<string, string>>({})
-  const [saving, setSaving] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [claveTemp, setClaveTemp] = useState<string | null>(null)
+  const [copied, setCopied] = useState(false)
+  const [error, setError] = useState("")
 
   const handleClose = () => {
     setVisible(false)
     setTimeout(onClose, 280)
   }
 
-  const handleSave = async () => {
-    const e: Record<string, string> = {}
-    if (pass.length < 8) e.pass = "Mínimo 8 caracteres"
-    if (pass !== passConf) e.passConf = "Las contraseñas no coinciden"
-    setErrors(e)
-    if (Object.keys(e).length > 0) return
-
-    setSaving(true)
+  const handleReset = async () => {
+    setLoading(true)
+    setError("")
     try {
-      await onSave(pass)
-      handleClose()
-    } catch (err) {
-      setErrors({
-        general:
-          err instanceof Error ? err.message : "No se pudo establecer la contraseña",
-      })
+      const clave = await onReset()
+      if (clave) setClaveTemp(clave)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "No se pudo restablecer")
     } finally {
-      setSaving(false)
+      setLoading(false)
     }
   }
 
-  const inputCls =
-    "w-full px-3 py-2.5 text-sm border rounded-xl outline-none transition-colors focus:border-[#1E5E2F]"
-  const labelCls = "block text-xs font-bold text-gray-600 mb-1"
-  const errCls = "text-[10px] text-red-500 mt-0.5"
+  const copyClave = async () => {
+    if (!claveTemp) return
+    try {
+      await navigator.clipboard.writeText(claveTemp)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } catch {
+      // portapapeles no disponible
+    }
+  }
 
   return (
     <>
@@ -85,7 +82,7 @@ export default function ResetClaveModal({
               </div>
               <div>
                 <h2 className="text-lg font-extrabold text-gray-900">
-                  Establecer Contraseña
+                  Restablecer Contraseña
                 </h2>
                 <p className="text-xs text-gray-400 mt-0.5">
                   {usuario.codigo} · {usuario.nombre}
@@ -101,52 +98,42 @@ export default function ResetClaveModal({
           </div>
 
           <div className="px-7 py-6 space-y-4">
-            <p className="text-xs text-gray-500 leading-relaxed">
-              Asigne una contraseña temporal. El usuario deberá cambiarla en su
-              próximo ingreso al sistema.
-            </p>
-            <div>
-              <label className={labelCls}>
-                Contraseña Temporal <span className="text-red-500">*</span>
-              </label>
-              <div className="relative">
-                <input
-                  type={showPass ? "text" : "password"}
-                  value={pass}
-                  onChange={(e) => setPass(e.target.value)}
-                  placeholder="Mínimo 8 caracteres"
-                  className={inputCls + " pr-10"}
-                  style={{ borderColor: errors.pass ? "#DC2626" : "#E5E7EB" }}
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPass((v) => !v)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                >
-                  <Icons.Eye />
-                </button>
-              </div>
-              {errors.pass && <p className={errCls}>{errors.pass}</p>}
-            </div>
-            <div>
-              <label className={labelCls}>
-                Confirmar Contraseña <span className="text-red-500">*</span>
-              </label>
-              <input
-                type={showPass ? "text" : "password"}
-                value={passConf}
-                onChange={(e) => setPassConf(e.target.value)}
-                placeholder="Repita la contraseña"
-                className={inputCls}
-                style={{ borderColor: errors.passConf ? "#DC2626" : "#E5E7EB" }}
-              />
-              {errors.passConf && <p className={errCls}>{errors.passConf}</p>}
-            </div>
-            {errors.general && (
-              <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold text-red-700 bg-red-50 border border-red-100">
-                <Icons.Warning />
-                {errors.general}
-              </div>
+            {claveTemp ? (
+              <>
+                <p className="text-xs text-gray-500 leading-relaxed">
+                  Se generó una contraseña temporal. Cópiala y compártela con el
+                  usuario. Deberá cambiarla en su primer ingreso.
+                </p>
+                <div className="rounded-xl border-2 border-dashed p-4 text-center space-y-3" style={{ borderColor: GB }}>
+                  <p className="text-[10px] font-extrabold uppercase tracking-widest" style={{ color: G }}>
+                    Contraseña temporal
+                  </p>
+                  <p className="text-xl font-mono font-extrabold tracking-wider select-all" style={{ color: "var(--muni-text)" }}>
+                    {claveTemp}
+                  </p>
+                  <button
+                    onClick={copyClave}
+                    className="inline-flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-lg transition-all hover:opacity-90"
+                    style={{ backgroundColor: G, color: "#fff" }}
+                  >
+                    {copied ? <Icons.CheckMark /> : <Icons.Doc />}
+                    {copied ? "Copiada" : "Copiar"}
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <p className="text-xs text-gray-500 leading-relaxed">
+                  Se generará una contraseña temporal segura para este usuario.
+                  La contraseña anterior dejará de funcionar inmediatamente.
+                </p>
+                {error && (
+                  <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold text-red-700 bg-red-50 border border-red-100">
+                    <Icons.Warning />
+                    {error}
+                  </div>
+                )}
+              </>
             )}
           </div>
 
@@ -155,25 +142,27 @@ export default function ResetClaveModal({
               onClick={handleClose}
               className="px-5 py-2.5 text-sm font-semibold text-gray-600 border border-gray-200 rounded-xl hover:bg-white transition-all"
             >
-              Cancelar
+              {claveTemp ? "Cerrar" : "Cancelar"}
             </button>
-            <button
-              onClick={handleSave}
-              disabled={saving}
-              className="flex items-center gap-2 px-6 py-2.5 text-sm font-bold text-white rounded-xl transition-all hover:opacity-90 shadow-sm disabled:opacity-60"
-              style={{ backgroundColor: G }}
-            >
-              {saving ? (
-                <>
-                  <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
-                  Guardando…
-                </>
-              ) : (
-                <>
-                  <Icons.CheckMark /> Establecer Contraseña
-                </>
-              )}
-            </button>
+            {!claveTemp && (
+              <button
+                onClick={handleReset}
+                disabled={loading}
+                className="flex items-center gap-2 px-6 py-2.5 text-sm font-bold text-white rounded-xl transition-all hover:opacity-90 shadow-sm disabled:opacity-60"
+                style={{ backgroundColor: G }}
+              >
+                {loading ? (
+                  <>
+                    <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                    Generando…
+                  </>
+                ) : (
+                  <>
+                    <Icons.Refresh /> Restablecer
+                  </>
+                )}
+              </button>
+            )}
           </div>
         </div>
       </div>

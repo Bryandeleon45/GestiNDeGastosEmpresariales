@@ -75,3 +75,9 @@ export function cambiarEstadoUsuario(
 export function resetClaveUsuario(id: number | string, clave_temporal: string) {
   return api.post(`/usuarios/${id}/reset-clave`, { clave_temporal })
 }
+
+export function restablecerClaveUsuario(id: number | string) {
+  return api.post<{ ok: boolean; clave_temporal: string }>(
+    `/usuarios/${id}/restablecer-clave`,
+  )
+}

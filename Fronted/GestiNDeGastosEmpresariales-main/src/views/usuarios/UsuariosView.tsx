@@ -2,6 +2,7 @@ import { G, GL } from "@/constants/theme"
 import { Icons } from "@/components/common/Icons"
 import { USER_ESTADO_STYLE } from "@/models/usuarios"
 import NuevoUsuarioModal from "@/views/usuarios/NuevoUsuarioModal"
+import ResetClaveModal from "@/views/usuarios/ResetClaveModal"
 import { useUsuariosController } from "@/controllers/useUsuariosController"
 
 export default function UsuariosView({
@@ -19,6 +20,8 @@ export default function UsuariosView({
     setPage,
     modalUser,
     setModalUser,
+    resetUser,
+    setResetUser,
     PAGE_SIZE,
     filtered,
     totalPages,
@@ -26,6 +29,8 @@ export default function UsuariosView({
     clearFilters,
     handleSave,
     toggleEstado,
+    resetClave,
+    restablecerClave,
     totActivos,
     totInactivos,
     totAcceso,
@@ -318,18 +323,17 @@ export default function UsuariosView({
                               <Icons.Pencil />
                             </button>
                             <button
-                              onClick={() =>
-                                onToast("Perfil de usuario", u.nombre)
-                              }
-                              title="Ver perfil"
-                              className="w-7 h-7 rounded-lg flex items-center justify-center transition-all hover:opacity-80"
-                              style={{
-                                backgroundColor: "#EFF6FF",
-                                color: "#2563EB",
-                              }}
-                            >
-                              <Icons.Eye />
-                            </button>
+                                onClick={() => setResetUser(u)}
+                                title={u.tieneAcceso ? "Restablecer contraseña" : "Crear acceso y contraseña"}
+                                className="w-7 h-7 rounded-lg flex items-center justify-center transition-all hover:opacity-80"
+                                style={{
+                                  backgroundColor: u.tieneAcceso ? "#EFF6FF" : "#FEF3C7",
+                                  color: u.tieneAcceso ? "#2563EB" : "#B45309",
+                                }}
+                                disabled={!u.tieneAcceso}
+                              >
+                                <Icons.Key />
+                              </button>
                             <button
                               onClick={() => toggleEstado(u.id)}
                               title={
@@ -421,6 +425,17 @@ export default function UsuariosView({
                         Editar
                       </button>
                       <button
+                        onClick={() => setResetUser(u)}
+                        className="flex-1 py-1.5 text-xs font-bold rounded-lg border transition-all"
+                        style={{
+                          color: u.tieneAcceso ? "#2563EB" : "#B45309",
+                          borderColor: u.tieneAcceso ? "#2563EB" : "#B45309",
+                        }}
+                        disabled={!u.tieneAcceso}
+                      >
+                        {u.tieneAcceso ? "Contraseña" : "Crear acceso"}
+                      </button>
+                      <button
                         onClick={() => toggleEstado(u.id)}
                         className="flex-1 py-1.5 text-xs font-bold rounded-lg border transition-all"
                         style={{
@@ -504,6 +519,14 @@ export default function UsuariosView({
           usuario={modalUser}
           onClose={() => setModalUser(undefined)}
           onSave={handleSave}
+        />
+      )}
+
+      {resetUser != null && (
+        <ResetClaveModal
+          usuario={resetUser}
+          onClose={() => setResetUser(undefined)}
+          onReset={restablecerClave}
         />
       )}
     </div>

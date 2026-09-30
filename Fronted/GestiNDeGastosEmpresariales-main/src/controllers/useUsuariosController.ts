@@ -5,6 +5,8 @@ import {
   crearUsuario,
   editarUsuario,
   cambiarEstadoUsuario,
+  resetClaveUsuario,
+  restablecerClaveUsuario,
   type UsuarioApi,
 } from "@/api/usuarios"
 
@@ -40,6 +42,9 @@ export function useUsuariosController(onToast: (m: string, s: string) => void) {
   const [filterEst, setFilterEst] = useState("todos")
   const [page, setPage] = useState(1)
   const [modalUser, setModalUser] = useState<UsuarioRecord | null | undefined>(
+    undefined,
+  )
+  const [resetUser, setResetUser] = useState<UsuarioRecord | null | undefined>(
     undefined,
   )
   const PAGE_SIZE = 6
@@ -111,6 +116,22 @@ export function useUsuariosController(onToast: (m: string, s: string) => void) {
     }
   }
 
+  const resetClave = async (clave: string) => {
+    if (!resetUser || !resetUser.id_empleado) return
+    await resetClaveUsuario(resetUser.id_empleado, clave)
+    onToast(
+      "Contraseña actualizada",
+      `Se asignó una clave temporal a ${resetUser.nombre}`,
+    )
+    setResetUser(undefined)
+  }
+
+  const restablecerClave = async () => {
+    if (!resetUser || !resetUser.id_empleado) return null
+    const res = await restablecerClaveUsuario(resetUser.id_empleado)
+    return res.clave_temporal as string
+  }
+
   const totActivos = usuarios.filter((u) => u.estado === "Activo").length
   const totInactivos = usuarios.filter((u) => u.estado === "Inactivo").length
   const totAcceso = usuarios.filter((u) => u.tieneAcceso).length
@@ -127,6 +148,8 @@ export function useUsuariosController(onToast: (m: string, s: string) => void) {
     setPage,
     modalUser,
     setModalUser,
+    resetUser,
+    setResetUser,
     PAGE_SIZE,
     filtered,
     totalPages,
@@ -134,6 +157,8 @@ export function useUsuariosController(onToast: (m: string, s: string) => void) {
     clearFilters,
     handleSave,
     toggleEstado,
+    resetClave,
+    restablecerClave,
     totActivos,
     totInactivos,
     totAcceso,

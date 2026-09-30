@@ -1,4 +1,5 @@
 import { Router } from "express";
+import crypto from "node:crypto";
 import bcrypt from "bcryptjs";
 import { pool } from "../db.js";
 import { authenticate } from "../middlewares/authenticate.js";
@@ -394,6 +395,44 @@ router.post("/:id/reset-clave", authorize("usuarios"), async (req, res, next) =>
       detalle: `Clave temporal asignada al personal ${req.params.id}`,
     });
     res.json({ ok: true });
+  } catch (e) {
+    next(e);
+  }
+});
+
+// Restablece la contraseña generando una temporal segura desde el servidor.
+router.post("/:id/restablecer-clave", authorize("usuarios"), async (req, res, next) => {
+  try {
+    const { rows: exist } = await pool.query(
+      "SELECT id_usuario FROM usuario WHERE id_empleado = $1",
+      [req.params.id],
+    );
+    if (!exist[0]) {
+      return res.status(404).json({ error: "El usuario no tiene cuenta de acceso" });
+    }
+
+    const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789";
+    const bytes = crypto.randomBytes(12);
+    let claveTemp = "";
+    for (let i = 0; i < 12; i++) {
+      claveTemp += chars[bytes[i] % chars.length];
+    }
+
+    const hashed = await bcrypt.hash(claveTemp, 12);
+    await pool.query(
+      `UPDATE usuario
+          SET clave = $1, debe_cambiar_clave = TRUE, bloqueado_hasta = NULL, intentos_fallidos = 0
+        WHERE id_empleado = $2`,
+      [hashed, req.params.id],
+    );
+    await registrarBitacora({
+      idUsuario: req.user.id_usuario,
+      accion: "clave_restablecida",
+      ip: ipDe(req),
+      modulo: "Usuarios",
+      detalle: `Contraseña restablecida al personal ${req.params.id}`,
+    });
+    res.json({ ok: true, clave_temporal: claveTemp });
   } catch (e) {
     next(e);
   }
