@@ -341,7 +341,8 @@ export default function NuevoUsuarioModal({
                 </div>
                 <div>
                   <label className={labelCls}>
-                    Dependencia <span className="text-red-500">*</span>
+                    Dependencia{" "}
+                    <span className="text-gray-400">(opcional)</span>
                   </label>
                   <select
                     value={depId}
@@ -359,7 +360,8 @@ export default function NuevoUsuarioModal({
                 </div>
                 <div>
                   <label className={labelCls}>
-                    Puesto <span className="text-red-500">*</span>
+                    Puesto{" "}
+                    <span className="text-gray-400">(opcional)</span>
                   </label>
                   <select
                     value={puestoId}
