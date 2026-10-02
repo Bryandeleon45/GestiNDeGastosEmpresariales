@@ -32,7 +32,7 @@ import LoginScreen from "@/views/auth/LoginScreen"
 import CerrarSesionModal from "@/views/common/CerrarSesionModal"
 import Toast from "@/views/common/Toast"
 import KpiCard from "@/views/common/KpiCard"
-import { login as apiLogin, logout as apiLogout, getStoredUser, getStoredMenu } from "@/api/auth"
+import { login as apiLogin, logout as apiLogout, getStoredUser, getStoredMenu, esProveedor } from "@/api/auth"
 import { flattenMenu } from "@/utils/menu"
 import CambiarClaveModal from "@/views/auth/CambiarClaveModal"
 
@@ -114,7 +114,7 @@ export default function App() {
             if (res.debe_cambiar_clave) {
               setMustChangePassword(true)
             } else {
-              setScreen("admin")
+              setScreen(esProveedor(res.user) ? "supplier" : "admin")
             }
           }}
         />
@@ -122,14 +122,22 @@ export default function App() {
           <CambiarClaveModal
             onComplete={() => {
               setMustChangePassword(false)
-              setScreen("admin")
+              setScreen(esProveedor(currentUser) ? "supplier" : "admin")
             }}
           />
         )}
       </>
     )
   if (screen === "supplier")
-    return <SupplierPortal onLogout={() => setScreen("login")} />
+    return (
+      <SupplierPortal
+        onLogout={() => {
+          apiLogout()
+          setCurrentUser(null)
+          setScreen("login")
+        }}
+      />
+    )
 
   const navItems = flattenMenu(getStoredMenu())
 

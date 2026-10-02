@@ -87,3 +87,9 @@ export async function logout(): Promise<void> {
 export function isAuthenticated(): boolean {
   return !!getToken()
 }
+
+export function esProveedor(user: SessionUser | null): boolean {
+  if (!user) return false
+  const rol = (user.rol || "").toLowerCase().trim()
+  return rol === "proveedor" || rol.includes("proveedor")
+}

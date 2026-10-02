@@ -35,7 +35,8 @@ INSERT INTO rol (descripcion, nombre_rol, activo) VALUES
   ('DAFIM',                              'DAFIM',                             TRUE),
   ('Alcalde Municipal',                  'Alcalde Municipal',                 TRUE),
   ('Dependencia Solicitante',            'Dependencia Solicitante',           TRUE),
-  ('Soporte Técnico',                    'Soporte Técnico',                   TRUE)
+  ('Soporte Técnico',                    'Soporte Técnico',                   TRUE),
+  ('Proveedor',                          'Proveedor',                         TRUE)
 ON CONFLICT (descripcion) DO NOTHING;
 
 -- ── Menús (menú lateral del prototipo) ───────────────────────────────────────
