@@ -32,7 +32,9 @@ import LoginScreen from "@/views/auth/LoginScreen"
 import CerrarSesionModal from "@/views/common/CerrarSesionModal"
 import Toast from "@/views/common/Toast"
 import KpiCard from "@/views/common/KpiCard"
-import { login as apiLogin, logout as apiLogout, getStoredUser } from "@/api/auth"
+import { login as apiLogin, logout as apiLogout, getStoredUser, getStoredMenu } from "@/api/auth"
+import { flattenMenu } from "@/utils/menu"
+import CambiarClaveModal from "@/views/auth/CambiarClaveModal"
 
 const DASH_KPI_ICONS: Record<string, React.ReactNode> = {
   solicitudes: <Icons.Solicitudes />,
@@ -100,19 +102,36 @@ export default function App() {
   } = useAppController()
 
   const [currentUser, setCurrentUser] = useState(getStoredUser())
+  const [mustChangePassword, setMustChangePassword] = useState(false)
 
   if (screen === "login")
     return (
-      <LoginScreen
-        onLogin={async (usuario, password) => {
-          await apiLogin(usuario, password)
-          setCurrentUser(getStoredUser())
-          setScreen("admin")
-        }}
-      />
+      <>
+        <LoginScreen
+          onLogin={async (usuario, password) => {
+            const res = await apiLogin(usuario, password)
+            setCurrentUser(getStoredUser())
+            if (res.debe_cambiar_clave) {
+              setMustChangePassword(true)
+            } else {
+              setScreen("admin")
+            }
+          }}
+        />
+        {mustChangePassword && (
+          <CambiarClaveModal
+            onComplete={() => {
+              setMustChangePassword(false)
+              setScreen("admin")
+            }}
+          />
+        )}
+      </>
     )
   if (screen === "supplier")
     return <SupplierPortal onLogout={() => setScreen("login")} />
+
+  const navItems = flattenMenu(getStoredMenu())
 
   const SidebarContent = ({ mobile = false }) => (
     <>
@@ -142,7 +161,7 @@ export default function App() {
         )}
       </div>
       <nav className="flex-1 py-3 px-2 space-y-0.5 overflow-y-auto">
-        {NAV_MAIN.map(({ key, label, Icon }) => {
+        {navItems.map(({ key, label, Icon }) => {
           const active = activeNav === key
           return (
             <button
