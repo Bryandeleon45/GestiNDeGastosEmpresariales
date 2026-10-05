@@ -1,13 +1,8 @@
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { G, GL, GB } from "@/constants/theme"
 import { Icons } from "@/components/common/Icons"
 import Dropdown from "@/views/common/Dropdown"
-import {
-  listarDependencias,
-  obtenerPresupuestoDependencia,
-  type Dependencia,
-  type PresupuestoDependencia,
-} from "@/api/catalogos"
+import { listarDependencias, type Dependencia } from "@/api/catalogos"
 import {
   listarTiposSolicitud,
   listarUnidadesMedida,
@@ -23,6 +18,20 @@ import { ApiError } from "@/api/client"
 type Prio = "Baja" | "Media" | "Alta" | "Urgente"
 
 const PRIOS: Prio[] = ["Baja", "Media", "Alta", "Urgente"]
+
+interface ItemDraft {
+  key: number
+  id_insumo: number | null
+  descripcion_libre: string
+  cantidad: string
+  id_unidad_medida: number | null
+  insumoQuery: string
+  insumoNombre: string
+  insumoCodigo: string
+  showDropdown: boolean
+}
+
+let nextKey = 1
 
 function ObjectSelect<T>({
   label,
@@ -186,6 +195,123 @@ function TextArea({
   )
 }
 
+function ItemRow({
+  item,
+  index,
+  unidades,
+  insumos,
+  onUpdate,
+  onRemove,
+  onSelectInsumo,
+  onClearInsumo,
+  onQueryChange,
+  onDropdownToggle,
+}: {
+  item: ItemDraft
+  index: number
+  unidades: UnidadMedida[]
+  insumos: Insumo[]
+  onUpdate: (key: number, patch: Partial<ItemDraft>) => void
+  onRemove: (key: number) => void
+  onSelectInsumo: (key: number, insumo: Insumo) => void
+  onClearInsumo: (key: number) => void
+  onQueryChange: (key: number, q: string) => void
+  onDropdownToggle: (key: number, show: boolean) => void
+}) {
+  const unidadSel = unidades.find((u) => u.id_unidad_medida === item.id_unidad_medida) ?? null
+
+  return (
+    <div className="border border-gray-200 rounded-lg p-4 space-y-3 bg-gray-50/50">
+      <div className="flex items-center justify-between">
+        <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">
+          Ítem {index + 1}
+        </span>
+        <button
+          type="button"
+          onClick={() => onRemove(item.key)}
+          className="text-gray-400 hover:text-red-500 transition-colors"
+        >
+          <Icons.X />
+        </button>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3">
+        <Field label="Ítem">
+          <div className="relative">
+            {item.id_insumo == null ? (
+              <input
+                value={item.insumoQuery}
+                placeholder="Buscar en catálogo o escribir descripción libre…"
+                onChange={(e) => onQueryChange(item.key, e.target.value)}
+                onFocus={() => onDropdownToggle(item.key, true)}
+                className="w-full px-3 py-2.5 text-sm bg-gray-50 border border-gray-200 rounded-lg outline-none focus:border-green-600 transition-all placeholder-gray-400"
+              />
+            ) : (
+              <div className="flex items-center justify-between gap-2 px-3 py-2.5 text-sm bg-gray-50 border border-gray-200 rounded-lg">
+                <span className="text-gray-800 font-medium truncate">
+                  {item.insumoNombre}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => onClearInsumo(item.key)}
+                  className="text-gray-400 hover:text-gray-700 shrink-0"
+                >
+                  <Icons.X />
+                </button>
+              </div>
+            )}
+            {item.showDropdown && item.id_insumo == null && insumos.length > 0 && (
+              <div
+                className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-xl z-[300] overflow-hidden max-h-48 overflow-y-auto"
+                style={{ animation: "dropIn 0.13s ease-out" }}
+              >
+                {insumos.map((ins) => (
+                  <button
+                    type="button"
+                    key={ins.id_insumo}
+                    onClick={() => onSelectInsumo(item.key, ins)}
+                    className="w-full text-left px-3 py-2.5 hover:bg-gray-50 transition-colors"
+                  >
+                    <p className="text-sm font-medium text-gray-800 truncate">
+                      {ins.nombre}
+                    </p>
+                    <p className="text-[11px] text-gray-400">
+                      {ins.codigo_insumo} · Q{" "}
+                      {Number(ins.precio_referencial).toLocaleString("es-GT", {
+                        minimumFractionDigits: 2,
+                      })}
+                    </p>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        </Field>
+
+        <div className="grid grid-cols-2 gap-3">
+          <Field label="Cantidad">
+            <TextInput
+              ph="0"
+              val={item.cantidad}
+              set={(v) => onUpdate(item.key, { cantidad: v })}
+              type="number"
+            />
+          </Field>
+          <ObjectSelect
+            label="Unidad"
+            value={unidadSel}
+            options={unidades}
+            getLabel={(u) => `${u.nombre} (${u.simbolo || "—"})`}
+            getId={(u) => u.id_unidad_medida}
+            onChange={(u) => onUpdate(item.key, { id_unidad_medida: u ? u.id_unidad_medida : null })}
+            placeholder="Unidad"
+          />
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function SolicitudModal({
   onClose,
   onSuccess,
@@ -203,42 +329,47 @@ export default function SolicitudModal({
 
   const [depId, setDepId] = useState<number | null>(initial?.id_dependencia ?? null)
   const [tipo, setTipo] = useState(initial?.tipo_solicitud ?? "Compra de Materiales")
-  const [insumoId, setInsumoId] = useState<number | null>(
-    initial?.items?.[0]?.id_insumo ?? null,
-  )
-  const [descripcionLibre, setDescripcionLibre] = useState(
-    initial?.items?.[0]?.descripcion_libre ?? "",
-  )
-  const [cantidad, setCantidad] = useState(initial?.items?.[0]?.cantidad ?? "")
-  const [unidadId, setUnidadId] = useState<number | null>(
-    initial?.items?.[0]?.id_unidad_medida ?? null,
-  )
-  const [precio, setPrecio] = useState(initial?.items?.[0]?.precio_estimado ?? "")
   const [justificacion, setJustificacion] = useState(initial?.justificacion ?? "")
   const [lugarEntrega, setLugarEntrega] = useState(initial?.lugar_entrega ?? "")
   const [prioridad, setPrioridad] = useState<Prio>(
     (initial?.prioridad as Prio) ?? "Media",
   )
-  const [observaciones, setObservaciones] = useState(
-    initial?.items?.[0]?.observaciones ?? "",
-  )
 
-  const [insumoQuery, setInsumoQuery] = useState(() => {
-    const it = initial?.items?.[0]
-    if (!it) return ""
-    if (it.id_insumo != null && it.insumo_nombre)
-      return `${it.insumo_nombre} (${it.codigo_insumo ?? ""})`.trim()
-    return it.descripcion_libre ?? ""
+  const [items, setItems] = useState<ItemDraft[]>(() => {
+    if (initial?.items && initial.items.length > 0) {
+      return initial.items.map((it) => ({
+        key: nextKey++,
+        id_insumo: it.id_insumo ?? null,
+        descripcion_libre: it.descripcion_libre ?? "",
+        cantidad: String(it.cantidad ?? ""),
+        id_unidad_medida: it.id_unidad_medida ?? null,
+        insumoQuery: it.insumo_nombre
+          ? `${it.insumo_nombre} (${it.codigo_insumo ?? ""})`.trim()
+          : (it.descripcion_libre ?? ""),
+        insumoNombre: it.insumo_nombre ?? "",
+        insumoCodigo: it.codigo_insumo ?? "",
+        showDropdown: false,
+      }))
+    }
+    return [{
+      key: nextKey++,
+      id_insumo: null,
+      descripcion_libre: "",
+      cantidad: "",
+      id_unidad_medida: null,
+      insumoQuery: "",
+      insumoNombre: "",
+      insumoCodigo: "",
+      showDropdown: false,
+    }]
   })
-  const [insumos, setInsumos] = useState<Insumo[]>([])
-  const [showInsumos, setShowInsumos] = useState(false)
 
-  const [presupuesto, setPresupuesto] = useState<PresupuestoDependencia | null>(null)
-  const [cargandoPresupuesto, setCargandoPresupuesto] = useState(false)
+  const [insumos, setInsumos] = useState<Insumo[]>([])
   const [submitting, setSubmitting] = useState(false)
+  const [imagenes, setImagenes] = useState<{ file: File; preview: string }[]>([])
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const overlayRef = useRef<HTMLDivElement>(null)
-  const insumoRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     listarDependencias()
@@ -253,77 +384,119 @@ export default function SolicitudModal({
   }, [onToast])
 
   useEffect(() => {
-    if (depId == null) {
-      setPresupuesto(null)
-      return
-    }
-    setCargandoPresupuesto(true)
-    obtenerPresupuestoDependencia(depId)
-      .then(setPresupuesto)
-      .catch(() => setPresupuesto(null))
-      .finally(() => setCargandoPresupuesto(false))
-  }, [depId])
-
-  useEffect(() => {
-    if (!insumoQuery.trim()) {
-      setInsumos([])
-      return
-    }
-    const t = setTimeout(() => {
-      buscarInsumos(insumoQuery)
-        .then(setInsumos)
-        .catch(() => setInsumos([]))
-    }, 250)
-    return () => clearTimeout(t)
-  }, [insumoQuery])
-
-  useEffect(() => {
     const h = (e: MouseEvent) => {
-      if (insumoRef.current && !insumoRef.current.contains(e.target as Node))
-        setShowInsumos(false)
+      if (overlayRef.current && !overlayRef.current.contains(e.target as Node)) {
+        setItems((prev) => prev.map((it) => ({ ...it, showDropdown: false })))
+      }
     }
     document.addEventListener("mousedown", h)
     return () => document.removeEventListener("mousedown", h)
   }, [])
 
-  const monto = useMemo(() => {
-    const c = parseFloat(cantidad) || 0
-    const p = parseFloat(precio) || 0
-    return c * p
-  }, [cantidad, precio])
-
-  const disponible = useMemo(
-    () => (presupuesto ? parseFloat(presupuesto.monto_disponible) : null),
-    [presupuesto],
-  )
-  const excede = disponible !== null && monto > disponible
-
-  const unidadSeleccionada = unidades.find((u) => u.id_unidad_medida === unidadId) ?? null
-
-  const seleccionarInsumo = (insumo: Insumo) => {
-    setInsumoId(insumo.id_insumo)
-    setDescripcionLibre("")
-    setInsumoQuery(`${insumo.nombre} (${insumo.codigo_insumo})`)
-    setPrecio(insumo.precio_referencial)
-    setUnidadId(insumo.id_unidad_medida)
-    setShowInsumos(false)
+  const updateItem = (key: number, patch: Partial<ItemDraft>) => {
+    setItems((prev) => prev.map((it) => (it.key === key ? { ...it, ...patch } : it)))
   }
 
-  const limpiarInsumo = () => {
-    setInsumoId(null)
-    setInsumoQuery("")
-    setDescripcionLibre("")
-    setShowInsumos(false)
+  const removeItem = (key: number) => {
+    setItems((prev) => prev.filter((it) => it.key !== key))
+  }
+
+  const addItem = () => {
+    setItems((prev) => [
+      ...prev,
+      {
+        key: nextKey++,
+        id_insumo: null,
+        descripcion_libre: "",
+        cantidad: "",
+        id_unidad_medida: null,
+        insumoQuery: "",
+        insumoNombre: "",
+        insumoCodigo: "",
+        showDropdown: false,
+      },
+    ])
+  }
+
+  const handleQueryChange = (key: number, q: string) => {
+    updateItem(key, {
+      insumoQuery: q,
+      descripcionLibre: q,
+      id_insumo: null,
+      insumoNombre: "",
+      insumoCodigo: "",
+    })
+    if (!q.trim()) {
+      setInsumos([])
+      return
+    }
+    const t = setTimeout(() => {
+      buscarInsumos(q)
+        .then(setInsumos)
+        .catch(() => setInsumos([]))
+    }, 250)
+    return () => clearTimeout(t)
+  }
+
+  const handleSelectInsumo = (key: number, insumo: Insumo) => {
+    updateItem(key, {
+      id_insumo: insumo.id_insumo,
+      descripcion_libre: "",
+      insumoQuery: `${insumo.nombre} (${insumo.codigo_insumo})`,
+      insumoNombre: insumo.nombre,
+      insumoCodigo: insumo.codigo_insumo,
+      id_unidad_medida: insumo.id_unidad_medida,
+      showDropdown: false,
+    })
+    setInsumos([])
+  }
+
+  const handleClearInsumo = (key: number) => {
+    updateItem(key, {
+      id_insumo: null,
+      insumoQuery: "",
+      insumoNombre: "",
+      insumoCodigo: "",
+      showDropdown: false,
+    })
+  }
+
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files
+    if (!files) return
+    const newImages: { file: File; preview: string }[] = []
+    Array.from(files).forEach((file) => {
+      if (file.type.startsWith("image/")) {
+        const preview = URL.createObjectURL(file)
+        newImages.push({ file, preview })
+      }
+    })
+    setImagenes((prev) => [...prev, ...newImages])
+    if (fileInputRef.current) fileInputRef.current.value = ""
+  }
+
+  const removeImage = (index: number) => {
+    setImagenes((prev) => {
+      const next = [...prev]
+      URL.revokeObjectURL(next[index].preview)
+      next.splice(index, 1)
+      return next
+    })
   }
 
   const validar = (): string | null => {
     if (depId == null) return "Seleccione la dependencia"
     if (!justificacion.trim()) return "La justificación es obligatoria"
-    if (!(parseFloat(cantidad) > 0)) return "La cantidad debe ser mayor que 0"
-    if (unidadId == null) return "Seleccione la unidad de medida"
-    if (insumoId == null && !descripcionLibre.trim())
-      return "Seleccione un ítem del catálogo o escriba una descripción"
-    if (excede) return "El monto excede el presupuesto disponible"
+    if (items.length === 0) return "Agregue al menos un ítem"
+    for (let i = 0; i < items.length; i++) {
+      const it = items[i]
+      if (!(parseFloat(it.cantidad) > 0))
+        return `Ítem ${i + 1}: La cantidad debe ser mayor que 0`
+      if (it.id_unidad_medida == null)
+        return `Ítem ${i + 1}: Seleccione la unidad de medida`
+      if (it.id_insumo == null && !it.descripcion_libre.trim())
+        return `Ítem ${i + 1}: Seleccione un ítem del catálogo o escriba una descripción`
+    }
     return null
   }
 
@@ -335,23 +508,19 @@ export default function SolicitudModal({
     }
     setSubmitting(true)
     try {
-      const items = [
-        {
-          id_insumo: insumoId,
-          descripcion_libre: descripcionLibre.trim() || null,
-          id_unidad_medida: unidadId as number,
-          cantidad: parseFloat(cantidad),
-          precio_estimado: parseFloat(precio) || 0,
-          observaciones: observaciones.trim() || null,
-        },
-      ]
+      const payloadItems = items.map((it) => ({
+        id_insumo: it.id_insumo,
+        descripcion_libre: it.descripcion_libre.trim() || null,
+        id_unidad_medida: it.id_unidad_medida as number,
+        cantidad: parseFloat(it.cantidad),
+      }))
       if (initial) {
         await editarRequisicion(initial.id_requisicion, {
           tipo_solicitud: tipo,
           justificacion: justificacion.trim(),
           lugar_entrega: lugarEntrega.trim() || undefined,
           prioridad,
-          items,
+          items: payloadItems,
         })
         onToast("Solicitud actualizada", "Los cambios fueron guardados.")
       } else {
@@ -361,7 +530,7 @@ export default function SolicitudModal({
           justificacion: justificacion.trim(),
           lugar_entrega: lugarEntrega.trim() || undefined,
           prioridad,
-          items,
+          items: payloadItems,
         })
         onToast("Solicitud creada exitosamente", "La requisición fue enviada para revisión.")
       }
@@ -432,154 +601,102 @@ export default function SolicitudModal({
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <Field label="Ítem">
-              <div ref={insumoRef} className="relative">
-                {insumoId == null ? (
-                  <input
-                    value={insumoQuery}
-                    placeholder="Buscar en catálogo o escribir descripción libre…"
-                    onChange={(e) => {
-                      setInsumoQuery(e.target.value)
-                      setDescripcionLibre(e.target.value)
-                      setShowInsumos(true)
-                    }}
-                    onFocus={() => setShowInsumos(true)}
-                    className="w-full px-3 py-2.5 text-sm bg-gray-50 border border-gray-200 rounded-lg outline-none focus:border-green-600 transition-all placeholder-gray-400"
-                  />
-                ) : (
-                  <div className="flex items-center justify-between gap-2 px-3 py-2.5 text-sm bg-gray-50 border border-gray-200 rounded-lg">
-                    <span className="text-gray-800 font-medium truncate">
-                      {insumoQuery}
-                    </span>
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">
+                Ítems de la Solicitud
+              </span>
+              <button
+                type="button"
+                onClick={addItem}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-white rounded-lg transition-all hover:opacity-90"
+                style={{ backgroundColor: G }}
+              >
+                <Icons.CirclePlus />
+                Agregar Ítem
+              </button>
+            </div>
+
+            {items.map((item, idx) => (
+              <ItemRow
+                key={item.key}
+                item={item}
+                index={idx}
+                unidades={unidades}
+                insumos={insumos}
+                onUpdate={updateItem}
+                onRemove={removeItem}
+                onSelectInsumo={handleSelectInsumo}
+                onClearInsumo={handleClearInsumo}
+                onQueryChange={handleQueryChange}
+                onDropdownToggle={(key, show) => updateItem(key, { showDropdown: show })}
+              />
+            ))}
+          </div>
+
+          <div>
+            <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1.5">
+              Solicitudes Autorizadas (Imágenes)
+            </label>
+            <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center hover:border-green-500 transition-colors">
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                multiple
+                onChange={handleImageUpload}
+                className="hidden"
+                id="image-upload"
+              />
+              <label
+                htmlFor="image-upload"
+                className="cursor-pointer flex flex-col items-center gap-2"
+              >
+                <div
+                  className="w-10 h-10 rounded-full flex items-center justify-center text-white"
+                  style={{ backgroundColor: G }}
+                >
+                  <Icons.CirclePlus />
+                </div>
+                <p className="text-sm text-gray-600">
+                  Click para subir imágenes de solicitudes autorizadas
+                </p>
+                <p className="text-xs text-gray-400">
+                  PNG, JPG, JPEG (máx. 5MB cada una)
+                </p>
+              </label>
+            </div>
+            {imagenes.length > 0 && (
+              <div className="grid grid-cols-3 gap-3 mt-3">
+                {imagenes.map((img, idx) => (
+                  <div key={idx} className="relative group">
+                    <img
+                      src={img.preview}
+                      alt={`Solicitud ${idx + 1}`}
+                      className="w-full h-24 object-cover rounded-lg border border-gray-200"
+                    />
                     <button
                       type="button"
-                      onClick={limpiarInsumo}
-                      className="text-gray-400 hover:text-gray-700 shrink-0"
+                      onClick={() => removeImage(idx)}
+                      className="absolute top-1 right-1 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
                     >
                       <Icons.X />
                     </button>
                   </div>
-                )}
-                {showInsumos && insumoId == null && insumos.length > 0 && (
-                  <div
-                    className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-xl z-[300] overflow-hidden max-h-48 overflow-y-auto"
-                    style={{ animation: "dropIn 0.13s ease-out" }}
-                  >
-                    {insumos.map((ins) => (
-                      <button
-                        type="button"
-                        key={ins.id_insumo}
-                        onClick={() => seleccionarInsumo(ins)}
-                        className="w-full text-left px-3 py-2.5 hover:bg-gray-50 transition-colors"
-                      >
-                        <p className="text-sm font-medium text-gray-800 truncate">
-                          {ins.nombre}
-                        </p>
-                        <p className="text-[11px] text-gray-400">
-                          {ins.codigo_insumo} · Q{" "}
-                          {Number(ins.precio_referencial).toLocaleString("es-GT", {
-                            minimumFractionDigits: 2,
-                          })}
-                        </p>
-                      </button>
-                    ))}
-                  </div>
-                )}
+                ))}
               </div>
-            </Field>
-            <div className="grid grid-cols-2 gap-3">
-              <Field label="Cantidad">
-                <TextInput ph="0" val={cantidad} set={setCantidad} type="number" />
-              </Field>
-              <ObjectSelect
-                label="Unidad"
-                value={unidadSeleccionada}
-                options={unidades}
-                getLabel={(u) => `${u.nombre} (${u.simbolo || "—"})`}
-                getId={(u) => u.id_unidad_medida}
-                onChange={(u) => setUnidadId(u ? u.id_unidad_medida : null)}
-                placeholder="Unidad"
-              />
-            </div>
+            )}
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <Field label="Precio Estimado (Q)">
-              <TextInput ph="0.00" val={precio} set={setPrecio} type="number" />
-            </Field>
-            <Field label="Lugar de Entrega">
-              <TextInput ph="Ej. Bodega Central" val={lugarEntrega} set={setLugarEntrega} />
-            </Field>
-          </div>
+          <Field label="Lugar de Entrega">
+            <TextInput ph="Ej. Bodega Central" val={lugarEntrega} set={setLugarEntrega} />
+          </Field>
 
           <Field label="Justificación">
             <TextArea
               ph="Describe la necesidad institucional..."
               val={justificacion}
               set={setJustificacion}
-            />
-          </Field>
-
-          <div
-            className="flex items-start gap-3 rounded-lg px-4 py-3.5 border"
-            style={{
-              backgroundColor: excede ? "#FEF2F2" : GL,
-              borderColor: excede ? "#FECACA" : GB,
-            }}
-          >
-            <span
-              style={{ color: excede ? "#DC2626" : G }}
-              className="mt-0.5 shrink-0"
-            >
-              {excede ? <Icons.Warning /> : <Icons.Info />}
-            </span>
-            <div>
-              <p
-                className="text-xs font-bold uppercase tracking-wider mb-0.5"
-                style={{ color: excede ? "#DC2626" : G }}
-              >
-                Presupuesto Restante
-              </p>
-              {cargandoPresupuesto ? (
-                <p className="text-xs text-gray-600">Consultando presupuesto…</p>
-              ) : presupuesto ? (
-                <>
-                  <p className="text-xs text-gray-700">
-                    Presupuesto restante ={" "}
-                    <b>
-                      Q{" "}
-                      {Number(presupuesto.monto_disponible).toLocaleString("es-GT", {
-                        minimumFractionDigits: 2,
-                      })}
-                    </b>
-                  </p>
-                  <p className="text-xs text-gray-700">
-                    Monto de esta solicitud ={" "}
-                    <b>
-                      Q{" "}
-                      {monto.toLocaleString("es-GT", { minimumFractionDigits: 2 })}
-                    </b>
-                  </p>
-                  {excede && (
-                    <p className="text-xs font-semibold text-red-600 mt-0.5">
-                      El monto supera el saldo disponible.
-                    </p>
-                  )}
-                </>
-              ) : (
-                <p className="text-xs text-gray-600">
-                  Sin presupuesto para el período activo.
-                </p>
-              )}
-            </div>
-          </div>
-
-          <Field label="Observaciones / Notas para Aprobación">
-            <TextArea
-              ph="Notas para aprobación"
-              val={observaciones}
-              set={setObservaciones}
             />
           </Field>
 
@@ -627,7 +744,7 @@ export default function SolicitudModal({
           </button>
           <button
             onClick={enviar}
-            disabled={submitting || excede}
+            disabled={submitting}
             className="flex items-center gap-2 px-5 py-2.5 text-sm font-bold text-white rounded-lg transition-all hover:opacity-90 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
             style={{ backgroundColor: G }}
           >
