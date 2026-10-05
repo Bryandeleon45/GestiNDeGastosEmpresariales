@@ -178,6 +178,24 @@ export default function SolicitudDetailModal({
                 </div>
               </div>
 
+              {detail.imagenes && detail.imagenes.length > 0 && (
+                <div>
+                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">
+                    Solicitudes Autorizadas ({detail.imagenes.length})
+                  </p>
+                  <div className="grid grid-cols-3 gap-3">
+                    {detail.imagenes.map((img) => (
+                      <img
+                        key={img.id_imagen}
+                        src={img.contenido_base64}
+                        alt={img.nombre_archivo}
+                        className="w-full h-28 object-cover rounded-lg border border-gray-200"
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+
               <div className="grid grid-cols-3 gap-4">
                 <div className="col-span-2 bg-gray-50 rounded-xl p-4 border border-gray-100">
                   <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">

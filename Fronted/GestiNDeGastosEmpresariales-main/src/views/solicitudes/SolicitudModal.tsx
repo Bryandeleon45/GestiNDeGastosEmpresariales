@@ -9,6 +9,8 @@ import {
   buscarInsumos,
   crearRequisicion,
   editarRequisicion,
+  obtenerPeriodoActivo,
+  subirImagenesRequisicion,
   type UnidadMedida,
   type Insumo,
   type Requisicion,
@@ -25,6 +27,7 @@ interface ItemDraft {
   descripcion_libre: string
   cantidad: string
   id_unidad_medida: number | null
+  precio_estimado: number
   insumoQuery: string
   insumoNombre: string
   insumoCodigo: string
@@ -32,6 +35,15 @@ interface ItemDraft {
 }
 
 let nextKey = 1
+
+function fileToBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(reader.result as string)
+    reader.onerror = () => reject(reader.error)
+    reader.readAsDataURL(file)
+  })
+}
 
 function ObjectSelect<T>({
   label,
@@ -343,6 +355,7 @@ export default function SolicitudModal({
         descripcion_libre: it.descripcion_libre ?? "",
         cantidad: String(it.cantidad ?? ""),
         id_unidad_medida: it.id_unidad_medida ?? null,
+        precio_estimado: Number(it.precio_estimado) || 0,
         insumoQuery: it.insumo_nombre
           ? `${it.insumo_nombre} (${it.codigo_insumo ?? ""})`.trim()
           : (it.descripcion_libre ?? ""),
@@ -357,6 +370,7 @@ export default function SolicitudModal({
       descripcion_libre: "",
       cantidad: "",
       id_unidad_medida: null,
+      precio_estimado: 0,
       insumoQuery: "",
       insumoNombre: "",
       insumoCodigo: "",
@@ -367,6 +381,7 @@ export default function SolicitudModal({
   const [insumos, setInsumos] = useState<Insumo[]>([])
   const [submitting, setSubmitting] = useState(false)
   const [imagenes, setImagenes] = useState<{ file: File; preview: string }[]>([])
+  const [periodoActivo, setPeriodoActivo] = useState<boolean | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const overlayRef = useRef<HTMLDivElement>(null)
@@ -381,6 +396,9 @@ export default function SolicitudModal({
     listarUnidadesMedida()
       .then(setUnidades)
       .catch(() => {})
+    obtenerPeriodoActivo()
+      .then((d) => setPeriodoActivo(d.activo))
+      .catch(() => setPeriodoActivo(null))
   }, [onToast])
 
   useEffect(() => {
@@ -410,6 +428,7 @@ export default function SolicitudModal({
         descripcion_libre: "",
         cantidad: "",
         id_unidad_medida: null,
+        precio_estimado: 0,
         insumoQuery: "",
         insumoNombre: "",
         insumoCodigo: "",
@@ -421,10 +440,11 @@ export default function SolicitudModal({
   const handleQueryChange = (key: number, q: string) => {
     updateItem(key, {
       insumoQuery: q,
-      descripcionLibre: q,
+      descripcion_libre: q,
       id_insumo: null,
       insumoNombre: "",
       insumoCodigo: "",
+      precio_estimado: 0,
     })
     if (!q.trim()) {
       setInsumos([])
@@ -446,6 +466,7 @@ export default function SolicitudModal({
       insumoNombre: insumo.nombre,
       insumoCodigo: insumo.codigo_insumo,
       id_unidad_medida: insumo.id_unidad_medida,
+      precio_estimado: parseFloat(insumo.precio_referencial) || 0,
       showDropdown: false,
     })
     setInsumos([])
@@ -457,6 +478,7 @@ export default function SolicitudModal({
       insumoQuery: "",
       insumoNombre: "",
       insumoCodigo: "",
+      precio_estimado: 0,
       showDropdown: false,
     })
   }
@@ -513,7 +535,9 @@ export default function SolicitudModal({
         descripcion_libre: it.descripcion_libre.trim() || null,
         id_unidad_medida: it.id_unidad_medida as number,
         cantidad: parseFloat(it.cantidad),
+        precio_estimado: it.precio_estimado,
       }))
+      let idCreada: number | null = null
       if (initial) {
         await editarRequisicion(initial.id_requisicion, {
           tipo_solicitud: tipo,
@@ -522,9 +546,10 @@ export default function SolicitudModal({
           prioridad,
           items: payloadItems,
         })
+        idCreada = initial.id_requisicion
         onToast("Solicitud actualizada", "Los cambios fueron guardados.")
       } else {
-        await crearRequisicion({
+        const creada = await crearRequisicion({
           id_dependencia: depId ?? undefined,
           tipo_solicitud: tipo,
           justificacion: justificacion.trim(),
@@ -532,12 +557,25 @@ export default function SolicitudModal({
           prioridad,
           items: payloadItems,
         })
+        idCreada = creada.id_requisicion
         onToast("Solicitud creada exitosamente", "La requisición fue enviada para revisión.")
+      }
+      if (idCreada != null && imagenes.length > 0) {
+        const subidas = await Promise.all(
+          imagenes.map((img) =>
+            fileToBase64(img.file).then((contenido_base64) => ({
+              nombre_archivo: img.file.name,
+              mime_type: img.file.type || "image/jpeg",
+              contenido_base64,
+            })),
+          ),
+        )
+        await subirImagenesRequisicion(idCreada, subidas)
       }
       onSuccess()
     } catch (e) {
       const msg =
-        e instanceof ApiError && e.status === 422
+        e instanceof ApiError
           ? e.message
           : e instanceof Error
             ? e.message
@@ -583,6 +621,22 @@ export default function SolicitudModal({
         </div>
 
         <div className="overflow-y-auto flex-1 px-6 py-5 space-y-5">
+          {periodoActivo === false && (
+            <div className="flex items-start gap-3 rounded-lg px-4 py-3 border bg-red-50 border-red-200">
+              <span className="text-red-500 mt-0.5 shrink-0">
+                <Icons.Warning />
+              </span>
+              <div>
+                <p className="text-xs font-bold uppercase tracking-wider text-red-600 mb-0.5">
+                  Período Fiscal Inactivo
+                </p>
+                <p className="text-xs text-red-700">
+                  No hay un período fiscal activo. No se pueden crear solicitudes hasta que se active un período.
+                </p>
+              </div>
+            </div>
+          )}
+
           <div className="grid grid-cols-2 gap-4">
             <ObjectSelect
               label="Dependencia / Unidad"
@@ -744,7 +798,7 @@ export default function SolicitudModal({
           </button>
           <button
             onClick={enviar}
-            disabled={submitting}
+            disabled={submitting || periodoActivo === false}
             className="flex items-center gap-2 px-5 py-2.5 text-sm font-bold text-white rounded-lg transition-all hover:opacity-90 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
             style={{ backgroundColor: G }}
           >

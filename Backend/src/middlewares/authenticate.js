@@ -18,7 +18,7 @@ export async function authenticate(req, res, next) {
 
     const { rows } = await pool.query(
       `SELECT u.id_usuario, u.nombre_usuario, u.correo, u.activo, u.bloqueado_hasta,
-              u.id_rol, r.descripcion AS rol, r.activo AS rol_activo,
+              u.id_rol, COALESCE(r.nombre_rol, r.descripcion) AS rol, r.activo AS rol_activo,
               e.nombre, e.apellido
          FROM usuario u
          JOIN rol r ON r.id_rol = u.id_rol

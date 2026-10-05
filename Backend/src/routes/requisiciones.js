@@ -227,6 +227,17 @@ router.get("/tipos-solicitud", (_req, res) => {
   res.json(["Compra de Materiales", "Servicio Técnico", "Equipamiento", "Mantenimiento"]);
 });
 
+router.get("/periodo-activo", async (_req, res, next) => {
+  try {
+    const { rows } = await pool.query(
+      "SELECT id_periodo, anio FROM periodo_fiscal WHERE activo = TRUE LIMIT 1",
+    );
+    res.json({ activo: rows.length > 0, periodo: rows[0] ?? null });
+  } catch (e) {
+    next(e);
+  }
+});
+
 router.get("/unidades-medida", async (_req, res, next) => {
   try {
     const { rows } = await pool.query(
@@ -304,7 +315,15 @@ router.get("/:id", authorize("solicitudes"), async (req, res, next) => {
       [reqRows[0].codigo_requisicion],
     );
 
-    res.json({ ...reqRows[0], items, bitacora });
+    const { rows: imagenes } = await pool.query(
+      `SELECT id_imagen, nombre_archivo, mime_type, contenido_base64, fecha_registro
+         FROM requisicion_imagen
+        WHERE id_requisicion = $1
+        ORDER BY id_imagen`,
+      [req.params.id],
+    );
+
+    res.json({ ...reqRows[0], items, bitacora, imagenes });
   } catch (e) {
     next(e);
   }
@@ -442,6 +461,73 @@ router.post("/", authorize("solicitudes"), async (req, res, next) => {
     if (e.code === "23505") {
       return res.status(409).json({ error: "Código de requisición duplicado, reintente" });
     }
+    next(e);
+  } finally {
+    client.release();
+  }
+});
+
+// ── Imágenes de la requisición ────────────────────────────────────────────────
+router.post("/:id/imagenes", authorize("solicitudes"), async (req, res, next) => {
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+
+    const { rows: current } = await client.query(
+      "SELECT * FROM requisicion WHERE id_requisicion = $1",
+      [req.params.id],
+    );
+    if (!current[0]) {
+      await client.query("ROLLBACK");
+      return res.status(404).json({ error: "Requisición no encontrada" });
+    }
+    if (!esGlobal(req.user)) {
+      const dep = await dependenciaDeUsuario(req.user.id_usuario);
+      if (current[0].id_dependencia !== dep) {
+        await client.query("ROLLBACK");
+        return res.status(403).json({ error: "No tiene permiso para esta requisición" });
+      }
+    }
+
+    const { imagenes } = req.body;
+    if (!Array.isArray(imagenes) || !imagenes.length) {
+      await client.query("ROLLBACK");
+      return res.status(400).json({ error: "Debe incluir al menos una imagen" });
+    }
+
+    const MAX_BYTES = 5 * 1024 * 1024; // 5 MB por imagen
+    for (const img of imagenes) {
+      const contenido = img?.contenido_base64;
+      if (!contenido || typeof contenido !== "string") {
+        await client.query("ROLLBACK");
+        return res.status(400).json({ error: "Cada imagen requiere contenido_base64" });
+      }
+      if (Buffer.byteLength(contenido, "utf8") > MAX_BYTES) {
+        await client.query("ROLLBACK");
+        return res.status(400).json({ error: "Cada imagen no debe superar 5 MB" });
+      }
+      await client.query(
+        `INSERT INTO requisicion_imagen (id_requisicion, nombre_archivo, mime_type, contenido_base64)
+         VALUES ($1, $2, $3, $4)`,
+        [
+          req.params.id,
+          img.nombre_archivo ?? "imagen",
+          img.mime_type ?? "image/jpeg",
+          contenido,
+        ],
+      );
+    }
+
+    await client.query("COMMIT");
+
+    const { rows: guardadas } = await client.query(
+      `SELECT id_imagen, nombre_archivo, mime_type, fecha_registro
+         FROM requisicion_imagen WHERE id_requisicion = $1 ORDER BY id_imagen`,
+      [req.params.id],
+    );
+    res.status(201).json({ imagenes: guardadas });
+  } catch (e) {
+    await client.query("ROLLBACK");
     next(e);
   } finally {
     client.release();

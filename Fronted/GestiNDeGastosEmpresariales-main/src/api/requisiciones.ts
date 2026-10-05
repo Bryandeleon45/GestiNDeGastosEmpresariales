@@ -41,6 +41,7 @@ export interface Requisicion {
   item_unidad?: string | null
   items?: RequisicionItemDetail[]
   bitacora?: BitacoraEntry[]
+  imagenes?: RequisicionImagen[]
 }
 
 export interface RequisicionItemDetail {
@@ -67,6 +68,14 @@ export interface BitacoraEntry {
   modulo: string | null
   detalle: string | null
   nombre_usuario: string
+}
+
+export interface RequisicionImagen {
+  id_imagen: number
+  nombre_archivo: string
+  mime_type: string
+  contenido_base64: string
+  fecha_registro: string
 }
 
 export interface RequisicionListResponse {
@@ -182,8 +191,24 @@ export function cambiarEstadoRequisicion(id: number | string, data: { estado: st
   return api.patch<Requisicion>(`/requisiciones/${id}/estado`, data)
 }
 
+export function subirImagenesRequisicion(
+  id: number | string,
+  imagenes: { nombre_archivo: string; mime_type: string; contenido_base64: string }[],
+) {
+  return api.post<{ imagenes: RequisicionImagen[] }>(`/requisiciones/${id}/imagenes`, { imagenes })
+}
+
 export function listarTiposSolicitud() {
   return api.get<string[]>("/requisiciones/tipos-solicitud")
+}
+
+export interface PeriodoActivo {
+  activo: boolean
+  periodo: { id_periodo: number; anio: number } | null
+}
+
+export function obtenerPeriodoActivo() {
+  return api.get<PeriodoActivo>("/requisiciones/periodo-activo")
 }
 
 export function listarUnidadesMedida() {
