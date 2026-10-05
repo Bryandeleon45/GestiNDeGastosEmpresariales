@@ -22,7 +22,7 @@ export async function authenticate(req, res, next) {
               e.nombre, e.apellido
          FROM usuario u
          JOIN rol r ON r.id_rol = u.id_rol
-         JOIN empleado e ON e.id_empleado = u.id_empleado
+         LEFT JOIN empleado e ON e.id_empleado = u.id_empleado
         WHERE u.id_usuario = $1`,
       [payload.sub],
     );
@@ -41,7 +41,7 @@ export async function authenticate(req, res, next) {
       id_rol: user.id_rol,
       rol: user.rol,
       rol_activo: user.rol_activo,
-      nombre_completo: `${user.nombre} ${user.apellido}`,
+      nombre_completo: user.nombre ? `${user.nombre} ${user.apellido}`.trim() : user.nombre_usuario,
     };
     next();
   } catch (e) {

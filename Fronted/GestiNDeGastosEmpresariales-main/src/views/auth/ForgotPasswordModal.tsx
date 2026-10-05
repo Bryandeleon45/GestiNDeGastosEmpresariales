@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react"
 import { G, GL } from "@/constants/theme"
-import { recuperarClave } from "@/api/auth"
 
 export default function ForgotPasswordModal({
   onClose,
@@ -10,8 +9,6 @@ export default function ForgotPasswordModal({
   const [visible, setVisible] = useState(false)
   const [sent, setSent] = useState(false)
   const [email, setEmail] = useState("")
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState("")
   useEffect(() => {
     const t = setTimeout(() => setVisible(true), 10)
     return () => clearTimeout(t)
@@ -19,19 +16,6 @@ export default function ForgotPasswordModal({
   const handleClose = () => {
     setVisible(false)
     setTimeout(onClose, 280)
-  }
-  const handleSend = async () => {
-    if (!email) return
-    setLoading(true)
-    setError("")
-    try {
-      await recuperarClave(email)
-      setSent(true)
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "No se pudo enviar la solicitud")
-    } finally {
-      setLoading(false)
-    }
   }
   return (
     <>
@@ -90,11 +74,6 @@ export default function ForgotPasswordModal({
                     if (!email) e.currentTarget.style.borderColor = ""
                   }}
                 />
-                {error && (
-                  <p className="text-xs font-semibold text-red-600 mt-2">
-                    {error}
-                  </p>
-                )}
               </div>
               <div className="flex gap-3 px-8 pb-8">
                 <button
@@ -104,12 +83,13 @@ export default function ForgotPasswordModal({
                   Cancelar
                 </button>
                 <button
-                  onClick={handleSend}
-                  disabled={!email || loading}
+                  onClick={() => {
+                    if (email) setSent(true)
+                  }}
                   className="flex-1 py-3 text-sm font-bold text-white rounded-xl transition-all hover:opacity-90 shadow-sm"
-                  style={{ backgroundColor: G, opacity: !email || loading ? 0.5 : 1 }}
+                  style={{ backgroundColor: G, opacity: !email ? 0.5 : 1 }}
                 >
-                  {loading ? "Enviando…" : "Enviar Instrucciones"}
+                  Enviar Instrucciones
                 </button>
               </div>
             </>

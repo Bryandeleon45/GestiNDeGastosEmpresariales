@@ -11,7 +11,7 @@ export interface NavItem {
 const CONTROLADOR_MAP: Record<string, { key: string; label: string; Icon: () => ReactElement }> = {
   dashboard: { key: "dashboard", label: "Dashboard", Icon: Icons.Dashboard },
   solicitudes: { key: "dependencias", label: "Dependencias", Icon: Icons.Dependencias },
-  proveedores: { key: "proveedores", label: "Proveedores", Icon: Icons.Proveedores },
+  proveedores: { key: "proveedores", label: "Proveedores", Icon: Icons.UserPlus },
   proformas: { key: "proformas", label: "Proformas", Icon: Icons.Proformas },
   facturacion: { key: "facturacion", label: "Facturación", Icon: Icons.Facturacion },
   bodega: { key: "bodega", label: "Bodega", Icon: Icons.Bodega },

@@ -122,8 +122,8 @@ export default function StockDetailPopover({
                 val: item.lastRestock,
               },
               {
-                icon: <Icons.Proveedores />,
-                label: "Proveedor",
+                icon: <Icons.Bodega />,
+                label: "Bodega / Origen",
                 val: item.proveedor,
               },
               {

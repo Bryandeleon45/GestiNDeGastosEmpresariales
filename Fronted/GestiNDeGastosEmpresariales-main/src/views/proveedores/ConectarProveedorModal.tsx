@@ -1,32 +1,43 @@
 import { useState, useEffect } from "react"
 import { G, GL, GB } from "@/constants/theme"
 import { Icons } from "@/components/common/Icons"
-import { PROV_ROLES, PROV_CATEGORIAS, type ProvRol } from "@/models/proveedores"
 import Dropdown from "@/views/common/Dropdown"
+import { conectarProveedor, type TipoProveedor, type RolPortal } from "@/api/proveedores"
+import { ApiError } from "@/api/client"
 
 export default function ConectarProveedorModal({
   onClose,
-  onSubmit,
+  onSuccess,
+  onToast,
+  tipos,
+  rolesPortal,
 }: {
   onClose: () => void
-  onSubmit: () => void
+  onSuccess: () => void
+  onToast: (m: string, s: string) => void
+  tipos: TipoProveedor[]
+  rolesPortal: RolPortal[]
 }) {
   const [nombre, setNombre] = useState("")
   const [nit, setNit] = useState("")
   const [email, setEmail] = useState("")
   const [telefono, setTelefono] = useState("")
-  const [rol, setRol] = useState<ProvRol>("Proveedor Estándar")
-  const [categoria, setCategoria] = useState("Insumos Generales")
+  const [rol, setRol] = useState(rolesPortal[0]?.descripcion ?? "")
+  const [categoria, setCategoria] = useState(tipos[0]?.descripcion ?? "")
   const [visible, setVisible] = useState(false)
   const [focusField, setFocus] = useState<string | null>(null)
+  const [submitting, setSubmitting] = useState(false)
+
   useEffect(() => {
     const t = setTimeout(() => setVisible(true), 10)
     return () => clearTimeout(t)
   }, [])
+
   const handleClose = () => {
     setVisible(false)
     setTimeout(onClose, 280)
   }
+
   const fi = (id: string) => ({
     onFocus: () => setFocus(id),
     onBlur: () => setFocus(null),
@@ -37,6 +48,50 @@ export default function ConectarProveedorModal({
       transition: "all 0.15s",
     } as React.CSSProperties,
   })
+
+  const enviar = async () => {
+    if (!nombre.trim() || !nit.trim() || !email.trim() || !rol || !categoria) {
+      onToast("Revisar formulario", "Complete todos los campos obligatorios.")
+      return
+    }
+    const idRol = rolesPortal.find((r) => r.descripcion === rol)?.id_rol
+    const idTipo = tipos.find((t) => t.descripcion === categoria)?.id_tipo_proveedor
+    if (!idRol || !idTipo) {
+      onToast("Revisar formulario", "Seleccione un rol y una categoría válidos.")
+      return
+    }
+    setSubmitting(true)
+    try {
+      const res = await conectarProveedor({
+        razon_social: nombre.trim(),
+        nit: nit.trim(),
+        correo: email.trim(),
+        telefono: telefono.trim() || undefined,
+        id_rol: idRol,
+        id_tipo_proveedor: idTipo,
+      })
+      onToast(
+        "Proveedor conectado",
+        `Usuario: ${res.credenciales.nombre_usuario} · Clave temporal: ${res.credenciales.clave_temporal}`,
+      )
+      onSuccess()
+    } catch (e) {
+      onToast(
+        "Error",
+        e instanceof ApiError ? e.message : e instanceof Error ? e.message : "No se pudo conectar",
+      )
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  const campos = [
+    { label: "Nombre del Proveedor", id: "nombre", val: nombre, set: setNombre, ph: "Ej. Suministros El Lago" },
+    { label: "NIT", id: "nit", val: nit, set: setNit, ph: "Ej. 459823-1" },
+    { label: "Correo Electrónico", id: "email", val: email, set: setEmail, ph: "contacto@proveedor.gt" },
+    { label: "Teléfono", id: "tel", val: telefono, set: setTelefono, ph: "7762-0000" },
+  ]
+
   return (
     <>
       <div
@@ -62,18 +117,7 @@ export default function ConectarProveedorModal({
               className="w-10 h-10 rounded-xl flex items-center justify-center text-white shrink-0"
               style={{ backgroundColor: G }}
             >
-              <svg
-                className="w-5 h-5"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-                strokeWidth={1.8}
-              >
-                <path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2" />
-                <circle cx="9" cy="7" r="4" />
-                <line x1="19" y1="8" x2="19" y2="14" />
-                <line x1="22" y1="11" x2="16" y2="11" />
-              </svg>
+              <Icons.UserPlus />
             </div>
             <div>
               <h2 className="text-base font-bold text-gray-900 leading-none">
@@ -94,64 +138,36 @@ export default function ConectarProveedorModal({
             <Icons.X />
           </button>
         </div>
+
         <div className="flex-1 overflow-y-auto px-6 py-5 space-y-4">
-          <div className="grid grid-cols-1 gap-4">
-            {[
-              {
-                label: "Nombre del Proveedor",
-                id: "nombre",
-                val: nombre,
-                set: setNombre,
-                ph: "Ej. Suministros El Lago",
-              },
-              {
-                label: "NIT",
-                id: "nit",
-                val: nit,
-                set: setNit,
-                ph: "Ej. 459823-1",
-              },
-              {
-                label: "Correo Electrónico",
-                id: "email",
-                val: email,
-                set: setEmail,
-                ph: "contacto@proveedor.gt",
-              },
-              {
-                label: "Teléfono",
-                id: "tel",
-                val: telefono,
-                set: setTelefono,
-                ph: "7762-0000",
-              },
-            ].map((f) => (
-              <div key={f.id}>
-                <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1.5">
-                  {f.label}
-                </label>
-                <input
-                  value={f.val}
-                  onChange={(e) => f.set(e.target.value)}
-                  placeholder={f.ph}
-                  className="w-full px-3 py-2.5 text-sm bg-white border rounded-lg placeholder-gray-400"
-                  {...fi(f.id)}
-                />
-              </div>
-            ))}
-          </div>
+          {campos.map((f) => (
+            <div key={f.id}>
+              <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1.5">
+                {f.label}
+              </label>
+              <input
+                value={f.val}
+                onChange={(e) => f.set(e.target.value)}
+                placeholder={f.ph}
+                className="w-full px-3 py-2.5 text-sm bg-white border rounded-lg placeholder-gray-400"
+                {...fi(f.id)}
+              />
+            </div>
+          ))}
+
           <Dropdown
             label="Rol Asignado"
             value={rol}
-            options={PROV_ROLES}
-            onChange={(v) => setRol(v as ProvRol)}
+            options={rolesPortal.map((r) => r.descripcion)}
+            onChange={setRol}
           />
           <Dropdown
             label="Categoría"
             value={categoria}
-            options={PROV_CATEGORIAS}
+            options={tipos.map((t) => t.descripcion)}
             onChange={setCategoria}
           />
+
           <div
             className="flex items-start gap-2.5 rounded-xl px-4 py-3 border"
             style={{ backgroundColor: GL, borderColor: GB }}
@@ -160,11 +176,12 @@ export default function ConectarProveedorModal({
               <Icons.Info />
             </span>
             <p className="text-xs text-gray-700 leading-relaxed">
-              El proveedor recibirá un correo con sus credenciales de acceso al
-              portal municipal DAFIM.
+              Se creará la cuenta del proveedor con una clave temporal, que se
+              mostrará al confirmar para que pueda entregársela de forma segura.
             </p>
           </div>
         </div>
+
         <div className="px-6 py-4 border-t border-gray-100 flex items-center gap-3 shrink-0">
           <button
             onClick={handleClose}
@@ -173,23 +190,13 @@ export default function ConectarProveedorModal({
             Cancelar
           </button>
           <button
-            onClick={onSubmit}
-            className="flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-bold text-white rounded-lg transition-all hover:opacity-90 shadow-sm"
+            onClick={enviar}
+            disabled={submitting}
+            className="flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-bold text-white rounded-lg transition-all hover:opacity-90 shadow-sm disabled:opacity-50"
             style={{ backgroundColor: G }}
           >
-            <svg
-              className="w-4 h-4"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-              strokeWidth={2}
-            >
-              <path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2" />
-              <circle cx="9" cy="7" r="4" />
-              <line x1="19" y1="8" x2="19" y2="14" />
-              <line x1="22" y1="11" x2="16" y2="11" />
-            </svg>
-            Conectar Proveedor
+            <Icons.UserPlus />
+            {submitting ? "Conectando…" : "Conectar Proveedor"}
           </button>
         </div>
       </div>

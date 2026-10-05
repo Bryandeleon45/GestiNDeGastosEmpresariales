@@ -12,7 +12,6 @@ export function useAppController() {
   const [animEnabled, setAnimEnabled] = useState(true)
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [mobileSidebar, setMobileSidebar] = useState(false)
-  const [showSolModal, setShowSolModal] = useState(false)
   const [showGasModal, setShowGasModal] = useState(false)
   const [showAuditModal, setShowAuditModal] = useState(false)
   const [showTicketDrawer, setShowTicketDrawer] = useState(false)
@@ -69,8 +68,6 @@ export function useAppController() {
     setSidebarCollapsed,
     mobileSidebar,
     setMobileSidebar,
-    showSolModal,
-    setShowSolModal,
     showGasModal,
     setShowGasModal,
     showAuditModal,

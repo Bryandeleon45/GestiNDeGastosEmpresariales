@@ -72,12 +72,6 @@ export async function cambiarClave(
   await api.post("/auth/cambiar-clave", { clave_actual, clave_nueva })
 }
 
-export async function recuperarClave(
-  correo: string,
-): Promise<{ ok: boolean; token_reset?: string }> {
-  return api.post("/auth/recuperar", { correo })
-}
-
 export async function logout(): Promise<void> {
   try {
     if (getToken()) await api.post("/auth/logout")

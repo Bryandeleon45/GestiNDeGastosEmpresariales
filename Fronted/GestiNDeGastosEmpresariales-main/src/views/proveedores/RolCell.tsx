@@ -1,14 +1,18 @@
 import { useState, useEffect, useRef } from "react"
 import { G, GL } from "@/constants/theme"
 import { Icons } from "@/components/common/Icons"
-import { PROV_ROLES, type ProvRol } from "@/models/proveedores"
+import type { RolPortal } from "@/api/proveedores"
 
 export default function RolCell({
-  value,
+  rolId,
+  rolLabel,
+  roles,
   onChange,
 }: {
-  value: ProvRol
-  onChange: (v: ProvRol) => void
+  rolId: number | null
+  rolLabel: string
+  roles: RolPortal[]
+  onChange: (idRol: number, label: string) => void
 }) {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
@@ -30,7 +34,7 @@ export default function RolCell({
           boxShadow: open ? `0 0 0 2px ${G}22` : "none",
         }}
       >
-        <span>{value}</span>
+        <span>{rolLabel}</span>
         <Icons.ChevDown />
       </button>
       {open && (
@@ -38,22 +42,21 @@ export default function RolCell({
           className="absolute left-0 top-full mt-1 bg-white border border-gray-200 rounded-xl shadow-xl z-[300] overflow-hidden w-48"
           style={{ animation: "dropIn 0.13s ease-out" }}
         >
-          {PROV_ROLES.map((r) => (
+          {roles.map((r) => (
             <button
-              key={r}
+              key={r.id_rol}
               onClick={() => {
-                onChange(r)
+                onChange(r.id_rol, r.descripcion)
                 setOpen(false)
               }}
               className="w-full flex items-center justify-between px-3 py-2.5 text-sm text-left transition-colors hover:bg-gray-50"
               style={{
-                backgroundColor: r === value ? GL : undefined,
-                color:
-                  r === value ? G : r === "Bloqueado" ? "#DC2626" : "#374151",
+                backgroundColor: r.id_rol === rolId ? GL : undefined,
+                color: r.id_rol === rolId ? G : "#374151",
               }}
             >
-              <span className="font-medium">{r}</span>
-              {r === value && (
+              <span className="font-medium">{r.descripcion}</span>
+              {r.id_rol === rolId && (
                 <span style={{ color: G }}>
                   <Icons.CheckMark />
                 </span>

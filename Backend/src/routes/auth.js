@@ -22,7 +22,7 @@ router.post("/login", async (req, res, next) => {
     const { rows } = await pool.query(
       `SELECT u.*, e.nombre, e.apellido, r.nombre_rol, r.descripcion AS rol_descripcion
          FROM usuario u
-         JOIN empleado e ON e.id_empleado = u.id_empleado
+         LEFT JOIN empleado e ON e.id_empleado = u.id_empleado
          JOIN rol r ON r.id_rol = u.id_rol
         WHERE u.nombre_usuario = $1 OR u.correo = $1`,
       [usuario],
@@ -99,7 +99,7 @@ router.post("/login", async (req, res, next) => {
         nombre_usuario: user.nombre_usuario,
         correo: user.correo,
         id_rol: user.id_rol,
-        nombre_completo: `${user.nombre} ${user.apellido}`.trim(),
+        nombre_completo: user.nombre ? `${user.nombre} ${user.apellido}`.trim() : user.nombre_usuario,
         rol: user.nombre_rol || user.rol_descripcion,
       },
     });

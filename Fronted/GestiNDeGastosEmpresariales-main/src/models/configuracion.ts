@@ -1,11 +1,12 @@
 // ─── Configuración model ──────────────────────────────────────────────────────
-export type ConfigTab = "apariencia" | "perfil" | "notificaciones" | "seguridad" | "auditoria"
+export type ConfigTab = "apariencia" | "perfil" | "notificaciones" | "seguridad" | "dependencias" | "auditoria"
 
 export const CONFIG_TABS: { key: ConfigTab; label: string }[] = [
   { key: "apariencia", label: "Apariencia y Tema" },
   { key: "perfil", label: "Perfil de Usuario" },
   { key: "notificaciones", label: "Notificaciones" },
   { key: "seguridad", label: "Seguridad y Accesos" },
+  { key: "dependencias", label: "Dependencias" },
   { key: "auditoria", label: "Auditoría" },
 ]
 

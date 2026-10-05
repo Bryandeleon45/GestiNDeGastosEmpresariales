@@ -164,7 +164,7 @@ export default function FacturacionView({
               style={{ backgroundColor: G }}
             >
               <p className="text-sm font-extrabold leading-none">
-                Portal de Proveedores
+                Portal de Facturación
               </p>
               <p className="text-xs opacity-80 leading-relaxed">
                 Carga digital de facturas y documentos de soporte para agilizar

@@ -85,7 +85,7 @@ export default function LoginScreen({
             </h1>
             <p className="mt-4 text-base text-white/70 leading-relaxed">
               Plataforma digital centralizada para la administración de
-              inventario, proveedores y finanzas públicas.
+              inventario y finanzas públicas.
             </p>
             <div className="flex gap-6 mt-10">
               {LOGIN_STATS.map((s) => (

@@ -11,6 +11,7 @@ import {
   type ConfigTab,
 } from "@/models/configuracion"
 import ToggleSwitch from "@/views/common/ToggleSwitch"
+import ConfigDependenciasView from "@/views/configuracion/ConfigDependenciasView"
 
 export default function ConfiguracionView({
   onToast,
@@ -518,6 +519,12 @@ export default function ConfiguracionView({
                   </button>
                 </div>
               </div>
+            </div>
+          )}
+
+          {activeTab === "dependencias" && (
+            <div className="p-6">
+              <ConfigDependenciasView onToast={onToast} />
             </div>
           )}
 

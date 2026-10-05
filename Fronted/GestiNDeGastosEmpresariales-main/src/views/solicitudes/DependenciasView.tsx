@@ -1,39 +1,121 @@
+import { useState } from "react"
 import { G, GL } from "@/constants/theme"
 import { Icons } from "@/components/common/Icons"
 import {
-  ALL_DEPS_NAMES,
   PRIORIDAD_STYLE,
   ESTADO_SOL_STYLE,
-  SUMMARY_METRICS,
+  type SolicitudRow,
 } from "@/models/solicitudes"
 import RowMenu from "@/views/common/RowMenu"
 import SolicitudDetailModal from "@/views/solicitudes/SolicitudDetailModal"
+import SolicitudModal from "@/views/solicitudes/SolicitudModal"
 import { useDependenciasController } from "@/controllers/useDependenciasController"
+import {
+  obtenerRequisicion,
+  cambiarEstadoRequisicion,
+  type Requisicion,
+} from "@/api/requisiciones"
+
+const fmtQ = (n: number | string) =>
+  `Q ${Number(n).toLocaleString("es-GT", { minimumFractionDigits: 2 })}`
+
+type SolModalState =
+  | { mode: "create" }
+  | { mode: "edit"; initial: Requisicion }
+  | null
 
 export default function DependenciasView({
-  onNewSolicitud,
   onToast,
 }: {
-  onNewSolicitud: () => void
   onToast: (m: string, s: string) => void
 }) {
   const {
     depFilter,
-    setDepFilter,
+    depFilterId,
+    setDepFilterId,
     depOpen,
     setDepOpen,
     page,
     setPage,
-    detailRow,
-    setDetailRow,
     hoveredRow,
     setHoveredRow,
     depRef,
-    filtered,
+    loading,
+    total,
     totalPages,
     pageRows,
     grouped,
-  } = useDependenciasController()
+    depOptions,
+    presupuesto,
+    kpis,
+    exportar,
+    imprimir,
+    reload,
+  } = useDependenciasController(onToast)
+
+  const [solModal, setSolModal] = useState<SolModalState>(null)
+  const [detailId, setDetailId] = useState<number | null>(null)
+  const [rechazoRow, setRechazoRow] = useState<SolicitudRow | null>(null)
+  const [motivo, setMotivo] = useState("")
+  const [working, setWorking] = useState(false)
+
+  const pct = presupuesto ? Math.min(100, Number(presupuesto.porcentaje_ejecutado)) : 0
+
+  const abrirEditar = async (row: SolicitudRow) => {
+    try {
+      const r = await obtenerRequisicion(row.id_requisicion)
+      setSolModal({ mode: "edit", initial: r })
+    } catch (e) {
+      onToast("Error", e instanceof Error ? e.message : "No se pudo cargar la solicitud")
+    }
+  }
+
+  const aprobar = async (row: SolicitudRow) => {
+    if (!window.confirm(`¿Aprobar la solicitud #${row.id}? Se revalidará el presupuesto.`)) return
+    setWorking(true)
+    try {
+      await cambiarEstadoRequisicion(row.id_requisicion, { estado: "Aprobada" })
+      onToast("Solicitud aprobada", `#${row.id} fue marcada como Aprobada.`)
+      reload()
+    } catch (e) {
+      onToast("Error", e instanceof Error ? e.message : "No se pudo aprobar")
+    } finally {
+      setWorking(false)
+    }
+  }
+
+  const cancelar = async (row: SolicitudRow) => {
+    if (!window.confirm(`¿Cancelar la solicitud #${row.id}?`)) return
+    setWorking(true)
+    try {
+      await cambiarEstadoRequisicion(row.id_requisicion, { estado: "Cancelada" })
+      onToast("Solicitud cancelada", `#${row.id} fue cancelada.`)
+      reload()
+    } catch (e) {
+      onToast("Error", e instanceof Error ? e.message : "No se pudo cancelar")
+    } finally {
+      setWorking(false)
+    }
+  }
+
+  const confirmarRechazo = async () => {
+    if (!rechazoRow || !motivo.trim()) return
+    setWorking(true)
+    try {
+      await cambiarEstadoRequisicion(rechazoRow.id_requisicion, {
+        estado: "Rechazada",
+        notas_aprobacion: motivo.trim(),
+      })
+      onToast("Solicitud rechazada", `#${rechazoRow.id} fue marcada como Rechazada.`)
+      setRechazoRow(null)
+      setMotivo("")
+      reload()
+    } catch (e) {
+      onToast("Error", e instanceof Error ? e.message : "No se pudo rechazar")
+    } finally {
+      setWorking(false)
+    }
+  }
 
   return (
     <>
@@ -49,7 +131,7 @@ export default function DependenciasView({
               </p>
             </div>
             <button
-              onClick={onNewSolicitud}
+              onClick={() => setSolModal({ mode: "create" })}
               className="flex items-center gap-2 px-5 py-2.5 text-sm font-bold text-white rounded-xl shadow-sm transition-all hover:opacity-90 shrink-0"
               style={{ backgroundColor: G }}
             >
@@ -80,25 +162,25 @@ export default function DependenciasView({
                 </button>
                 {depOpen && (
                   <div
-                    className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-xl z-[300] overflow-hidden"
+                    className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-xl z-[300] overflow-hidden max-h-64 overflow-y-auto"
                     style={{ animation: "dropIn 0.13s ease-out" }}
                   >
-                    {ALL_DEPS_NAMES.map((dep) => (
+                    {depOptions.map((dep) => (
                       <button
-                        key={dep}
+                        key={dep.id ?? "todas"}
                         onClick={() => {
-                          setDepFilter(dep)
+                          setDepFilterId(dep.id)
                           setDepOpen(false)
                           setPage(1)
                         }}
                         className="w-full flex items-center justify-between px-4 py-3 text-sm text-left transition-colors hover:bg-gray-50"
                         style={{
-                          backgroundColor: dep === depFilter ? GL : undefined,
-                          color: dep === depFilter ? G : "#374151",
+                          backgroundColor: dep.id === depFilterId ? GL : undefined,
+                          color: dep.id === depFilterId ? G : "#374151",
                         }}
                       >
-                        <span className="font-medium">{dep}</span>
-                        {dep === depFilter && (
+                        <span className="font-medium">{dep.label}</span>
+                        {dep.id === depFilterId && (
                           <span style={{ color: G }}>
                             <Icons.CheckMark />
                           </span>
@@ -119,27 +201,30 @@ export default function DependenciasView({
                   Estado de Presupuesto
                 </p>
               </div>
-              <p className="text-xs text-gray-500 leading-relaxed mb-3">
-                El presupuesto anual disponible para compras operativas presenta
-                un avance del 64%.
-              </p>
-              <div className="w-full h-2.5 bg-gray-100 rounded-full overflow-hidden">
-                <div
-                  className="h-full rounded-full transition-all duration-700"
-                  style={{ width: "64%", backgroundColor: G }}
-                />
-              </div>
-              <div className="flex justify-between mt-1.5">
-                <span
-                  className="text-[11px] font-semibold"
-                  style={{ color: G }}
-                >
-                  64% ejecutado
-                </span>
-                <span className="text-[11px] text-gray-400">
-                  Q 4.5M presupuesto
-                </span>
-              </div>
+              {presupuesto ? (
+                <>
+                  <p className="text-xs text-gray-500 leading-relaxed mb-3">
+                    El presupuesto anual disponible para compras operativas
+                    presenta un avance del {pct}%.
+                  </p>
+                  <div className="w-full h-2.5 bg-gray-100 rounded-full overflow-hidden">
+                    <div
+                      className="h-full rounded-full transition-all duration-700"
+                      style={{ width: `${pct}%`, backgroundColor: G }}
+                    />
+                  </div>
+                  <div className="flex justify-between mt-1.5">
+                    <span className="text-[11px] font-semibold" style={{ color: G }}>
+                      {pct}% ejecutado
+                    </span>
+                    <span className="text-[11px] text-gray-400">
+                      {fmtQ(presupuesto.total_asignado)} presupuesto
+                    </span>
+                  </div>
+                </>
+              ) : (
+                <p className="text-xs text-gray-400">Cargando presupuesto…</p>
+              )}
             </div>
           </div>
 
@@ -150,12 +235,8 @@ export default function DependenciasView({
               </h2>
               <div className="flex items-center gap-2">
                 <button
-                  onClick={() =>
-                    onToast(
-                      "Imprimiendo listado...",
-                      "El documento se enviará a la impresora.",
-                    )
-                  }
+                  onClick={imprimir}
+                  title="Imprimir"
                   className="w-8 h-8 flex items-center justify-center rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-50 transition-all"
                 >
                   <svg
@@ -171,12 +252,8 @@ export default function DependenciasView({
                   </svg>
                 </button>
                 <button
-                  onClick={() =>
-                    onToast(
-                      "Exportando CSV...",
-                      "El archivo se descargará en un momento.",
-                    )
-                  }
+                  onClick={exportar}
+                  title="Exportar CSV"
                   className="w-8 h-8 flex items-center justify-center rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-50 transition-all"
                 >
                   <Icons.Download />
@@ -207,12 +284,15 @@ export default function DependenciasView({
                   </tr>
                 </thead>
                 <tbody>
-                  {grouped.length === 0 ? (
+                  {loading ? (
                     <tr>
-                      <td
-                        colSpan={7}
-                        className="px-4 py-12 text-center text-sm text-gray-400"
-                      >
+                      <td colSpan={7} className="px-4 py-12 text-center text-sm text-gray-400">
+                        Cargando solicitudes…
+                      </td>
+                    </tr>
+                  ) : grouped.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} className="px-4 py-12 text-center text-sm text-gray-400">
                         Sin solicitudes para esta dependencia.
                       </td>
                     </tr>
@@ -226,10 +306,7 @@ export default function DependenciasView({
                               className="px-4 py-2.5 border-t border-b border-gray-100"
                               style={{ backgroundColor: "#F0FAF4" }}
                             >
-                              <span
-                                className="text-xs font-bold uppercase tracking-wide"
-                                style={{ color: G }}
-                              >
+                              <span className="text-xs font-bold uppercase tracking-wide" style={{ color: G }}>
                                 {g.dep}
                               </span>
                             </td>
@@ -242,18 +319,11 @@ export default function DependenciasView({
                           onMouseEnter={() => setHoveredRow(r.id)}
                           onMouseLeave={() => setHoveredRow(null)}
                           className="border-b border-gray-50 last:border-0 transition-colors"
-                          style={{
-                            backgroundColor:
-                              hoveredRow === r.id ? "#FAFFFE" : "white",
-                          }}
+                          style={{ backgroundColor: hoveredRow === r.id ? "#FAFFFE" : "white" }}
                         >
                           <td className="px-4 py-4">
-                            <p className="text-xs font-bold font-mono text-gray-700">
-                              #{r.id}
-                            </p>
-                            <p className="text-[11px] text-gray-400 mt-0.5">
-                              {r.dep}
-                            </p>
+                            <p className="text-xs font-bold font-mono text-gray-700">#{r.id}</p>
+                            <p className="text-[11px] text-gray-400 mt-0.5">{r.dep}</p>
                           </td>
                           <td className="px-4 py-4 max-w-[200px]">
                             <p className="text-sm font-medium text-gray-800 leading-snug line-clamp-2">
@@ -261,9 +331,7 @@ export default function DependenciasView({
                             </p>
                           </td>
                           <td className="px-4 py-4 whitespace-nowrap">
-                            <p className="text-sm font-semibold text-gray-700">
-                              {r.cant}
-                            </p>
+                            <p className="text-sm font-semibold text-gray-700">{r.cant}</p>
                           </td>
                           <td className="px-4 py-4">
                             <span
@@ -280,39 +348,22 @@ export default function DependenciasView({
                             </span>
                           </td>
                           <td className="px-4 py-4 whitespace-nowrap">
-                            <p className="text-sm text-gray-600 font-mono">
-                              {r.fecha}
-                            </p>
+                            <p className="text-sm text-gray-600 font-mono">{r.fecha}</p>
                           </td>
                           <td className="px-4 py-4">
                             <div className="flex items-center gap-2">
                               <button
-                                onClick={() => setDetailRow(r)}
+                                onClick={() => setDetailId(r.id_requisicion)}
                                 className="text-sm font-bold transition-colors hover:opacity-70"
                                 style={{ color: G }}
                               >
                                 Ver
                               </button>
                               <RowMenu
-                                onVer={() => setDetailRow(r)}
-                                onEditar={() =>
-                                  onToast(
-                                    "Editando solicitud",
-                                    `#${r.id} abierta para edición.`,
-                                  )
-                                }
-                                onAprobar={() =>
-                                  onToast(
-                                    "Solicitud aprobada",
-                                    `#${r.id} fue marcada como Aprobada.`,
-                                  )
-                                }
-                                onRechazar={() =>
-                                  onToast(
-                                    "Solicitud rechazada",
-                                    `#${r.id} fue marcada como Rechazada.`,
-                                  )
-                                }
+                                onVer={() => setDetailId(r.id_requisicion)}
+                                onEditar={() => abrirEditar(r)}
+                                onAprobar={() => aprobar(r)}
+                                onRechazar={() => setRechazoRow(r)}
                               />
                             </div>
                           </td>
@@ -326,13 +377,8 @@ export default function DependenciasView({
 
             <div className="flex items-center justify-between px-5 py-3.5 border-t border-gray-100 flex-wrap gap-3">
               <p className="text-xs text-gray-500">
-                Mostrando{" "}
-                <b className="text-gray-700">
-                  {Math.min((page - 1) * 5 + 1, filtered.length)}–
-                  {Math.min(page * 5, filtered.length)}
-                </b>{" "}
-                de <b className="text-gray-700">{filtered.length}</b>{" "}
-                solicitudes
+                Mostrando <b className="text-gray-700">{pageRows.length}</b> de{" "}
+                <b className="text-gray-700">{total}</b> solicitudes
               </p>
               <div className="flex items-center gap-1">
                 <button
@@ -342,22 +388,20 @@ export default function DependenciasView({
                 >
                   <Icons.ChevLeft />
                 </button>
-                {Array.from({ length: totalPages }, (_, i) => i + 1).map(
-                  (p) => (
-                    <button
-                      key={p}
-                      onClick={() => setPage(p)}
-                      className="w-7 h-7 flex items-center justify-center rounded-lg text-sm font-bold transition-all"
-                      style={
-                        p === page
-                          ? { backgroundColor: G, color: "white" }
-                          : { border: "1px solid #E5E7EB", color: "#374151" }
-                      }
-                    >
-                      {p}
-                    </button>
-                  ),
-                )}
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+                  <button
+                    key={p}
+                    onClick={() => setPage(p)}
+                    className="w-7 h-7 flex items-center justify-center rounded-lg text-sm font-bold transition-all"
+                    style={
+                      p === page
+                        ? { backgroundColor: G, color: "white" }
+                        : { border: "1px solid #E5E7EB", color: "#374151" }
+                    }
+                  >
+                    {p}
+                  </button>
+                ))}
                 <button
                   onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                   disabled={page === totalPages}
@@ -370,18 +414,20 @@ export default function DependenciasView({
           </div>
 
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            {SUMMARY_METRICS.map((m) => (
-              <div
-                key={m.title}
-                className="bg-white rounded-xl border border-gray-100 shadow-sm p-5"
-              >
-                <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">
-                  {m.title}
-                </p>
-                <p
-                  className="text-3xl font-extrabold mt-2 mb-1 leading-none"
-                  style={{ color: m.subColor }}
-                >
+            {[
+              { title: "Total Solicitudes", value: String(kpis.total), sub: "En el período", color: G },
+              {
+                title: "Pendientes",
+                value: String(kpis.pendientes),
+                sub: `Promedio ${kpis.promedioDias.toFixed(1)} días`,
+                color: "#D97706",
+              },
+              { title: "Monto Solicitado", value: `Q ${kpis.montoMes}`, sub: "Mes actual", color: "#6B7280" },
+              { title: "Ejecución", value: `${pct}%`, sub: "Meta Institucional", color: "#16A34A" },
+            ].map((m) => (
+              <div key={m.title} className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
+                <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">{m.title}</p>
+                <p className="text-3xl font-extrabold mt-2 mb-1 leading-none" style={{ color: m.color }}>
                   {m.value}
                 </p>
                 <p className="text-xs font-medium text-gray-400">{m.sub}</p>
@@ -391,15 +437,72 @@ export default function DependenciasView({
         </div>
       </div>
 
-      {detailRow && (
+      {solModal && (
+        <SolicitudModal
+          initial={solModal.mode === "edit" ? solModal.initial : null}
+          onClose={() => setSolModal(null)}
+          onSuccess={() => {
+            setSolModal(null)
+            reload()
+          }}
+          onToast={onToast}
+        />
+      )}
+
+      {detailId != null && (
         <SolicitudDetailModal
-          row={detailRow}
-          onClose={() => setDetailRow(null)}
-          onEdit={() => {
-            setDetailRow(null)
-            onNewSolicitud()
+          id={detailId}
+          onClose={() => setDetailId(null)}
+          onToast={onToast}
+          onChanged={reload}
+          onEdit={(detail) => {
+            setDetailId(null)
+            setSolModal({ mode: "edit", initial: detail })
           }}
         />
+      )}
+
+      {rechazoRow && (
+        <div
+          onClick={(e) => e.target === e.currentTarget && setRechazoRow(null)}
+          className="fixed inset-0 z-[200] flex items-center justify-center p-4"
+          style={{ backgroundColor: "rgba(0,0,0,0.4)" }}
+        >
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-md p-6">
+            <h3 className="text-base font-bold text-gray-900">
+              Motivo de rechazo · #{rechazoRow.id}
+            </h3>
+            <p className="text-xs text-gray-500 mt-1">
+              El motivo es obligatorio y quedará registrado en la bitácora.
+            </p>
+            <textarea
+              value={motivo}
+              onChange={(e) => setMotivo(e.target.value)}
+              rows={3}
+              placeholder="Escriba el motivo del rechazo…"
+              className="w-full mt-3 px-3 py-2.5 text-sm bg-gray-50 border border-gray-200 rounded-lg outline-none resize-none focus:border-green-600"
+            />
+            <div className="flex justify-end gap-3 mt-4">
+              <button
+                onClick={() => {
+                  setRechazoRow(null)
+                  setMotivo("")
+                }}
+                className="px-4 py-2 text-sm font-semibold text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50 transition-all"
+              >
+                Cancelar
+              </button>
+              <button
+                disabled={!motivo.trim() || working}
+                onClick={confirmarRechazo}
+                className="px-4 py-2 text-sm font-bold text-white rounded-lg transition-all hover:opacity-90 disabled:opacity-50"
+                style={{ backgroundColor: "#DC2626" }}
+              >
+                Rechazar
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </>
   )

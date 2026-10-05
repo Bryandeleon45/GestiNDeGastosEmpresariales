@@ -15,10 +15,12 @@ import SupportCard from "@/views/dashboard/SupportCard"
 import SupportTicketDrawer from "@/views/dashboard/SupportTicketDrawer"
 import JurisdictionModal from "@/views/dashboard/JurisdictionModal"
 import AuditModal from "@/views/auditoria/AuditModal"
-import SolicitudModal from "@/views/solicitudes/SolicitudModal"
+
 import GastosModal from "@/views/solicitudes/GastosModal"
 import DependenciasView from "@/views/solicitudes/DependenciasView"
+
 import ProveedoresView from "@/views/proveedores/ProveedoresView"
+
 import ProformasView from "@/views/proformas/ProformasView"
 import FacturacionView from "@/views/facturacion/FacturacionView"
 import BodegaView from "@/views/bodega/BodegaView"
@@ -46,7 +48,6 @@ const DASH_KPI_ICONS: Record<string, React.ReactNode> = {
 const NAV_MAIN = [
   { key: "dashboard", label: "Dashboard", Icon: Icons.Dashboard },
   { key: "dependencias", label: "Dependencias", Icon: Icons.Dependencias },
-  { key: "proveedores", label: "Proveedores", Icon: Icons.Proveedores },
   { key: "proformas", label: "Proformas", Icon: Icons.Proformas },
   { key: "facturacion", label: "Facturación", Icon: Icons.Facturacion },
   { key: "bodega", label: "Bodega", Icon: Icons.Bodega },
@@ -75,8 +76,6 @@ export default function App() {
     setSidebarCollapsed,
     mobileSidebar,
     setMobileSidebar,
-    showSolModal,
-    setShowSolModal,
     showGasModal,
     setShowGasModal,
     showAuditModal,
@@ -431,7 +430,6 @@ export default function App() {
 
           {activeNav === "dependencias" ? (
             <DependenciasView
-              onNewSolicitud={() => setShowSolModal(true)}
               onToast={(m, s) => fireToast(m, s)}
             />
           ) : activeNav === "proveedores" ? (
@@ -582,22 +580,6 @@ export default function App() {
         </div>
       </div>
 
-      {showSolModal && (
-        <SolicitudModal
-          onClose={() => setShowSolModal(false)}
-          onSubmit={() => {
-            setShowSolModal(false)
-            setTimeout(
-              () =>
-                fireToast(
-                  "Solicitud creada exitosamente",
-                  "SOL-2024-046 enviada para aprobación.",
-                ),
-              150,
-            )
-          }}
-        />
-      )}
       {showGasModal && (
         <GastosModal
           onClose={() => setShowGasModal(false)}

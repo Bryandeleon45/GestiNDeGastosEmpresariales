@@ -1,24 +1,13 @@
 import { G } from "@/constants/theme"
 import { Icons } from "@/components/common/Icons"
-import {
-  ALL_PROVEEDORES,
-  CONEXION_STYLE,
-  PROV_KPI_META,
-} from "@/models/proveedores"
+import { CONEXION_STYLE, PROV_KPI_META } from "@/models/proveedores"
 import RolCell from "@/views/proveedores/RolCell"
 import ConectarProveedorModal from "@/views/proveedores/ConectarProveedorModal"
-import RowMenu from "@/views/common/RowMenu"
 import { useProveedoresController } from "@/controllers/useProveedoresController"
 
 const KPI_ICONS: Record<string, React.ReactNode> = {
   total: (
-    <svg
-      className="w-6 h-6"
-      fill="none"
-      stroke="currentColor"
-      viewBox="0 0 24 24"
-      strokeWidth={1.8}
-    >
+    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.8}>
       <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" />
       <circle cx="9" cy="7" r="4" />
       <path d="M23 21v-2a4 4 0 00-3-3.87" />
@@ -26,25 +15,13 @@ const KPI_ICONS: Record<string, React.ReactNode> = {
     </svg>
   ),
   activos: (
-    <svg
-      className="w-6 h-6"
-      fill="none"
-      stroke="currentColor"
-      viewBox="0 0 24 24"
-      strokeWidth={1.8}
-    >
+    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.8}>
       <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
       <polyline points="9 12 11 14 15 10" />
     </svg>
   ),
   sinconexion: (
-    <svg
-      className="w-6 h-6"
-      fill="none"
-      stroke="currentColor"
-      viewBox="0 0 24 24"
-      strokeWidth={1.8}
-    >
+    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.8}>
       <line x1="1" y1="1" x2="23" y2="23" />
       <path d="M16.72 11.06A10.94 10.94 0 0119 12.55" />
       <path d="M5 12.55a10.94 10.94 0 015.17-2.39" />
@@ -55,13 +32,7 @@ const KPI_ICONS: Record<string, React.ReactNode> = {
     </svg>
   ),
   bloqueado: (
-    <svg
-      className="w-6 h-6"
-      fill="none"
-      stroke="currentColor"
-      viewBox="0 0 24 24"
-      strokeWidth={1.8}
-    >
+    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.8}>
       <rect x="3" y="11" width="18" height="11" rx="2" />
       <path d="M7 11V7a5 5 0 0110 0v4" />
     </svg>
@@ -78,27 +49,31 @@ export default function ProveedoresView({
     setTab,
     page,
     setPage,
+    q,
+    setQ,
+    loading,
+    total,
+    totalPages,
+    pageRows,
     showConectar,
     setShowConectar,
     hoveredRow,
     setHoveredRow,
-    roles,
-    setRoles,
-    filtered,
-    totalPages,
-    pageRows,
-    activos,
-  } = useProveedoresController()
+    resumen,
+    tipos,
+    rolesPortal,
+    reload,
+    cambiarRol,
+    resetClave,
+    toggleBloqueo,
+    toggleEstado,
+  } = useProveedoresController(onToast)
 
   const KPI_VALUES: Record<string, string> = {
-    total: ALL_PROVEEDORES.length.toString(),
-    activos: activos.toString(),
-    sinconexion: ALL_PROVEEDORES.filter(
-      (p) => p.estado === "Sin Conexión",
-    ).length.toString(),
-    bloqueado: ALL_PROVEEDORES.filter(
-      (p) => p.estado === "Acceso Bloqueado",
-    ).length.toString(),
+    total: String(resumen.total),
+    activos: String(resumen.activos_portal),
+    sinconexion: String(resumen.sin_conexion),
+    bloqueado: String(resumen.bloqueados),
   }
 
   return (
@@ -126,18 +101,7 @@ export default function ProveedoresView({
               className="flex items-center gap-2 px-5 py-2.5 text-sm font-bold text-white rounded-xl shadow-sm transition-all hover:opacity-90 shrink-0"
               style={{ backgroundColor: G }}
             >
-              <svg
-                className="w-4 h-4"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-                strokeWidth={2}
-              >
-                <path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2" />
-                <circle cx="9" cy="7" r="4" />
-                <line x1="19" y1="8" x2="19" y2="14" />
-                <line x1="22" y1="11" x2="16" y2="11" />
-              </svg>
+              <Icons.UserPlus />
               Conectar Nuevo Proveedor
             </button>
           </div>
@@ -186,11 +150,7 @@ export default function ProveedoresView({
                       className="px-3 py-1 text-xs font-bold rounded-full transition-all"
                       style={
                         tab === t
-                          ? {
-                              backgroundColor: G,
-                              color: "white",
-                              boxShadow: "0 1px 4px rgba(0,0,0,0.15)",
-                            }
+                          ? { backgroundColor: G, color: "white", boxShadow: "0 1px 4px rgba(0,0,0,0.15)" }
                           : { color: "#6B7280" }
                       }
                     >
@@ -199,23 +159,20 @@ export default function ProveedoresView({
                   ))}
                 </div>
               </div>
-              <button
-                className="flex items-center gap-2 text-sm font-semibold transition-colors hover:opacity-70"
-                style={{ color: G }}
-              >
-                <svg
-                  className="w-4 h-4"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                  strokeWidth={2}
-                >
-                  <line x1="4" y1="6" x2="20" y2="6" />
-                  <line x1="8" y1="12" x2="16" y2="12" />
-                  <line x1="11" y1="18" x2="13" y2="18" />
-                </svg>
-                Filtros Avanzados
-              </button>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+                  <Icons.Search />
+                </span>
+                <input
+                  value={q}
+                  onChange={(e) => {
+                    setQ(e.target.value)
+                    setPage(1)
+                  }}
+                  placeholder="Buscar por nombre o NIT…"
+                  className="w-64 pl-9 pr-3 py-2 text-sm border border-gray-200 rounded-lg outline-none focus:border-green-600 transition-colors"
+                />
+              </div>
             </div>
 
             <div className="overflow-x-auto">
@@ -239,179 +196,121 @@ export default function ProveedoresView({
                   </tr>
                 </thead>
                 <tbody>
-                  {pageRows.map((p) => {
-                    const cs = CONEXION_STYLE[p.estado]
-                    return (
-                      <tr
-                        key={p.id}
-                        onMouseEnter={() => setHoveredRow(p.id)}
-                        onMouseLeave={() => setHoveredRow(null)}
-                        className="border-b border-gray-50 last:border-0 transition-colors"
-                        style={{
-                          backgroundColor:
-                            hoveredRow === p.id ? "#F8FFFE" : "white",
-                        }}
-                      >
-                        <td className="px-4 py-4">
-                          <div className="flex items-center gap-3">
-                            <div
-                              className="w-9 h-9 rounded-lg flex items-center justify-center text-sm font-extrabold shrink-0"
-                              style={{
-                                backgroundColor: p.avatarColor,
-                                color: G,
-                              }}
-                            >
-                              {p.initials}
+                  {loading ? (
+                    <tr>
+                      <td colSpan={5} className="px-4 py-12 text-center text-sm text-gray-400">
+                        Cargando proveedores…
+                      </td>
+                    </tr>
+                  ) : pageRows.length === 0 ? (
+                    <tr>
+                      <td colSpan={5} className="px-4 py-12 text-center text-sm text-gray-400">
+                        Sin proveedores para esta vista.
+                      </td>
+                    </tr>
+                  ) : (
+                    pageRows.map((p) => {
+                      const cs = CONEXION_STYLE[p.estado]
+                      return (
+                        <tr
+                          key={p.id}
+                          onMouseEnter={() => setHoveredRow(p.id)}
+                          onMouseLeave={() => setHoveredRow(null)}
+                          className="border-b border-gray-50 last:border-0 transition-colors"
+                          style={{ backgroundColor: hoveredRow === p.id ? "#F8FFFE" : "white" }}
+                        >
+                          <td className="px-4 py-4">
+                            <div className="flex items-center gap-3">
+                              <div
+                                className="w-9 h-9 rounded-lg flex items-center justify-center text-sm font-extrabold shrink-0"
+                                style={{ backgroundColor: p.avatarColor, color: G }}
+                              >
+                                {p.initials}
+                              </div>
+                              <div>
+                                <p className="text-sm font-bold text-gray-900 leading-none">
+                                  {p.name}
+                                </p>
+                                <p className="text-[11px] text-gray-400 mt-0.5 font-mono">
+                                  NIT: {p.nit}
+                                </p>
+                              </div>
                             </div>
-                            <div>
-                              <p className="text-sm font-bold text-gray-900 leading-none">
-                                {p.name}
-                              </p>
-                              <p className="text-[11px] text-gray-400 mt-0.5 font-mono">
-                                NIT: {p.nit}
-                              </p>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="px-4 py-4">
-                          <RolCell
-                            value={roles[p.id]}
-                            onChange={(v) => {
-                              setRoles((r) => ({ ...r, [p.id]: v }))
-                              onToast("Rol actualizado", `${p.name} → ${v}`)
-                            }}
-                          />
-                        </td>
-                        <td className="px-4 py-4">
-                          <span
-                            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold whitespace-nowrap"
-                            style={{ backgroundColor: cs.bg, color: cs.text }}
-                          >
+                          </td>
+                          <td className="px-4 py-4">
+                            <RolCell
+                              rolId={p.rolId}
+                              rolLabel={p.rol}
+                              roles={rolesPortal}
+                              onChange={(idRol, label) => cambiarRol(p, idRol, label)}
+                            />
+                          </td>
+                          <td className="px-4 py-4">
                             <span
-                              className="w-1.5 h-1.5 rounded-full shrink-0"
-                              style={{ backgroundColor: cs.dot }}
-                            />
-                            {p.estado}
-                          </span>
-                        </td>
-                        <td className="px-4 py-4">
-                          <p className="text-sm text-gray-600">
-                            {p.ultimaActividad}
-                          </p>
-                          <p className="text-[11px] text-gray-400 mt-0.5">
-                            {p.categoria}
-                          </p>
-                        </td>
-                        <td className="px-4 py-4">
-                          <div className="flex items-center gap-1.5">
-                            <button
-                              title="Ver credenciales"
-                              onClick={() =>
-                                onToast(
-                                  "Credenciales",
-                                  `Acceso de ${p.name} copiado al portapapeles.`,
-                                )
-                              }
-                              className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-all"
+                              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold whitespace-nowrap"
+                              style={{ backgroundColor: cs.bg, color: cs.text }}
                             >
-                              <svg
-                                className="w-3.5 h-3.5"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
-                                strokeWidth={2}
-                              >
-                                <path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 11-7.778 7.778 5.5 5.5 0 017.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4" />
-                              </svg>
-                            </button>
-                            {p.estado === "Acceso Bloqueado" ? (
+                              <span
+                                className="w-1.5 h-1.5 rounded-full shrink-0"
+                                style={{ backgroundColor: cs.dot }}
+                              />
+                              {p.estadoLabel}
+                            </span>
+                          </td>
+                          <td className="px-4 py-4">
+                            <p className="text-sm text-gray-600">{p.ultimaActividad}</p>
+                            <p className="text-[11px] text-gray-400 mt-0.5">{p.categoria}</p>
+                          </td>
+                          <td className="px-4 py-4">
+                            <div className="flex items-center gap-1.5">
                               <button
-                                title="Desbloquear acceso"
-                                onClick={() =>
-                                  onToast(
-                                    "Acceso restaurado",
-                                    `${p.name} fue desbloqueado.`,
-                                  )
-                                }
-                                className="w-7 h-7 flex items-center justify-center rounded-lg text-emerald-600 hover:bg-emerald-50 transition-all"
+                                title="Restablecer credenciales"
+                                disabled={!p.tieneAcceso}
+                                onClick={() => resetClave(p)}
+                                className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
                               >
-                                <svg
-                                  className="w-3.5 h-3.5"
-                                  fill="none"
-                                  stroke="currentColor"
-                                  viewBox="0 0 24 24"
-                                  strokeWidth={2}
-                                >
-                                  <rect
-                                    x="3"
-                                    y="11"
-                                    width="18"
-                                    height="11"
-                                    rx="2"
-                                  />
-                                  <path d="M7 11V7a5 5 0 019.9-1" />
-                                </svg>
+                                <Icons.Key />
                               </button>
-                            ) : (
+                              {p.estado === "bloqueado" ? (
+                                <button
+                                  title="Desbloquear acceso"
+                                  onClick={() => toggleBloqueo(p)}
+                                  className="w-7 h-7 flex items-center justify-center rounded-lg text-emerald-600 hover:bg-emerald-50 transition-all"
+                                >
+                                  <Icons.ShieldCheck />
+                                </button>
+                              ) : (
+                                <button
+                                  title="Bloquear acceso"
+                                  disabled={!p.tieneAcceso}
+                                  onClick={() => toggleBloqueo(p)}
+                                  className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+                                >
+                                  <svg
+                                    className="w-3.5 h-3.5"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    viewBox="0 0 24 24"
+                                    strokeWidth={2}
+                                  >
+                                    <rect x="3" y="11" width="18" height="11" rx="2" />
+                                    <path d="M7 11V7a5 5 0 0110 0v4" />
+                                  </svg>
+                                </button>
+                              )}
                               <button
-                                title="Bloquear acceso"
-                                onClick={() =>
-                                  onToast(
-                                    "Acceso bloqueado",
-                                    `${p.name} fue bloqueado temporalmente.`,
-                                  )
-                                }
-                                className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-all"
+                                title={p.activo ? "Desactivar proveedor" : "Activar proveedor"}
+                                onClick={() => toggleEstado(p)}
+                                className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-all"
                               >
-                                <svg
-                                  className="w-3.5 h-3.5"
-                                  fill="none"
-                                  stroke="currentColor"
-                                  viewBox="0 0 24 24"
-                                  strokeWidth={2}
-                                >
-                                  <rect
-                                    x="3"
-                                    y="11"
-                                    width="18"
-                                    height="11"
-                                    rx="2"
-                                  />
-                                  <path d="M7 11V7a5 5 0 0110 0v4" />
-                                </svg>
+                                {p.activo ? <Icons.X /> : <Icons.CheckMark />}
                               </button>
-                            )}
-                            <RowMenu
-                              onVer={() =>
-                                onToast(
-                                  "Perfil del proveedor",
-                                  `${p.name} — ${p.email}`,
-                                )
-                              }
-                              onEditar={() =>
-                                onToast(
-                                  "Editando proveedor",
-                                  `${p.name} abierto para edición.`,
-                                )
-                              }
-                              onAprobar={() =>
-                                onToast(
-                                  "Acceso aprobado",
-                                  `${p.name} habilitado en el portal.`,
-                                )
-                              }
-                              onRechazar={() =>
-                                onToast(
-                                  "Acceso denegado",
-                                  `${p.name} fue desconectado.`,
-                                )
-                              }
-                            />
-                          </div>
-                        </td>
-                      </tr>
-                    )
-                  })}
+                            </div>
+                          </td>
+                        </tr>
+                      )
+                    })
+                  )}
                 </tbody>
               </table>
             </div>
@@ -419,8 +318,7 @@ export default function ProveedoresView({
             <div className="flex items-center justify-between px-5 py-3.5 border-t border-gray-100 flex-wrap gap-3">
               <p className="text-xs text-gray-500">
                 Mostrando <b className="text-gray-700">{pageRows.length}</b> de{" "}
-                <b className="text-gray-700">{ALL_PROVEEDORES.length}</b>{" "}
-                proveedores registrados
+                <b className="text-gray-700">{total}</b> proveedores registrados
               </p>
               <div className="flex items-center gap-1">
                 <button
@@ -430,22 +328,20 @@ export default function ProveedoresView({
                 >
                   <Icons.ChevLeft />
                 </button>
-                {Array.from({ length: totalPages }, (_, i) => i + 1).map(
-                  (pg) => (
-                    <button
-                      key={pg}
-                      onClick={() => setPage(pg)}
-                      className="w-7 h-7 flex items-center justify-center rounded-lg text-sm font-bold transition-all"
-                      style={
-                        pg === page
-                          ? { backgroundColor: G, color: "white" }
-                          : { border: "1px solid #E5E7EB", color: "#374151" }
-                      }
-                    >
-                      {pg}
-                    </button>
-                  ),
-                )}
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map((pg) => (
+                  <button
+                    key={pg}
+                    onClick={() => setPage(pg)}
+                    className="w-7 h-7 flex items-center justify-center rounded-lg text-sm font-bold transition-all"
+                    style={
+                      pg === page
+                        ? { backgroundColor: G, color: "white" }
+                        : { border: "1px solid #E5E7EB", color: "#374151" }
+                    }
+                  >
+                    {pg}
+                  </button>
+                ))}
                 <button
                   onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                   disabled={page === totalPages}
@@ -458,7 +354,7 @@ export default function ProveedoresView({
           </div>
 
           <p className="text-center text-[11px] text-gray-400 pb-2">
-            © 2023 Municipalidad de Panajachel — Sistema de Gestión
+            © 2026 Municipalidad de Panajachel — Sistema de Gestión
             Administrativa. Todos los derechos reservados.
           </p>
         </div>
@@ -467,17 +363,13 @@ export default function ProveedoresView({
       {showConectar && (
         <ConectarProveedorModal
           onClose={() => setShowConectar(false)}
-          onSubmit={() => {
+          onSuccess={() => {
             setShowConectar(false)
-            setTimeout(
-              () =>
-                onToast(
-                  "Proveedor conectado",
-                  "Las credenciales fueron enviadas por correo.",
-                ),
-              150,
-            )
+            reload()
           }}
+          onToast={onToast}
+          tipos={tipos}
+          rolesPortal={rolesPortal}
         />
       )}
     </>
