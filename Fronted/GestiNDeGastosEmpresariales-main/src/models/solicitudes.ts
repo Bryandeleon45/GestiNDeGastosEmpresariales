@@ -10,7 +10,6 @@ export interface SolicitudRow {
   prioridad: SolPrioridad
   estado: SolEstado
   fecha: string
-  monto: string
   solicitante: string
   justificacion: string
   codigo_requisicion: string

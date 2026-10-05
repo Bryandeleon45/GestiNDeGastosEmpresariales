@@ -15,9 +15,7 @@ import {
   cambiarEstadoRequisicion,
   type Requisicion,
 } from "@/api/requisiciones"
-
-const fmtQ = (n: number | string) =>
-  `Q ${Number(n).toLocaleString("es-GT", { minimumFractionDigits: 2 })}`
+import { puedeGestionarSolicitudes } from "@/utils/permisos"
 
 type SolModalState =
   | { mode: "create" }
@@ -46,7 +44,6 @@ export default function DependenciasView({
     pageRows,
     grouped,
     depOptions,
-    presupuesto,
     kpis,
     exportar,
     imprimir,
@@ -59,7 +56,7 @@ export default function DependenciasView({
   const [motivo, setMotivo] = useState("")
   const [working, setWorking] = useState(false)
 
-  const pct = presupuesto ? Math.min(100, Number(presupuesto.porcentaje_ejecutado)) : 0
+  const puedeGestionar = puedeGestionarSolicitudes()
 
   const abrirEditar = async (row: SolicitudRow) => {
     try {
@@ -71,7 +68,7 @@ export default function DependenciasView({
   }
 
   const aprobar = async (row: SolicitudRow) => {
-    if (!window.confirm(`¿Aprobar la solicitud #${row.id}? Se revalidará el presupuesto.`)) return
+    if (!window.confirm(`¿Aprobar la solicitud #${row.id}?`)) return
     setWorking(true)
     try {
       await cambiarEstadoRequisicion(row.id_requisicion, { estado: "Aprobada" })
@@ -190,41 +187,6 @@ export default function DependenciasView({
                   </div>
                 )}
               </div>
-            </div>
-
-            <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
-              <div className="flex items-center gap-2 mb-2">
-                <span style={{ color: G }}>
-                  <Icons.Info />
-                </span>
-                <p className="text-sm font-bold" style={{ color: G }}>
-                  Estado de Presupuesto
-                </p>
-              </div>
-              {presupuesto ? (
-                <>
-                  <p className="text-xs text-gray-500 leading-relaxed mb-3">
-                    El presupuesto anual disponible para compras operativas
-                    presenta un avance del {pct}%.
-                  </p>
-                  <div className="w-full h-2.5 bg-gray-100 rounded-full overflow-hidden">
-                    <div
-                      className="h-full rounded-full transition-all duration-700"
-                      style={{ width: `${pct}%`, backgroundColor: G }}
-                    />
-                  </div>
-                  <div className="flex justify-between mt-1.5">
-                    <span className="text-[11px] font-semibold" style={{ color: G }}>
-                      {pct}% ejecutado
-                    </span>
-                    <span className="text-[11px] text-gray-400">
-                      {fmtQ(presupuesto.total_asignado)} presupuesto
-                    </span>
-                  </div>
-                </>
-              ) : (
-                <p className="text-xs text-gray-400">Cargando presupuesto…</p>
-              )}
             </div>
           </div>
 
@@ -364,6 +326,7 @@ export default function DependenciasView({
                                 onEditar={() => abrirEditar(r)}
                                 onAprobar={() => aprobar(r)}
                                 onRechazar={() => setRechazoRow(r)}
+                                puedeGestionar={puedeGestionar}
                               />
                             </div>
                           </td>
@@ -413,7 +376,7 @@ export default function DependenciasView({
             </div>
           </div>
 
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             {[
               { title: "Total Solicitudes", value: String(kpis.total), sub: "En el período", color: G },
               {
@@ -422,8 +385,12 @@ export default function DependenciasView({
                 sub: `Promedio ${kpis.promedioDias.toFixed(1)} días`,
                 color: "#D97706",
               },
-              { title: "Monto Solicitado", value: `Q ${kpis.montoMes}`, sub: "Mes actual", color: "#6B7280" },
-              { title: "Ejecución", value: `${pct}%`, sub: "Meta Institucional", color: "#16A34A" },
+              {
+                title: "Rechazadas",
+                value: String(kpis.rechazadas),
+                sub: "Solicitudes rechazadas",
+                color: "#DC2626",
+              },
             ].map((m) => (
               <div key={m.title} className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
                 <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">{m.title}</p>

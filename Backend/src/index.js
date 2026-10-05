@@ -11,6 +11,7 @@ import menusRouter from "./routes/menus.js";
 import dependenciesRouter from "./routes/dependencies.js";
 import requisicionesRouter from "./routes/requisiciones.js";
 import proveedoresRouter from "./routes/proveedores.js";
+import proformasRouter from "./routes/proformas.js";
 import puestosRouter from "./routes/puestos.js";
 import bitacoraRouter from "./routes/bitacora.js";
 
@@ -38,6 +39,7 @@ app.use("/api/menus", menusRouter);
 app.use("/api/dependencias", dependenciesRouter);
 app.use("/api/requisiciones", requisicionesRouter);
 app.use("/api/proveedores", proveedoresRouter);
+app.use("/api/proformas", proformasRouter);
 app.use("/api/puestos", puestosRouter);
 app.use("/api/bitacora", bitacoraRouter);
 

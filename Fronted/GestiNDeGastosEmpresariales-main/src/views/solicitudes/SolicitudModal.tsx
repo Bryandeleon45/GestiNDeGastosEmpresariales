@@ -27,7 +27,6 @@ interface ItemDraft {
   descripcion_libre: string
   cantidad: string
   id_unidad_medida: number | null
-  precio_estimado: number
   insumoQuery: string
   insumoNombre: string
   insumoCodigo: string
@@ -288,10 +287,7 @@ function ItemRow({
                       {ins.nombre}
                     </p>
                     <p className="text-[11px] text-gray-400">
-                      {ins.codigo_insumo} · Q{" "}
-                      {Number(ins.precio_referencial).toLocaleString("es-GT", {
-                        minimumFractionDigits: 2,
-                      })}
+                      {ins.codigo_insumo}
                     </p>
                   </button>
                 ))}
@@ -355,7 +351,6 @@ export default function SolicitudModal({
         descripcion_libre: it.descripcion_libre ?? "",
         cantidad: String(it.cantidad ?? ""),
         id_unidad_medida: it.id_unidad_medida ?? null,
-        precio_estimado: Number(it.precio_estimado) || 0,
         insumoQuery: it.insumo_nombre
           ? `${it.insumo_nombre} (${it.codigo_insumo ?? ""})`.trim()
           : (it.descripcion_libre ?? ""),
@@ -370,7 +365,6 @@ export default function SolicitudModal({
       descripcion_libre: "",
       cantidad: "",
       id_unidad_medida: null,
-      precio_estimado: 0,
       insumoQuery: "",
       insumoNombre: "",
       insumoCodigo: "",
@@ -428,7 +422,6 @@ export default function SolicitudModal({
         descripcion_libre: "",
         cantidad: "",
         id_unidad_medida: null,
-        precio_estimado: 0,
         insumoQuery: "",
         insumoNombre: "",
         insumoCodigo: "",
@@ -444,7 +437,6 @@ export default function SolicitudModal({
       id_insumo: null,
       insumoNombre: "",
       insumoCodigo: "",
-      precio_estimado: 0,
     })
     if (!q.trim()) {
       setInsumos([])
@@ -466,7 +458,6 @@ export default function SolicitudModal({
       insumoNombre: insumo.nombre,
       insumoCodigo: insumo.codigo_insumo,
       id_unidad_medida: insumo.id_unidad_medida,
-      precio_estimado: parseFloat(insumo.precio_referencial) || 0,
       showDropdown: false,
     })
     setInsumos([])
@@ -478,7 +469,6 @@ export default function SolicitudModal({
       insumoQuery: "",
       insumoNombre: "",
       insumoCodigo: "",
-      precio_estimado: 0,
       showDropdown: false,
     })
   }
@@ -535,7 +525,6 @@ export default function SolicitudModal({
         descripcion_libre: it.descripcion_libre.trim() || null,
         id_unidad_medida: it.id_unidad_medida as number,
         cantidad: parseFloat(it.cantidad),
-        precio_estimado: it.precio_estimado,
       }))
       let idCreada: number | null = null
       if (initial) {

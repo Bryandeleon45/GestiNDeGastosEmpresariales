@@ -11,6 +11,7 @@ import {
   type Requisicion,
 } from "@/api/requisiciones"
 import { ApiError } from "@/api/client"
+import { puedeGestionarSolicitudes } from "@/utils/permisos"
 
 export default function SolicitudDetailModal({
   id,
@@ -73,7 +74,8 @@ export default function SolicitudDetailModal({
   }
 
   const estado = detail?.estado ?? "Pendiente"
-  const puedeEditar = estado === "Pendiente"
+  const puedeGestionar = puedeGestionarSolicitudes()
+  const puedeEditar = estado === "Pendiente" && puedeGestionar
 
   const acciones: Array<{ label: string; estado: string; color: string; motivo?: boolean }> = []
   if (estado === "Pendiente") {
@@ -156,21 +158,11 @@ export default function SolicitudDetailModal({
                 <div className="rounded-xl border border-gray-100 divide-y divide-gray-50">
                   {(detail.items ?? []).map((it) => (
                     <div key={it.id_detalle} className="px-4 py-3">
-                      <div className="flex items-start justify-between gap-3">
-                        <p className="text-sm font-bold text-gray-900 leading-snug">
-                          {it.insumo_nombre ?? it.descripcion_libre}
-                        </p>
-                        <p className="text-sm font-bold font-mono shrink-0" style={{ color: G }}>
-                          Q{" "}
-                          {(
-                            Number(it.cantidad) * Number(it.precio_estimado)
-                          ).toLocaleString("es-GT", { minimumFractionDigits: 2 })}
-                        </p>
-                      </div>
+                      <p className="text-sm font-bold text-gray-900 leading-snug">
+                        {it.insumo_nombre ?? it.descripcion_libre}
+                      </p>
                       <p className="text-xs text-gray-500 mt-1">
-                        {Number(it.cantidad).toLocaleString("es-GT")} {it.unidad_nombre} ·{" "}
-                        Q {Number(it.precio_estimado).toLocaleString("es-GT", { minimumFractionDigits: 2 })}{" "}
-                        c/u
+                        {Number(it.cantidad).toLocaleString("es-GT")} {it.unidad_nombre}
                         {it.observaciones ? ` · ${it.observaciones}` : ""}
                       </p>
                     </div>
@@ -299,17 +291,18 @@ export default function SolicitudDetailModal({
               </button>
             )}
             <div className="flex-1" />
-            {acciones.map((a) => (
-              <button
-                key={a.estado}
-                disabled={working}
-                onClick={() => (a.motivo ? setShowRechazo(true) : cambiarEstado(a.estado))}
-                className="px-4 py-2.5 text-sm font-bold text-white rounded-xl transition-all hover:opacity-90 shadow-sm disabled:opacity-50"
-                style={{ backgroundColor: a.color }}
-              >
-                {a.label}
-              </button>
-            ))}
+            {puedeGestionar &&
+              acciones.map((a) => (
+                <button
+                  key={a.estado}
+                  disabled={working}
+                  onClick={() => (a.motivo ? setShowRechazo(true) : cambiarEstado(a.estado))}
+                  className="px-4 py-2.5 text-sm font-bold text-white rounded-xl transition-all hover:opacity-90 shadow-sm disabled:opacity-50"
+                  style={{ backgroundColor: a.color }}
+                >
+                  {a.label}
+                </button>
+              ))}
             <button
               onClick={() => window.print()}
               className="flex items-center gap-2 px-5 py-2.5 text-sm font-bold text-white rounded-xl transition-all hover:opacity-90 shadow-sm"

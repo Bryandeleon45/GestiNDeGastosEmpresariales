@@ -7,11 +7,13 @@ export default function RowMenu({
   onEditar,
   onAprobar,
   onRechazar,
+  puedeGestionar = true,
 }: {
   onVer: () => void
   onEditar: () => void
   onAprobar: () => void
   onRechazar: () => void
+  puedeGestionar?: boolean
 }) {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
@@ -40,6 +42,7 @@ export default function RowMenu({
         setOpen(false)
       },
       color: "#374151",
+      gestion: true,
     },
     {
       label: "Aprobar",
@@ -49,6 +52,7 @@ export default function RowMenu({
         setOpen(false)
       },
       color: "#16A34A",
+      gestion: true,
     },
     {
       label: "Rechazar",
@@ -58,8 +62,10 @@ export default function RowMenu({
         setOpen(false)
       },
       color: "#DC2626",
+      gestion: true,
     },
   ]
+    .filter((it) => !it.gestion || puedeGestionar)
   return (
     <div ref={ref} className="relative">
       <button

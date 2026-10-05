@@ -8,16 +8,13 @@ import {
 } from "@/api/requisiciones"
 import {
   listarDependencias,
-  obtenerResumenPresupuesto,
-  type PresupuestoResumen,
 } from "@/api/catalogos"
 
 export interface ResumenKpis {
   total: number
   pendientes: number
+  rechazadas: number
   promedioDias: number
-  montoMes: string
-  porcentajeEjecucion: number
 }
 
 export interface DepOption {
@@ -39,7 +36,6 @@ function mapRequisicionToRow(r: Requisicion): SolicitudRow {
     prioridad: r.prioridad,
     estado: r.estado,
     fecha: new Date(r.fecha_solicitud).toLocaleDateString("es-GT"),
-    monto: `Q ${Number(r.monto_estimado).toLocaleString("es-GT", { minimumFractionDigits: 2 })}`,
     solicitante: `${r.usuario_nombre} ${r.usuario_apellido}`.trim(),
     justificacion: r.justificacion,
     codigo_requisicion: r.codigo_requisicion,
@@ -56,13 +52,11 @@ export function useDependenciasController(onToast: (m: string, s: string) => voi
   const [rows, setRows] = useState<SolicitudRow[]>([])
   const [total, setTotal] = useState(0)
   const [deps, setDeps] = useState<Array<{ id_dependencia: number; nombre_dependencia: string; siglas: string | null }>>([])
-  const [presupuesto, setPresupuesto] = useState<PresupuestoResumen | null>(null)
   const [kpis, setKpis] = useState<ResumenKpis>({
     total: 0,
     pendientes: 0,
+    rechazadas: 0,
     promedioDias: 0,
-    montoMes: "0",
-    porcentajeEjecucion: 0,
   })
   const depRef = useRef<HTMLDivElement>(null)
 
@@ -86,24 +80,14 @@ export function useDependenciasController(onToast: (m: string, s: string) => voi
     }
   }, [])
 
-  const loadPresupuesto = useCallback(async () => {
-    try {
-      const data = await obtenerResumenPresupuesto()
-      setPresupuesto(data)
-    } catch {
-      // no fatal
-    }
-  }, [])
-
   const loadKpis = useCallback(async () => {
     try {
       const data = await obtenerResumenRequisiciones({ dependencia: depFilterId ?? undefined })
       setKpis({
         total: data.total,
         pendientes: data.pendientes,
+        rechazadas: data.rechazadas,
         promedioDias: Number(data.promedio_dias_pendientes) || 0,
-        montoMes: Number(data.monto_mes_actual).toLocaleString("es-GT"),
-        porcentajeEjecucion: 0,
       })
     } catch {
       // no fatal
@@ -127,8 +111,7 @@ export function useDependenciasController(onToast: (m: string, s: string) => voi
 
   useEffect(() => {
     loadDeps()
-    loadPresupuesto()
-  }, [loadDeps, loadPresupuesto])
+  }, [loadDeps])
 
   useEffect(() => {
     loadKpis()
@@ -141,8 +124,7 @@ export function useDependenciasController(onToast: (m: string, s: string) => voi
   const reload = useCallback(() => {
     loadRows()
     loadKpis()
-    loadPresupuesto()
-  }, [loadRows, loadKpis, loadPresupuesto])
+  }, [loadRows, loadKpis])
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
   const pageRows = rows
@@ -203,7 +185,6 @@ export function useDependenciasController(onToast: (m: string, s: string) => voi
     pageRows,
     grouped,
     depOptions,
-    presupuesto,
     kpis,
     exportar,
     imprimir,
