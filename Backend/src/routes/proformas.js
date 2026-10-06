@@ -251,6 +251,85 @@ router.get("/procesos/:id", authorize("proformas"), async (req, res, next) => {
   }
 });
 
+// ── Gestionar invitaciones (agregar/quitar proveedores) ───────────────────────
+router.put("/procesos/:id/invitaciones", authorize("proformas"), async (req, res, next) => {
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+
+    const { rows: procRows } = await client.query(
+      "SELECT * FROM proceso_cotizacion WHERE id_proceso = $1",
+      [req.params.id],
+    );
+    const proceso = procRows[0];
+    if (!proceso) {
+      await client.query("ROLLBACK");
+      return res.status(404).json({ error: "Proceso no encontrado" });
+    }
+    if (proceso.fase !== "Publicada") {
+      await client.query("ROLLBACK");
+      return res.status(400).json({ error: "Solo se pueden gestionar invitaciones en fase Publicada" });
+    }
+
+    const { proveedores } = req.body;
+    if (!Array.isArray(proveedores)) {
+      await client.query("ROLLBACK");
+      return res.status(400).json({ error: "proveedores debe ser un arreglo de ids" });
+    }
+
+    const nuevoSet = new Set(proveedores.map((id) => Number(id)));
+    const actuales = await client.query(
+      "SELECT id_proveedor FROM invitacion_proveedor WHERE id_proceso = $1",
+      [proceso.id_proceso],
+    );
+    const actualSet = new Set(actuales.rows.map((r) => r.id_proveedor));
+
+    for (const id of actualSet) {
+      if (!nuevoSet.has(id)) {
+        await client.query(
+          "DELETE FROM invitacion_proveedor WHERE id_proceso = $1 AND id_proveedor = $2",
+          [proceso.id_proceso, id],
+        );
+      }
+    }
+    for (const id of nuevoSet) {
+      if (!actualSet.has(id)) {
+        await client.query(
+          "INSERT INTO invitacion_proveedor (id_proceso, id_proveedor) VALUES ($1, $2) ON CONFLICT DO NOTHING",
+          [proceso.id_proceso, id],
+        );
+      }
+    }
+
+    await client.query("COMMIT");
+
+    const { rows: invitados } = await client.query(
+      `SELECT ip.id_invitacion, ip.id_proveedor, ip.fecha_invitacion, ip.fecha_vista,
+              p.nit, p.razon_social, p.correo, p.telefono
+         FROM invitacion_proveedor ip
+         JOIN proveedor p ON p.id_proveedor = ip.id_proveedor
+        WHERE ip.id_proceso = $1
+        ORDER BY p.razon_social`,
+      [proceso.id_proceso],
+    );
+
+    await registrarBitacora({
+      idUsuario: req.user.id_usuario,
+      accion: "invitaciones_actualizadas",
+      ip: ipDe(req),
+      modulo: "Proformas",
+      detalle: `Invitaciones actualizadas en el proceso ${proceso.id_proceso}`,
+    });
+
+    res.json(invitados);
+  } catch (e) {
+    await client.query("ROLLBACK");
+    next(e);
+  } finally {
+    client.release();
+  }
+});
+
 // ── Registro manual de cotización ──────────────────────────────────────────────
 router.post("/procesos/:id/cotizaciones", authorize("proformas"), async (req, res, next) => {
   const client = await pool.connect();

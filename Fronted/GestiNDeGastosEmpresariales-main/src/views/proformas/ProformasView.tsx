@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { G, GL } from "@/constants/theme"
 import { Icons } from "@/components/common/Icons"
 import { useProformasController } from "@/controllers/useProformasController"
@@ -33,17 +33,25 @@ function fmtFecha(iso: string) {
 export default function ProformasView({
   onToast,
   onNav,
+  initialProcesoId,
+  onClearProcesoId,
 }: {
   onToast: (m: string, s: string) => void
   onNav: (key: string) => void
+  initialProcesoId?: number | null
+  onClearProcesoId?: () => void
 }) {
   const { tab, setTab, procesos, loadingProcesos, ordenes, loadingOrdenes, reload, loadOrdenes } =
     useProformasController(onToast)
 
-  const [procesoId, setProcesoId] = useState<number | null>(null)
+  const [procesoId, setProcesoId] = useState<number | null>(initialProcesoId ?? null)
   const [showPublicar, setShowPublicar] = useState(false)
   const [regCotizacionProceso, setRegCotizacionProceso] = useState<Proceso | null>(null)
   const [working, setWorking] = useState(false)
+
+  useEffect(() => {
+    if (initialProcesoId != null) setProcesoId(initialProcesoId)
+  }, [initialProcesoId])
 
   const cambiarEstadoOC = async (oc: OrdenCompra, estado: string) => {
     if (!window.confirm(`¿Cambiar la orden ${oc.numero_orden} a ${estado}?`)) return
@@ -63,7 +71,10 @@ export default function ProformasView({
     return (
       <ComparativaProformasView
         idProceso={procesoId}
-        onBack={() => setProcesoId(null)}
+        onBack={() => {
+          setProcesoId(null)
+          onClearProcesoId?.()
+        }}
         onToast={onToast}
       />
     )

@@ -102,6 +102,7 @@ export default function App() {
 
   const [currentUser, setCurrentUser] = useState(getStoredUser())
   const [mustChangePassword, setMustChangePassword] = useState(false)
+  const [proformasProcesoId, setProformasProcesoId] = useState<number | null>(null)
 
   if (screen === "login")
     return (
@@ -431,6 +432,10 @@ export default function App() {
           {activeNav === "dependencias" ? (
             <DependenciasView
               onToast={(m, s) => fireToast(m, s)}
+              onVerProceso={(id) => {
+                setProformasProcesoId(id)
+                setActiveNav("proformas")
+              }}
             />
           ) : activeNav === "proveedores" ? (
             <ProveedoresView onToast={(m, s) => fireToast(m, s)} />
@@ -438,6 +443,8 @@ export default function App() {
             <ProformasView
               onToast={(m, s) => fireToast(m, s)}
               onNav={(k) => setActiveNav(k)}
+              initialProcesoId={proformasProcesoId}
+              onClearProcesoId={() => setProformasProcesoId(null)}
             />
           ) : activeNav === "facturacion" ? (
             <FacturacionView

@@ -24,8 +24,10 @@ type SolModalState =
 
 export default function DependenciasView({
   onToast,
+  onVerProceso,
 }: {
   onToast: (m: string, s: string) => void
+  onVerProceso?: (idProceso: number) => void
 }) {
   const {
     depFilter,
@@ -234,6 +236,7 @@ export default function DependenciasView({
                       "PRIORIDAD",
                       "ESTADO",
                       "FECHA",
+                      "PROCESO / OC",
                       "ACCIONES",
                     ].map((h) => (
                       <th
@@ -248,13 +251,13 @@ export default function DependenciasView({
                 <tbody>
                   {loading ? (
                     <tr>
-                      <td colSpan={7} className="px-4 py-12 text-center text-sm text-gray-400">
+                      <td colSpan={8} className="px-4 py-12 text-center text-sm text-gray-400">
                         Cargando solicitudes…
                       </td>
                     </tr>
                   ) : grouped.length === 0 ? (
                     <tr>
-                      <td colSpan={7} className="px-4 py-12 text-center text-sm text-gray-400">
+                      <td colSpan={8} className="px-4 py-12 text-center text-sm text-gray-400">
                         Sin solicitudes para esta dependencia.
                       </td>
                     </tr>
@@ -264,7 +267,7 @@ export default function DependenciasView({
                         return (
                           <tr key={`h-${g.dep}-${g.idx}`}>
                             <td
-                              colSpan={7}
+                              colSpan={8}
                               className="px-4 py-2.5 border-t border-b border-gray-100"
                               style={{ backgroundColor: "#F0FAF4" }}
                             >
@@ -312,6 +315,32 @@ export default function DependenciasView({
                           <td className="px-4 py-4 whitespace-nowrap">
                             <p className="text-sm text-gray-600 font-mono">{r.fecha}</p>
                           </td>
+                          <td className="px-4 py-4 whitespace-nowrap">
+                            {r.fase_proceso ? (
+                              <div className="flex flex-col gap-1">
+                                <span
+                                  className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold whitespace-nowrap ${
+                                    r.fase_proceso === "Adjudicada"
+                                      ? "bg-green-50 text-green-700 border border-green-200"
+                                      : r.fase_proceso === "Desierta"
+                                        ? "bg-slate-100 text-slate-500 border border-slate-200"
+                                        : r.fase_proceso === "Comparación"
+                                          ? "bg-amber-50 text-amber-700 border border-amber-200"
+                                          : "bg-sky-50 text-sky-700 border border-sky-200"
+                                  }`}
+                                >
+                                  {r.fase_proceso}
+                                </span>
+                                {r.numero_orden && (
+                                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold whitespace-nowrap bg-purple-50 text-purple-700 border border-purple-200">
+                                    {r.numero_orden}
+                                  </span>
+                                )}
+                              </div>
+                            ) : (
+                              <span className="text-xs text-gray-300">—</span>
+                            )}
+                          </td>
                           <td className="px-4 py-4">
                             <div className="flex items-center gap-2">
                               <button
@@ -321,6 +350,15 @@ export default function DependenciasView({
                               >
                                 Ver
                               </button>
+                              {r.id_proceso != null && onVerProceso && (
+                                <button
+                                  onClick={() => onVerProceso(r.id_proceso!)}
+                                  className="text-sm font-semibold transition-colors hover:opacity-70"
+                                  style={{ color: "#7C3AED" }}
+                                >
+                                  Comparativa
+                                </button>
+                              )}
                               <RowMenu
                                 onVer={() => setDetailId(r.id_requisicion)}
                                 onEditar={() => abrirEditar(r)}

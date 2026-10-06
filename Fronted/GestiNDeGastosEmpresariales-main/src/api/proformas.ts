@@ -160,6 +160,21 @@ export function obtenerProceso(id: number | string) {
   return api.get<ProcesoDetalle>(`/proformas/procesos/${id}`)
 }
 
+export interface Invitado {
+  id_invitacion: number
+  id_proveedor: number
+  fecha_invitacion: string
+  fecha_vista: string | null
+  nit: string
+  razon_social: string
+  correo: string
+  telefono: string | null
+}
+
+export function actualizarInvitaciones(idProceso: number | string, proveedores: number[]) {
+  return api.put<Invitado[]>(`/proformas/procesos/${idProceso}/invitaciones`, { proveedores })
+}
+
 export function registrarCotizacion(
   idProceso: number | string,
   data: {

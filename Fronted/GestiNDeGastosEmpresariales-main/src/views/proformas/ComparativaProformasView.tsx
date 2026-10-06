@@ -9,6 +9,7 @@ import {
 } from "@/api/proformas"
 import { ApiError } from "@/api/client"
 import AdjudicarModal from "@/views/proformas/AdjudicarModal"
+import InvitarProveedoresModal from "@/views/proformas/InvitarProveedoresModal"
 
 const FASE_STYLE: Record<string, string> = {
   Publicada: "bg-sky-50 text-sky-700 border border-sky-200",
@@ -41,6 +42,7 @@ export default function ComparativaProformasView({
   const [winner, setWinner] = useState<number | null>(null)
   const [hoveredCol, setHoveredCol] = useState<number | null>(null)
   const [showAdjudicar, setShowAdjudicar] = useState(false)
+  const [showInvitar, setShowInvitar] = useState(false)
   const [working, setWorking] = useState(false)
 
   const cargar = async () => {
@@ -126,6 +128,13 @@ export default function ComparativaProformasView({
           </div>
           <div className="flex items-center gap-3 shrink-0">
             <button
+              onClick={onBack}
+              className="flex items-center gap-2 px-4 py-2.5 text-sm font-semibold rounded-xl border transition-all hover:bg-gray-50"
+              style={{ color: "#6B7280", borderColor: "#E5E7EB" }}
+            >
+              <Icons.ChevLeft /> Volver
+            </button>
+            <button
               onClick={() =>
                 onToast("Exportando cuadro comparativo…", "La exportación estará disponible próximamente.")
               }
@@ -134,6 +143,15 @@ export default function ComparativaProformasView({
             >
               <Icons.PDF /> Exportar Cuadro
             </button>
+            {proceso.fase === "Publicada" && (
+              <button
+                onClick={() => setShowInvitar(true)}
+                className="flex items-center gap-2 px-4 py-2.5 text-sm font-semibold rounded-xl border transition-all hover:bg-gray-50"
+                style={{ color: "#7C3AED", borderColor: "#7C3AED" }}
+              >
+                <Icons.UserPlus /> Invitar a Ofertar
+              </button>
+            )}
             {!resuelta && (
               <button
                 onClick={() => {
@@ -477,6 +495,18 @@ export default function ComparativaProformasView({
             onToast("¡Oferta adjudicada!", "Orden de compra generada correctamente.")
             cargar()
             onBack()
+          }}
+          onToast={onToast}
+        />
+      )}
+
+      {showInvitar && (
+        <InvitarProveedoresModal
+          idProceso={idProceso}
+          onClose={() => setShowInvitar(false)}
+          onSuccess={() => {
+            setShowInvitar(false)
+            cargar()
           }}
           onToast={onToast}
         />

@@ -40,6 +40,10 @@ function mapRequisicionToRow(r: Requisicion): SolicitudRow {
     justificacion: r.justificacion,
     codigo_requisicion: r.codigo_requisicion,
     id_requisicion: r.id_requisicion,
+    monto_adjudicado: r.monto_adjudicado ?? null,
+    id_proceso: r.id_proceso ?? null,
+    fase_proceso: r.fase_proceso ?? null,
+    numero_orden: r.numero_orden ?? null,
   }
 }
 

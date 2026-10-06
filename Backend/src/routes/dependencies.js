@@ -109,14 +109,14 @@ router.get("/:id/presupuesto", async (req, res, next) => {
       `SELECT pd.id_presupuesto, pd.id_dependencia, pd.id_periodo, pd.monto_asignado,
               pf.anio, pf.activo AS periodo_activo,
               COALESCE((
-                SELECT SUM(r.monto_estimado)::numeric(12,2)
+                SELECT SUM(COALESCE(r.monto_adjudicado, r.monto_estimado))::numeric(12,2)
                 FROM requisicion r
                 WHERE r.id_dependencia = pd.id_dependencia
                   AND r.id_periodo = pd.id_periodo
                   AND r.estado IN ('Aprobada', 'En Compra')
               ), 0) AS monto_ejecutado,
               (pd.monto_asignado - COALESCE((
-                SELECT SUM(r.monto_estimado)::numeric(12,2)
+                SELECT SUM(COALESCE(r.monto_adjudicado, r.monto_estimado))::numeric(12,2)
                 FROM requisicion r
                 WHERE r.id_dependencia = pd.id_dependencia
                   AND r.id_periodo = pd.id_periodo
@@ -168,14 +168,14 @@ router.get("/presupuesto/resumen", async (_req, res, next) => {
       `SELECT
           SUM(pd.monto_asignado)::numeric(12,2) AS total_asignado,
           COALESCE(SUM(
-            CASE WHEN r.estado IN ('Aprobada', 'En Compra') THEN r.monto_estimado ELSE 0 END
+            CASE WHEN r.estado IN ('Aprobada', 'En Compra') THEN COALESCE(r.monto_adjudicado, r.monto_estimado) ELSE 0 END
           )::numeric(12,2), 0) AS total_ejecutado,
           (SUM(pd.monto_asignado)::numeric(12,2) - COALESCE(SUM(
-            CASE WHEN r.estado IN ('Aprobada', 'En Compra') THEN r.monto_estimado ELSE 0 END
+            CASE WHEN r.estado IN ('Aprobada', 'En Compra') THEN COALESCE(r.monto_adjudicado, r.monto_estimado) ELSE 0 END
           )::numeric(12,2), 0)) AS total_disponible,
           CASE WHEN SUM(pd.monto_asignado) > 0
                THEN ROUND((COALESCE(SUM(
-                 CASE WHEN r.estado IN ('Aprobada', 'En Compra') THEN r.monto_estimado ELSE 0 END
+                 CASE WHEN r.estado IN ('Aprobada', 'En Compra') THEN COALESCE(r.monto_adjudicado, r.monto_estimado) ELSE 0 END
                )::numeric(12,2), 0) / SUM(pd.monto_asignado)::numeric(12,2)) * 100, 2)
                ELSE 0 END AS porcentaje_ejecutado
          FROM presupuesto_dependencia pd

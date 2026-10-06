@@ -14,6 +14,10 @@ export interface SolicitudRow {
   justificacion: string
   codigo_requisicion: string
   id_requisicion: number
+  monto_adjudicado: string | null
+  id_proceso: number | null
+  fase_proceso: string | null
+  numero_orden: string | null
 }
 
 export const PRIORIDAD_STYLE: Record<SolPrioridad, string> = {

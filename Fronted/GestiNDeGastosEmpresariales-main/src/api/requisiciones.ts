@@ -29,6 +29,10 @@ export interface Requisicion {
   id_usuario_revisor: number | null
   fecha_solicitud: string
   fecha_resolucion: string | null
+  monto_adjudicado: string | null
+  id_proceso?: number | null
+  fase_proceso?: string | null
+  numero_orden?: string | null
   nombre_dependencia: string
   siglas: string | null
   nombre_usuario: string

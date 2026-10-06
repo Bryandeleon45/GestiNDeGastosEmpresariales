@@ -104,7 +104,10 @@ router.get("/", authorize("solicitudes"), async (req, res, next) => {
                  FROM detalle_requisicion dr2
                  JOIN unidad_medida um ON um.id_unidad_medida = dr2.id_unidad_medida
                 WHERE dr2.id_requisicion = r.id_requisicion
-                ORDER BY dr2.id_detalle LIMIT 1) AS item_unidad
+                ORDER BY dr2.id_detalle LIMIT 1) AS item_unidad,
+              (SELECT pc.id_proceso FROM proceso_cotizacion pc WHERE pc.id_requisicion = r.id_requisicion LIMIT 1) AS id_proceso,
+              (SELECT pc.fase FROM proceso_cotizacion pc WHERE pc.id_requisicion = r.id_requisicion LIMIT 1) AS fase_proceso,
+              (SELECT oc.numero_orden FROM orden_compra oc WHERE oc.id_requisicion = r.id_requisicion LIMIT 1) AS numero_orden
          FROM requisicion r
          JOIN dependencia_municipal d ON d.id_dependencia = r.id_dependencia
          JOIN usuario u ON u.id_usuario = r.id_usuario
@@ -394,7 +397,7 @@ router.post("/", authorize("solicitudes"), async (req, res, next) => {
     // Validación de presupuesto disponible
     const presRes = await client.query(
       `SELECT pd.monto_asignado,
-              COALESCE((SELECT SUM(r.monto_estimado)
+              COALESCE((SELECT SUM(COALESCE(r.monto_adjudicado, r.monto_estimado))
                           FROM requisicion r
                          WHERE r.id_dependencia = pd.id_dependencia
                            AND r.id_periodo = pd.id_periodo
@@ -663,7 +666,7 @@ router.patch("/:id/estado", authorize("solicitudes"), async (req, res, next) => 
       }
       const presRes = await client.query(
         `SELECT pd.monto_asignado,
-                COALESCE((SELECT SUM(r.monto_estimado)
+                COALESCE((SELECT SUM(COALESCE(r.monto_adjudicado, r.monto_estimado))
                             FROM requisicion r
                            WHERE r.id_dependencia = pd.id_dependencia
                              AND r.id_periodo = pd.id_periodo
@@ -674,12 +677,13 @@ router.patch("/:id/estado", authorize("solicitudes"), async (req, res, next) => 
       );
       if (presRes.rows[0]) {
         const disponible = parseFloat(presRes.rows[0].monto_asignado) - parseFloat(presRes.rows[0].ejecutado);
-        if (parseFloat(current[0].monto_estimado) > disponible) {
+        const solicitado = parseFloat(current[0].monto_adjudicado ?? current[0].monto_estimado);
+        if (solicitado > disponible) {
           await client.query("ROLLBACK");
           return res.status(422).json({
             error: "Presupuesto insuficiente al aprobar",
             disponible: disponible.toFixed(2),
-            solicitado: parseFloat(current[0].monto_estimado).toFixed(2),
+            solicitado: solicitado.toFixed(2),
           });
         }
       }
