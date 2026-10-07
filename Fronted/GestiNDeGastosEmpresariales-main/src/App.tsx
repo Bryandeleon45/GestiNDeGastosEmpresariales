@@ -13,6 +13,7 @@ import StockAlertsCard from "@/views/dashboard/StockAlertsCard"
 import BrandingCard from "@/views/dashboard/BrandingCard"
 import SupportCard from "@/views/dashboard/SupportCard"
 import SupportTicketDrawer from "@/views/dashboard/SupportTicketDrawer"
+import DashboardView from "@/views/dashboard/DashboardView"
 import JurisdictionModal from "@/views/dashboard/JurisdictionModal"
 import AuditModal from "@/views/auditoria/AuditModal"
 
@@ -475,114 +476,12 @@ export default function App() {
               onAnim={setAnimEnabled}
             />
           ) : (
-            <div
-              className="flex-1 overflow-auto p-5"
-              style={{ background: thBg }}
-            >
-              <div className="flex gap-5 min-h-full">
-                <div className="flex-1 min-w-0 flex flex-col gap-5">
-                  <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
-                    {DASHBOARD_KPIS.map((k) => (
-                      <KpiCard
-                        key={k.key}
-                        title={k.title}
-                        value={k.value}
-                        sub={k.sub}
-                        subColor={k.subColor}
-                        icon={DASH_KPI_ICONS[k.key]}
-                        progress={k.progress}
-                      />
-                    ))}
-                  </div>
-                  <DashboardBarChart onBarClick={() => setShowGasModal(true)} />
-                  <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
-                    <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-                      <h2 className="text-base font-bold text-gray-900">
-                        Actividad Reciente
-                      </h2>
-                      <button
-                        onClick={() => setShowAuditModal(true)}
-                        className="text-sm font-semibold transition-colors hover:opacity-70"
-                        style={{ color: G }}
-                      >
-                        Ver Todo
-                      </button>
-                    </div>
-                    <div className="overflow-x-auto">
-                      <table className="w-full">
-                        <thead>
-                          <tr className="bg-gray-50 border-b border-gray-100">
-                            {[
-                              "NO. SOLICITUD",
-                              "DEPENDENCIA",
-                              "MONTO",
-                              "ESTADO",
-                              "ACCIÓN",
-                            ].map((h) => (
-                              <th
-                                key={h}
-                                className="px-5 py-3 text-left text-[10px] font-bold text-gray-400 uppercase tracking-wider whitespace-nowrap"
-                              >
-                                {h}
-                              </th>
-                            ))}
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {ACTIVITY.map((row) => (
-                            <tr
-                              key={row.sol}
-                              className="border-b border-gray-50 hover:bg-gray-50/60 transition-colors"
-                            >
-                              <td className="px-5 py-3.5 text-sm font-semibold text-gray-900 font-mono">
-                                {row.sol}
-                              </td>
-                              <td className="px-5 py-3.5 text-sm text-gray-700">
-                                {row.dep}
-                              </td>
-                              <td className="px-5 py-3.5 text-sm font-semibold text-gray-900 font-mono whitespace-nowrap">
-                                {row.monto}
-                              </td>
-                              <td className="px-5 py-3.5">
-                                <span
-                                  className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${STATUS_BADGE[row.status]}`}
-                                >
-                                  {row.status}
-                                </span>
-                              </td>
-                              <td className="px-5 py-3.5">
-                                <button
-                                  className="p-1.5 rounded-lg transition-colors hover:opacity-70"
-                                  style={{ color: G }}
-                                >
-                                  <Icons.Eye />
-                                </button>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="w-60 shrink-0 flex-col gap-4 hidden lg:flex">
-                  <StockAlertsCard
-                    onRestock={(itemName) => {
-                      const msg = itemName
-                        ? `Orden generada para: ${itemName}`
-                        : "Orden de reabastecimiento generada para ítems críticos"
-                      fireToast(
-                        msg,
-                        "La solicitud fue enviada a bodega central.",
-                      )
-                    }}
-                  />
-                  <BrandingCard onOpenMap={() => setShowMapModal(true)} />
-                  <SupportCard onOpenTicket={() => setShowTicketDrawer(true)} />
-                </div>
-              </div>
-            </div>
+            <DashboardView
+              onToast={fireToast}
+              onNav={(k) => setActiveNav(k)}
+              onOpenMap={() => setShowMapModal(true)}
+              onOpenTicket={() => setShowTicketDrawer(true)}
+            />
           )}
         </div>
       </div>

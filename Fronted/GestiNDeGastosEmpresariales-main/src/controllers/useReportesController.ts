@@ -1,48 +1,85 @@
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useCallback } from "react"
 import {
-  CHART_DATA_BY_MONTH,
-  DEPTO_ROWS,
-  type DeptoEstado,
-} from "@/models/reportes"
+  listarReportes,
+  obtenerOpcionesFiltros,
+  obtenerReporte,
+  exportarReporte,
+  type ReporteCatalogo,
+  type ReporteData,
+  type OpcionesFiltros,
+  type FiltrosReporte,
+} from "@/api/reportes"
 
-export function useReportesController() {
-  const [month, setMonth] = useState("Octubre 2023")
-  const [showMonthDD, setShowMonthDD] = useState(false)
-  const [showFiltrar, setShowFiltrar] = useState(false)
-  const [estadoFilter, setEstadoFilter] = useState<DeptoEstado | "Todos">(
-    "Todos",
-  )
-  const [hoveredBar, setHoveredBar] = useState<number | null>(null)
-  const monthDDRef = useRef<HTMLDivElement>(null)
+export function useReportesController(onToast: (m: string, s: string) => void) {
+  const [catalogo, setCatalogo] = useState<ReporteCatalogo[]>([])
+  const [opciones, setOpciones] = useState<OpcionesFiltros | null>(null)
+  const [resumen, setResumen] = useState<ReporteData | null>(null)
+  const [codigo, setCodigo] = useState<string | null>(null)
+  const [data, setData] = useState<ReporteData | null>(null)
+  const [filtros, setFiltros] = useState<FiltrosReporte>({})
+  const [loading, setLoading] = useState(false)
 
   useEffect(() => {
-    const h = (e: MouseEvent) => {
-      if (monthDDRef.current && !monthDDRef.current.contains(e.target as Node))
-        setShowMonthDD(false)
-    }
-    document.addEventListener("mousedown", h)
-    return () => document.removeEventListener("mousedown", h)
+    listarReportes().then(setCatalogo).catch(() => {})
+    obtenerOpcionesFiltros().then(setOpciones).catch(() => {})
+    obtenerReporte("RPT-11").then(setResumen).catch(() => {})
   }, [])
 
-  const chartData = CHART_DATA_BY_MONTH[month]
-  const filteredRows =
-    estadoFilter === "Todos"
-      ? DEPTO_ROWS
-      : DEPTO_ROWS.filter((r) => r.estado === estadoFilter)
+  const cargar = useCallback(
+    async (cod: string, f: FiltrosReporte) => {
+      setLoading(true)
+      try {
+        setData(await obtenerReporte(cod, f))
+      } catch (e) {
+        onToast("Error", e instanceof Error ? e.message : "No se pudo cargar el reporte")
+      } finally {
+        setLoading(false)
+      }
+    },
+    [onToast],
+  )
+
+  const seleccionar = (cod: string | null) => {
+    setCodigo(cod)
+    setFiltros({})
+    if (cod) {
+      cargar(cod, {})
+    } else {
+      setData(null)
+    }
+  }
+
+  const aplicarFiltros = (f: FiltrosReporte) => {
+    setFiltros(f)
+    if (codigo) cargar(codigo, f)
+  }
+
+  const exportar = async () => {
+    if (!codigo) return
+    try {
+      const blob = await exportarReporte(codigo, filtros)
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      a.href = url
+      a.download = `reporte_${codigo}.csv`
+      a.click()
+      window.URL.revokeObjectURL(url)
+      onToast("Exportado", "El archivo CSV se descargó correctamente.")
+    } catch (e) {
+      onToast("Error", e instanceof Error ? e.message : "No se pudo exportar")
+    }
+  }
 
   return {
-    month,
-    setMonth,
-    showMonthDD,
-    setShowMonthDD,
-    showFiltrar,
-    setShowFiltrar,
-    estadoFilter,
-    setEstadoFilter,
-    hoveredBar,
-    setHoveredBar,
-    monthDDRef,
-    chartData,
-    filteredRows,
+    catalogo,
+    opciones,
+    resumen,
+    codigo,
+    data,
+    filtros,
+    loading,
+    seleccionar,
+    aplicarFiltros,
+    exportar,
   }
 }

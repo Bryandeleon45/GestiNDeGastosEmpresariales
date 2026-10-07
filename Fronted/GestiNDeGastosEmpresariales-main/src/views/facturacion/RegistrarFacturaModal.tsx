@@ -46,7 +46,7 @@ export default function RegistrarFacturaModal({
     if (oc.plazo_credito_dias != null) setPlazo(String(oc.plazo_credito_dias))
   }
 
-  const disponible = ocSel ? Number(ocSel.monto_total) - Number(ocSel.total_facturado) : 0
+  const disponible = ocSel ? Number(ocSel.recibido_valorizado) - Number(ocSel.total_facturado) : 0
 
   const enviar = async () => {
     if (idOC == null) {
@@ -123,7 +123,7 @@ export default function RegistrarFacturaModal({
               <option value="" disabled>Seleccione la orden de compra…</option>
               {ocs.map((o) => (
                 <option key={o.id_orden_compra} value={o.id_orden_compra}>
-                  {o.numero_orden} · {o.razon_social} ({fmt(Number(o.monto_total) - Number(o.total_facturado))} disponible)
+                  {o.numero_orden} · {o.razon_social} ({fmt(Number(o.recibido_valorizado) - Number(o.total_facturado))} disponible)
                 </option>
               ))}
             </select>

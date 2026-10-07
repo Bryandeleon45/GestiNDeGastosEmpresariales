@@ -1,9 +1,35 @@
+import { useState } from "react"
 import { G } from "@/constants/theme"
 import { Icons } from "@/components/common/Icons"
-import { OC_ITEMS, HIST_ENTRIES, STOCK_ALERTAS, RESUMEN_MENSUAL } from "@/models/bodega"
-import NuevaRecepcionModal from "@/views/bodega/NuevaRecepcionModal"
-import FinalizarIngresoModal from "@/views/bodega/FinalizarIngresoModal"
 import { useBodegaController } from "@/controllers/useBodegaController"
+import { type Recepcion } from "@/api/bodega"
+import NuevaRecepcionModal from "@/views/bodega/NuevaRecepcionModal"
+import VerificarRecepcionModal from "@/views/bodega/VerificarRecepcionModal"
+
+const ESTADO_REC_STYLE: Record<string, { bg: string; color: string }> = {
+  "En Proceso": { bg: "#DCFCE7", color: "#16A34A" },
+  Completa: { bg: "#DCFCE7", color: "#16A34A" },
+  Parcial: { bg: "#FEF9C3", color: "#854D0E" },
+  "Con Novedades": { bg: "#FEE2E2", color: "#DC2626" },
+  Cancelada: { bg: "#F1F5F9", color: "#64748B" },
+}
+
+const ALERTA_STYLE: Record<string, { bg: string; color: string }> = {
+  Crítico: { bg: "#FEE2E2", color: "#DC2626" },
+  Bajo: { bg: "#FEF9C3", color: "#854D0E" },
+  OK: { bg: "#DCFCE7", color: "#16A34A" },
+}
+
+const TIPO_KARDEX_STYLE: Record<string, string> = {
+  Entrada: "bg-green-50 text-green-700 border border-green-200",
+  Salida: "bg-red-50 text-red-600 border border-red-200",
+  Ajuste: "bg-amber-50 text-amber-700 border border-amber-200",
+}
+
+function fmtFecha(iso: string) {
+  if (!iso) return "—"
+  return new Date(iso).toLocaleString("es-GT", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })
+}
 
 export default function BodegaView({
   onToast,
@@ -11,14 +37,20 @@ export default function BodegaView({
   onToast: (m: string, s: string) => void
 }) {
   const {
-    verifStates,
-    setVerif,
-    showNuevaRec,
-    setShowNuevaRec,
-    showFinalizar,
-    setShowFinalizar,
-    allVerified,
-  } = useBodegaController()
+    tab,
+    setTab,
+    inventario,
+    alertas,
+    recepciones,
+    kardex,
+    resumen,
+    loadingInventario,
+    loadingRecepciones,
+    reload,
+  } = useBodegaController(onToast)
+
+  const [showNuevaRec, setShowNuevaRec] = useState(false)
+  const [verifRecepcion, setVerifRecepcion] = useState<Recepcion | null>(null)
 
   return (
     <>
@@ -45,50 +77,32 @@ export default function BodegaView({
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
               <div className="flex items-center justify-between mb-4">
-                <p className="text-base font-extrabold text-gray-900">
-                  Alertas de Stock
-                </p>
-                <svg
-                  className="w-5 h-5 text-amber-500"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                  strokeWidth={2}
-                >
-                  <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
-                  <line x1="12" y1="9" x2="12" y2="13" />
-                  <line x1="12" y1="17" x2="12.01" y2="17" />
-                </svg>
+                <p className="text-base font-extrabold text-gray-900">Alertas de Stock</p>
+                <Icons.Warning />
               </div>
               <div className="space-y-2.5">
-                {STOCK_ALERTAS.map((a) => (
-                  <div
-                    key={a.name}
-                    className="flex items-center gap-3 px-3 py-2.5 rounded-xl border border-gray-100 bg-gray-50"
-                  >
-                    <span className="text-lg shrink-0">{a.icon}</span>
+                {alertas.length === 0 && (
+                  <p className="text-sm text-gray-400 py-4 text-center">Sin alertas de stock.</p>
+                )}
+                {alertas.slice(0, 5).map((a) => (
+                  <div key={a.id_insumo} className="flex items-center gap-3 px-3 py-2.5 rounded-xl border border-gray-100 bg-gray-50">
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-bold text-gray-900 leading-none">
-                        {a.name}
+                      <p className="text-sm font-bold text-gray-900 leading-none">{a.nombre}</p>
+                      <p className="text-xs text-gray-500 mt-0.5">
+                        {a.codigo_insumo} · Stock {a.stock_actual} / Mín {a.stock_minimo}
                       </p>
-                      <p className="text-xs text-gray-500 mt-0.5">{a.sub}</p>
                     </div>
                     <span
                       className="text-xs font-bold px-2.5 py-1 rounded-full shrink-0"
-                      style={{ backgroundColor: a.bg, color: a.color }}
+                      style={{ backgroundColor: ALERTA_STYLE[a.alerta].bg, color: ALERTA_STYLE[a.alerta].color }}
                     >
-                      {a.badge}
+                      {a.alerta}
                     </span>
                   </div>
                 ))}
               </div>
               <button
-                onClick={() =>
-                  onToast(
-                    "Inventario completo",
-                    "Cargando vista de inventario detallado...",
-                  )
-                }
+                onClick={() => setTab("inventario")}
                 className="mt-4 w-full py-2.5 text-sm font-bold rounded-xl border-2 transition-all hover:bg-green-50 active:scale-95"
                 style={{ color: G, borderColor: G }}
               >
@@ -97,300 +111,202 @@ export default function BodegaView({
             </div>
 
             <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
-              <div className="flex items-center justify-between mb-4">
-                <p className="text-base font-extrabold text-gray-900">
-                  Resumen Mensual
-                </p>
-                <p className="text-sm font-semibold text-gray-400">
-                  Octubre 2023
-                </p>
-              </div>
+              <p className="text-base font-extrabold text-gray-900 mb-4">Resumen</p>
               <div className="grid grid-cols-3 divide-x divide-gray-100 mt-2">
-                {RESUMEN_MENSUAL.map((s) => (
-                  <div
-                    key={s.label}
-                    className="flex flex-col items-center px-3 py-3 text-center"
-                  >
-                    <p
-                      className="text-4xl font-extrabold font-mono leading-none"
-                      style={{ color: s.color }}
-                    >
+                {[
+                  { label: "Recepciones", value: resumen?.recepciones ?? 0, color: G },
+                  { label: "En Proceso", value: resumen?.en_proceso ?? 0, color: "#D97706" },
+                  { label: "Alertas Stock", value: resumen?.alertas_stock ?? 0, color: "#DC2626" },
+                ].map((s) => (
+                  <div key={s.label} className="flex flex-col items-center px-3 py-3 text-center">
+                    <p className="text-4xl font-extrabold font-mono leading-none" style={{ color: s.color }}>
                       {s.value}
                     </p>
-                    <p className="text-xs text-gray-500 mt-2 leading-snug">
-                      {s.label}
-                    </p>
+                    <p className="text-xs text-gray-500 mt-2 leading-snug">{s.label}</p>
                   </div>
                 ))}
               </div>
             </div>
           </div>
 
-          <div className="flex gap-5 items-start flex-wrap xl:flex-nowrap">
-            <div className="bg-white rounded-xl border border-gray-100 shadow-sm flex-1 min-w-0 overflow-hidden">
-              <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 flex-wrap gap-2">
-                <div>
-                  <p className="text-sm font-extrabold text-gray-900">
-                    Recepción de Pedido: OC-2023-045
-                  </p>
-                  <p className="text-xs text-gray-500 mt-0.5">
-                    Proveedor: Papelería del Lago S.A.
-                  </p>
-                </div>
-                <span
-                  className="text-xs font-bold px-3 py-1 rounded-full"
-                  style={{ backgroundColor: "#DCFCE7", color: "#16A34A" }}
-                >
-                  EN PROCESO
-                </span>
-              </div>
-
-              <div
-                className="grid grid-cols-[1fr_auto_1fr] px-5 py-3 border-b border-gray-100"
-                style={{ backgroundColor: "#F9FAFB" }}
+          <div className="flex items-center gap-2">
+            {(["recepciones", "inventario", "kardex"] as const).map((t) => (
+              <button
+                key={t}
+                onClick={() => setTab(t)}
+                className="px-4 py-2 text-sm font-bold rounded-xl transition-all"
+                style={tab === t ? { backgroundColor: G, color: "white" } : { color: "#6B7280", border: "1px solid #E5E7EB", backgroundColor: "white" }}
               >
-                <p className="text-[10px] font-extrabold text-gray-400 uppercase tracking-widest">
-                  Producto / Insumo
-                </p>
-                <p className="text-[10px] font-extrabold text-gray-400 uppercase tracking-widest text-center px-6">
-                  Esperado
-                </p>
-                <p className="text-[10px] font-extrabold text-gray-400 uppercase tracking-widest text-right">
-                  Acciones de Verificación
-                </p>
-              </div>
-
-              {OC_ITEMS.map((item) => {
-                const state = verifStates[item.id] ?? null
-                return (
-                  <div
-                    key={item.id}
-                    className="grid grid-cols-[1fr_auto_1fr] px-5 py-4 border-b border-gray-50 last:border-b-0 items-center transition-colors"
-                    style={{
-                      backgroundColor:
-                        state === "RECIBIDO"
-                          ? "#F0FDF4"
-                          : state === "RECHAZADO"
-                            ? "#FFF5F5"
-                            : state === "FALTANTE"
-                              ? "#FFFBEB"
-                              : undefined,
-                    }}
-                  >
-                    <div>
-                      <p className="text-sm font-bold text-gray-900 leading-snug">
-                        {item.name}
-                      </p>
-                      <p className="text-[11px] text-gray-400 mt-0.5">
-                        {item.sku}
-                      </p>
-                    </div>
-                    <p
-                      className="text-sm font-extrabold px-6 font-mono"
-                      style={{ color: G }}
-                    >
-                      {item.esperado}
-                    </p>
-                    <div className="flex items-center justify-end gap-2 flex-wrap">
-                      <button
-                        onClick={() => setVerif(item.id, "RECIBIDO")}
-                        className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg transition-all active:scale-95"
-                        style={
-                          state === "RECIBIDO"
-                            ? { backgroundColor: G, color: "white" }
-                            : {
-                                backgroundColor: "white",
-                                color: G,
-                                border: `1.5px solid ${G}`,
-                              }
-                        }
-                      >
-                        <svg
-                          className="w-3.5 h-3.5"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                          strokeWidth={2.5}
-                        >
-                          <polyline points="20 6 9 17 4 12" />
-                        </svg>
-                        Recibido
-                      </button>
-                      <button
-                        onClick={() => setVerif(item.id, "RECHAZADO")}
-                        className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg transition-all active:scale-95"
-                        style={
-                          state === "RECHAZADO"
-                            ? { backgroundColor: "#DC2626", color: "white" }
-                            : {
-                                backgroundColor: "white",
-                                color: "#DC2626",
-                                border: "1.5px solid #DC2626",
-                              }
-                        }
-                      >
-                        <svg
-                          className="w-3.5 h-3.5"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                          strokeWidth={2.5}
-                        >
-                          <line x1="18" y1="6" x2="6" y2="18" />
-                          <line x1="6" y1="6" x2="18" y2="18" />
-                        </svg>
-                        Rechazar
-                      </button>
-                      <button
-                        onClick={() => setVerif(item.id, "FALTANTE")}
-                        className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg transition-all active:scale-95"
-                        style={
-                          state === "FALTANTE"
-                            ? { backgroundColor: "#D97706", color: "white" }
-                            : {
-                                backgroundColor: "white",
-                                color: "#6B7280",
-                                border: "1.5px solid #D1D5DB",
-                              }
-                        }
-                      >
-                        <svg
-                          className="w-3.5 h-3.5"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                          strokeWidth={2.5}
-                        >
-                          <circle cx="12" cy="12" r="10" />
-                          <line x1="12" y1="8" x2="12" y2="12" />
-                          <line x1="12" y1="16" x2="12.01" y2="16" />
-                        </svg>
-                        Faltante
-                      </button>
-                    </div>
-                  </div>
-                )
-              })}
-
-              <div className="flex items-center justify-between px-5 py-4 border-t border-gray-100 bg-gray-50">
-                <button className="text-sm font-semibold text-gray-500 hover:text-gray-700 transition-colors">
-                  Cancelar Recepción
-                </button>
-                <button
-                  onClick={() => {
-                    if (!allVerified) {
-                      onToast(
-                        "Verifica todos los ítems",
-                        "Marca cada ítem como Recibido, Rechazado o Faltante.",
-                      )
-                      return
-                    }
-                    setShowFinalizar(true)
-                  }}
-                  className="flex items-center gap-2 px-5 py-2.5 text-sm font-bold text-white rounded-xl shadow-sm transition-all hover:opacity-90 active:scale-95"
-                  style={{ backgroundColor: G, opacity: allVerified ? 1 : 0.6 }}
-                >
-                  <svg
-                    className="w-4 h-4"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                    strokeWidth={2}
-                  >
-                    <path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v14a2 2 0 01-2 2z" />
-                    <polyline points="17 21 17 13 7 13 7 21" />
-                    <polyline points="7 3 7 8 15 8" />
-                  </svg>
-                  Finalizar y Cargar a Inventario
-                </button>
-              </div>
-            </div>
-
-            <div className="bg-white rounded-xl border border-gray-100 shadow-sm w-full xl:w-72 shrink-0 overflow-hidden">
-              <p className="px-5 pt-5 pb-3 text-base font-extrabold text-gray-900 border-b border-gray-100">
-                Historial Reciente
-              </p>
-              <div className="divide-y divide-gray-50">
-                {HIST_ENTRIES.map((h) => {
-                  const isRechazo = h.estado === "CON RECHAZO"
-                  return (
-                    <div
-                      key={h.id}
-                      className="px-5 py-4 hover:bg-gray-50 transition-colors"
-                    >
-                      <div className="flex items-center justify-between gap-2 mb-1">
-                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide leading-none">
-                          {h.fecha}
-                        </p>
-                        <span
-                          className="text-[10px] font-extrabold px-2 py-0.5 rounded-full shrink-0"
-                          style={
-                            isRechazo
-                              ? { backgroundColor: "#FEE2E2", color: "#DC2626" }
-                              : { backgroundColor: "#DCFCE7", color: "#16A34A" }
-                          }
-                        >
-                          {h.estado}
-                        </span>
-                      </div>
-                      <p className="text-sm font-bold text-gray-900 leading-snug mt-1">
-                        {h.empresa}
-                      </p>
-                      <p className="text-xs text-gray-500 mt-0.5 leading-relaxed">
-                        {h.oc} | {h.detalle}
-                      </p>
-                      <button
-                        onClick={() =>
-                          onToast(h.link, `Cargando detalles de ${h.oc}...`)
-                        }
-                        className="flex items-center gap-1.5 text-xs font-semibold mt-2 transition-colors hover:opacity-70"
-                        style={{ color: G }}
-                      >
-                        <svg
-                          className="w-3.5 h-3.5"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                          strokeWidth={2}
-                        >
-                          <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-                          <circle cx="12" cy="12" r="3" />
-                        </svg>
-                        {h.link}
-                      </button>
-                    </div>
-                  )
-                })}
-              </div>
-              <div className="px-5 py-4 border-t border-gray-100">
-                <button
-                  onClick={() =>
-                    onToast(
-                      "Historial completo",
-                      "Cargando historial de todas las recepciones...",
-                    )
-                  }
-                  className="w-full text-xs font-extrabold uppercase tracking-widest transition-colors hover:opacity-70"
-                  style={{ color: G }}
-                >
-                  Ver Historial Completo
-                </button>
-              </div>
-            </div>
+                {t === "recepciones" ? "Recepciones" : t === "inventario" ? "Inventario" : "Kardex"}
+              </button>
+            ))}
           </div>
+
+          {tab === "recepciones" && (
+            <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+              <div className="px-5 py-4 border-b border-gray-100">
+                <h2 className="text-base font-bold" style={{ color: G }}>Historial de Recepciones</h2>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-gray-100">
+                      {["COMPROBANTE", "ORDEN", "PROVEEDOR", "FECHA", "ESTADO", "ACCIONES"].map((h) => (
+                        <th key={h} className="px-4 py-3 text-left text-[10px] font-bold text-gray-400 uppercase tracking-wider whitespace-nowrap bg-gray-50">
+                          {h}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {loadingRecepciones ? (
+                      <tr><td colSpan={6} className="px-4 py-12 text-center text-sm text-gray-400">Cargando recepciones…</td></tr>
+                    ) : recepciones.length === 0 ? (
+                      <tr><td colSpan={6} className="px-4 py-12 text-center text-sm text-gray-400">Sin recepciones registradas.</td></tr>
+                    ) : (
+                      recepciones.map((r) => {
+                        const est = ESTADO_REC_STYLE[r.estado] ?? { bg: "#F1F5F9", color: "#64748B" }
+                        return (
+                          <tr key={r.id_recepcion} className="border-b border-gray-50 last:border-0 hover:bg-gray-50/60 transition-colors">
+                            <td className="px-4 py-4"><p className="text-xs font-bold font-mono text-gray-700">{r.numero_comprobante}</p></td>
+                            <td className="px-4 py-4"><p className="text-xs font-mono text-gray-600">{r.numero_orden}</p></td>
+                            <td className="px-4 py-4"><p className="text-sm font-medium text-gray-800">{r.razon_social}</p></td>
+                            <td className="px-4 py-4 whitespace-nowrap"><p className="text-sm text-gray-600 font-mono">{fmtFecha(r.fecha_recepcion)}</p></td>
+                            <td className="px-4 py-4">
+                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold whitespace-nowrap" style={{ backgroundColor: est.bg, color: est.color }}>
+                                {r.estado}
+                              </span>
+                            </td>
+                            <td className="px-4 py-4">
+                              {r.estado === "En Proceso" ? (
+                                <button onClick={() => setVerifRecepcion(r)} className="text-sm font-bold transition-colors hover:opacity-70" style={{ color: G }}>
+                                  Verificar
+                                </button>
+                              ) : (
+                                <button onClick={() => onToast("Recepción", `Comprobante ${r.numero_comprobante} (${r.estado}).`)} className="text-sm font-semibold text-gray-500 hover:text-gray-800 transition-colors">
+                                  Ver
+                                </button>
+                              )}
+                            </td>
+                          </tr>
+                        )
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {tab === "inventario" && (
+            <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+              <div className="px-5 py-4 border-b border-gray-100">
+                <h2 className="text-base font-bold" style={{ color: G }}>Inventario de Insumos</h2>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-gray-100">
+                      {["CÓDIGO", "INSUMO", "CATEGORÍA", "STOCK", "MÍNIMO", "ESTADO"].map((h) => (
+                        <th key={h} className="px-4 py-3 text-left text-[10px] font-bold text-gray-400 uppercase tracking-wider whitespace-nowrap bg-gray-50">
+                          {h}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {loadingInventario ? (
+                      <tr><td colSpan={6} className="px-4 py-12 text-center text-sm text-gray-400">Cargando inventario…</td></tr>
+                    ) : inventario.length === 0 ? (
+                      <tr><td colSpan={6} className="px-4 py-12 text-center text-sm text-gray-400">Sin insumos en inventario.</td></tr>
+                    ) : (
+                      inventario.map((inv) => {
+                        const al = ALERTA_STYLE[inv.alerta] ?? ALERTA_STYLE.OK
+                        return (
+                          <tr key={inv.id_insumo} className="border-b border-gray-50 last:border-0 hover:bg-gray-50/60 transition-colors">
+                            <td className="px-4 py-4"><p className="text-xs font-mono font-bold text-gray-700">{inv.codigo_insumo}</p></td>
+                            <td className="px-4 py-4"><p className="text-sm font-medium text-gray-800">{inv.nombre}</p></td>
+                            <td className="px-4 py-4"><p className="text-sm text-gray-600">{inv.categoria}</p></td>
+                            <td className="px-4 py-4"><p className="text-sm font-bold font-mono text-gray-900">{inv.stock_actual} {inv.unidad_simbolo}</p></td>
+                            <td className="px-4 py-4"><p className="text-sm text-gray-600">{inv.stock_minimo}</p></td>
+                            <td className="px-4 py-4">
+                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold whitespace-nowrap" style={{ backgroundColor: al.bg, color: al.color }}>
+                                {inv.alerta}
+                              </span>
+                            </td>
+                          </tr>
+                        )
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {tab === "kardex" && (
+            <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+              <div className="px-5 py-4 border-b border-gray-100">
+                <h2 className="text-base font-bold" style={{ color: G }}>Kardex de Movimientos</h2>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-gray-100">
+                      {["FECHA", "INSUMO", "TIPO", "CANT.", "ANTERIOR", "ACTUAL", "USUARIO"].map((h) => (
+                        <th key={h} className="px-4 py-3 text-left text-[10px] font-bold text-gray-400 uppercase tracking-wider whitespace-nowrap bg-gray-50">
+                          {h}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {kardex.length === 0 ? (
+                      <tr><td colSpan={7} className="px-4 py-12 text-center text-sm text-gray-400">Sin movimientos de kardex.</td></tr>
+                    ) : (
+                      kardex.map((k) => (
+                        <tr key={k.id_kardex} className="border-b border-gray-50 last:border-0 hover:bg-gray-50/60 transition-colors">
+                          <td className="px-4 py-4 whitespace-nowrap"><p className="text-sm text-gray-600 font-mono">{fmtFecha(k.fecha_movimiento)}</p></td>
+                          <td className="px-4 py-4"><p className="text-sm font-medium text-gray-800">{k.insumo_nombre}</p></td>
+                          <td className="px-4 py-4">
+                            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold whitespace-nowrap ${TIPO_KARDEX_STYLE[k.tipo_movimiento]}`}>
+                              {k.tipo_movimiento}
+                            </span>
+                          </td>
+                          <td className="px-4 py-4"><p className="text-sm font-bold font-mono text-gray-900">{k.cantidad}</p></td>
+                          <td className="px-4 py-4"><p className="text-sm text-gray-600">{k.stock_anterior}</p></td>
+                          <td className="px-4 py-4"><p className="text-sm font-bold text-gray-900">{k.stock_actual}</p></td>
+                          <td className="px-4 py-4"><p className="text-sm text-gray-600">{k.nombre_usuario}</p></td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
       {showNuevaRec && (
         <NuevaRecepcionModal
           onClose={() => setShowNuevaRec(false)}
+          onSuccess={(recepcion) => {
+            setShowNuevaRec(false)
+            reload()
+            setVerifRecepcion(recepcion)
+          }}
           onToast={onToast}
         />
       )}
-      {showFinalizar && (
-        <FinalizarIngresoModal
-          states={verifStates}
-          onClose={() => setShowFinalizar(false)}
+      {verifRecepcion && (
+        <VerificarRecepcionModal
+          recepcion={verifRecepcion}
+          onClose={() => setVerifRecepcion(null)}
+          onChanged={() => {
+            setVerifRecepcion(null)
+            reload()
+          }}
           onToast={onToast}
         />
       )}

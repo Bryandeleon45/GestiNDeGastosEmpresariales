@@ -40,6 +40,7 @@ export interface OrdenCompraFacturable {
   nit: string
   razon_social: string
   total_facturado: string
+  recibido_valorizado: string
 }
 
 export interface Partida {

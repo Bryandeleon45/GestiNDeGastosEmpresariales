@@ -83,7 +83,13 @@ router.get("/facturas/ordenes-compra", authorize("facturacion"), async (_req, re
       `SELECT oc.id_orden_compra, oc.numero_orden, oc.monto_total, oc.fecha_emision,
               oc.plazo_credito_dias, p.id_proveedor, p.nit, p.razon_social,
               (SELECT COALESCE(SUM(f.monto_total), 0) FROM factura f
-                WHERE f.id_orden_compra = oc.id_orden_compra AND f.estado <> 'Rechazada') AS total_facturado
+                WHERE f.id_orden_compra = oc.id_orden_compra AND f.estado <> 'Rechazada') AS total_facturado,
+              (SELECT COALESCE(SUM(drb.cantidad_aceptada * doc.precio_unitario), 0)
+                 FROM recepcion_bodega rb
+                 JOIN detalle_recepcion_bodega drb ON drb.id_recepcion = rb.id_recepcion
+                 JOIN detalle_orden_compra doc ON doc.id_detalle_orden = drb.id_detalle_orden
+                WHERE rb.id_orden_compra = oc.id_orden_compra
+                  AND rb.estado IN ('Completa','Parcial','Con Novedades')) AS recibido_valorizado
          FROM orden_compra oc
          JOIN proveedor p ON p.id_proveedor = oc.id_proveedor
         WHERE oc.estado IN ('Aprobada', 'Enviada', 'Entregada')
@@ -269,18 +275,32 @@ router.post("/facturas", authorize("facturacion"), async (req, res, next) => {
       return res.status(409).json({ error: "Ya existe una factura con esa serie y número" });
     }
 
-    // Monto: no superar lo ya facturado + esta factura vs el monto de la OC
+    // Monto: no superar lo ya facturado + esta factura vs lo recibido en bodega
     const facturadoRes = await client.query(
       "SELECT COALESCE(SUM(monto_total), 0) AS total FROM factura WHERE id_orden_compra = $1 AND estado <> 'Rechazada'",
       [id_orden_compra],
     );
+    const recibidoRes = await client.query(
+      `SELECT COALESCE(SUM(drb.cantidad_aceptada * doc.precio_unitario), 0) AS recibido
+         FROM recepcion_bodega rb
+         JOIN detalle_recepcion_bodega drb ON drb.id_recepcion = rb.id_recepcion
+         JOIN detalle_orden_compra doc ON doc.id_detalle_orden = drb.id_detalle_orden
+        WHERE rb.id_orden_compra = $1
+          AND rb.estado IN ('Completa','Parcial','Con Novedades')`,
+      [id_orden_compra],
+    );
     const facturado = parseFloat(facturadoRes.rows[0].total);
+    const recibido = parseFloat(recibidoRes.rows[0].recibido);
     const nuevo = parseFloat(monto_total);
-    if (facturado + nuevo > parseFloat(oc.monto_total) + 0.001) {
+    if (recibido <= 0) {
+      await client.query("ROLLBACK");
+      return res.status(422).json({ error: "No hay recepción de bodega registrada para esta orden de compra" });
+    }
+    if (facturado + nuevo > recibido + 0.001) {
       await client.query("ROLLBACK");
       return res.status(422).json({
-        error: "El monto facturado supera el monto de la orden de compra",
-        disponible: (parseFloat(oc.monto_total) - facturado).toFixed(2),
+        error: "El monto facturado supera lo recibido en bodega",
+        disponible: (recibido - facturado).toFixed(2),
       });
     }
 
