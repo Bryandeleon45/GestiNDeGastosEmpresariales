@@ -88,6 +88,22 @@
 }
 .sidebar-drawer.open { transform: translateX(0); }
 
+/* Right-to-left slide-in drawer */
+@keyframes drawerInRight {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+@keyframes drawerFade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.drawer-right {
+  animation: drawerInRight 0.28s cubic-bezier(.16,1,.3,1);
+}
+.drawer-backdrop {
+  animation: drawerFade 0.2s ease-out;
+}
+
 /* Collapsed icon-only sidebar (tablet) */
 .sidebar-collapsed { width: 56px !important; }
 .sidebar-collapsed .nav-label,

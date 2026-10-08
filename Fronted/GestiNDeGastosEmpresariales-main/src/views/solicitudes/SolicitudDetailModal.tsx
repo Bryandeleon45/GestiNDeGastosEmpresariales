@@ -29,9 +29,8 @@ export default function SolicitudDetailModal({
   const [detail, setDetail] = useState<Requisicion | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [motivo, setMotivo] = useState("")
-  const [showRechazo, setShowRechazo] = useState(false)
   const [working, setWorking] = useState(false)
+  const [pdfPreview, setPdfPreview] = useState<number | null>(null)
   const overlayRef = useRef<HTMLDivElement>(null)
 
   const cargar = async () => {
@@ -59,8 +58,6 @@ export default function SolicitudDetailModal({
         "Estado actualizado",
         `La solicitud pasó a ${estado}.`,
       )
-      setShowRechazo(false)
-      setMotivo("")
       await cargar()
       onChanged()
     } catch (e) {
@@ -80,12 +77,7 @@ export default function SolicitudDetailModal({
   const acciones: Array<{ label: string; estado: string; color: string; motivo?: boolean }> = []
   if (estado === "Pendiente") {
     acciones.push({ label: "Enviar a Revisión", estado: "En Revisión", color: "#0EA5E9" })
-    acciones.push({ label: "Aprobar", estado: "Aprobada", color: "#16A34A" })
-    acciones.push({ label: "Rechazar", estado: "Rechazada", color: "#DC2626", motivo: true })
     acciones.push({ label: "Cancelar", estado: "Cancelada", color: "#6B7280" })
-  } else if (estado === "En Revisión") {
-    acciones.push({ label: "Aprobar", estado: "Aprobada", color: "#16A34A" })
-    acciones.push({ label: "Rechazar", estado: "Rechazada", color: "#DC2626", motivo: true })
   } else if (estado === "Aprobada") {
     acciones.push({ label: "Enviar a Compra", estado: "En Compra", color: "#7C3AED" })
   }
@@ -175,15 +167,36 @@ export default function SolicitudDetailModal({
                   <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">
                     Solicitudes Autorizadas ({detail.imagenes.length})
                   </p>
-                  <div className="grid grid-cols-3 gap-3">
-                    {detail.imagenes.map((img) => (
-                      <img
-                        key={img.id_imagen}
-                        src={img.contenido_base64}
-                        alt={img.nombre_archivo}
-                        className="w-full h-28 object-cover rounded-lg border border-gray-200"
-                      />
-                    ))}
+                  <div className="space-y-2">
+                    {detail.imagenes.map((img) => {
+                      const abierto = pdfPreview === img.id_imagen
+                      return (
+                        <div key={img.id_imagen} className="rounded-lg border border-gray-200 bg-gray-50 overflow-hidden">
+                          <button
+                            type="button"
+                            onClick={() => setPdfPreview(abierto ? null : img.id_imagen)}
+                            className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-gray-100 transition-colors"
+                          >
+                            <span className="text-gray-500 shrink-0">
+                              <Icons.PDF />
+                            </span>
+                            <span className="flex-1 min-w-0 text-left text-sm font-medium text-gray-800 truncate">
+                              {img.nombre_archivo}
+                            </span>
+                            <span className="text-xs font-bold shrink-0" style={{ color: G }}>
+                              {abierto ? "Cerrar" : "Ver"}
+                            </span>
+                          </button>
+                          {abierto && (
+                            <iframe
+                              src={img.contenido_base64}
+                              title={img.nombre_archivo}
+                              className="w-full h-80 border-t border-gray-200 bg-white"
+                            />
+                          )}
+                        </div>
+                      )
+                    })}
                   </div>
                 </div>
               )}
@@ -296,7 +309,7 @@ export default function SolicitudDetailModal({
                 <button
                   key={a.estado}
                   disabled={working}
-                  onClick={() => (a.motivo ? setShowRechazo(true) : cambiarEstado(a.estado))}
+                  onClick={() => cambiarEstado(a.estado)}
                   className="px-4 py-2.5 text-sm font-bold text-white rounded-xl transition-all hover:opacity-90 shadow-sm disabled:opacity-50"
                   style={{ backgroundColor: a.color }}
                 >
@@ -313,44 +326,6 @@ export default function SolicitudDetailModal({
           </div>
         )}
       </div>
-
-      {showRechazo && (
-        <div
-          onClick={(e) => e.target === overlayRef.current && setShowRechazo(false)}
-          className="fixed inset-0 z-[200] flex items-center justify-center p-4"
-          style={{ backgroundColor: "rgba(0,0,0,0.4)" }}
-        >
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-md p-6">
-            <h3 className="text-base font-bold text-gray-900">Motivo de rechazo</h3>
-            <p className="text-xs text-gray-500 mt-1">
-              El motivo es obligatorio y quedará registrado en la bitácora.
-            </p>
-            <textarea
-              value={motivo}
-              onChange={(e) => setMotivo(e.target.value)}
-              rows={3}
-              placeholder="Escriba el motivo del rechazo…"
-              className="w-full mt-3 px-3 py-2.5 text-sm bg-gray-50 border border-gray-200 rounded-lg outline-none resize-none focus:border-green-600"
-            />
-            <div className="flex justify-end gap-3 mt-4">
-              <button
-                onClick={() => setShowRechazo(false)}
-                className="px-4 py-2 text-sm font-semibold text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50 transition-all"
-              >
-                Cancelar
-              </button>
-              <button
-                disabled={!motivo.trim() || working}
-                onClick={() => cambiarEstado("Rechazada", motivo.trim())}
-                className="px-4 py-2 text-sm font-bold text-white rounded-lg transition-all hover:opacity-90 disabled:opacity-50"
-                style={{ backgroundColor: "#DC2626" }}
-              >
-                Rechazar
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   )
 }

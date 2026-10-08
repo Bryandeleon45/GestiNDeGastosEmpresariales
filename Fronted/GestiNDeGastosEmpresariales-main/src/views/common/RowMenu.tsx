@@ -5,14 +5,10 @@ import { Icons } from "@/components/common/Icons"
 export default function RowMenu({
   onVer,
   onEditar,
-  onAprobar,
-  onRechazar,
   puedeGestionar = true,
 }: {
   onVer: () => void
   onEditar: () => void
-  onAprobar: () => void
-  onRechazar: () => void
   puedeGestionar?: boolean
 }) {
   const [open, setOpen] = useState(false)
@@ -42,26 +38,6 @@ export default function RowMenu({
         setOpen(false)
       },
       color: "#374151",
-      gestion: true,
-    },
-    {
-      label: "Aprobar",
-      icon: <Icons.CheckMark />,
-      action: () => {
-        onAprobar()
-        setOpen(false)
-      },
-      color: "#16A34A",
-      gestion: true,
-    },
-    {
-      label: "Rechazar",
-      icon: <Icons.X />,
-      action: () => {
-        onRechazar()
-        setOpen(false)
-      },
-      color: "#DC2626",
       gestion: true,
     },
   ]

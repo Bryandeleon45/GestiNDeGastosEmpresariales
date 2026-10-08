@@ -478,9 +478,14 @@ export default function SolicitudModal({
     if (!files) return
     const newImages: { file: File; preview: string }[] = []
     Array.from(files).forEach((file) => {
-      if (file.type.startsWith("image/")) {
+      const esPdf =
+        file.type === "application/pdf" ||
+        file.name.toLowerCase().endsWith(".pdf")
+      if (esPdf) {
         const preview = URL.createObjectURL(file)
         newImages.push({ file, preview })
+      } else {
+        onToast("Archivo omitido", `${file.name} no es PDF.`)
       }
     })
     setImagenes((prev) => [...prev, ...newImages])
@@ -554,7 +559,7 @@ export default function SolicitudModal({
           imagenes.map((img) =>
             fileToBase64(img.file).then((contenido_base64) => ({
               nombre_archivo: img.file.name,
-              mime_type: img.file.type || "image/jpeg",
+              mime_type: "application/pdf",
               contenido_base64,
             })),
           ),
@@ -679,13 +684,13 @@ export default function SolicitudModal({
 
           <div>
             <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1.5">
-              Solicitudes Autorizadas (Imágenes)
+              Solicitudes Autorizadas (PDF)
             </label>
             <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center hover:border-green-500 transition-colors">
               <input
                 ref={fileInputRef}
                 type="file"
-                accept="image/*"
+                accept="application/pdf,.pdf"
                 multiple
                 onChange={handleImageUpload}
                 className="hidden"
@@ -702,26 +707,39 @@ export default function SolicitudModal({
                   <Icons.CirclePlus />
                 </div>
                 <p className="text-sm text-gray-600">
-                  Click para subir imágenes de solicitudes autorizadas
+                  Click para subir PDF de solicitudes autorizadas
                 </p>
                 <p className="text-xs text-gray-400">
-                  PNG, JPG, JPEG (máx. 5MB cada una)
+                  Solo PDF (máx. 10MB cada uno)
                 </p>
               </label>
             </div>
             {imagenes.length > 0 && (
-              <div className="grid grid-cols-3 gap-3 mt-3">
+              <div className="space-y-2 mt-3">
                 {imagenes.map((img, idx) => (
-                  <div key={idx} className="relative group">
-                    <img
-                      src={img.preview}
-                      alt={`Solicitud ${idx + 1}`}
-                      className="w-full h-24 object-cover rounded-lg border border-gray-200"
-                    />
+                  <div
+                    key={idx}
+                    className="flex items-center gap-3 px-3 py-2 rounded-lg border border-gray-200 bg-gray-50"
+                  >
+                    <span className="text-gray-500 shrink-0">
+                      <Icons.PDF />
+                    </span>
+                    <span className="flex-1 min-w-0 text-sm text-gray-700 truncate">
+                      {img.file.name}
+                    </span>
+                    <a
+                      href={img.preview}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs font-bold shrink-0"
+                      style={{ color: G }}
+                    >
+                      Ver
+                    </a>
                     <button
                       type="button"
                       onClick={() => removeImage(idx)}
-                      className="absolute top-1 right-1 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                      className="w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center shrink-0 hover:bg-red-600 transition-colors"
                     >
                       <Icons.X />
                     </button>

@@ -1,10 +1,10 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { G, GL } from "@/constants/theme"
 import { Icons } from "@/components/common/Icons"
 import MunicipalSeal from "@/components/common/MunicipalSeal"
 import { DashboardBarChart } from "@/components/charts/DashboardCharts"
-import { ACTIVITY, STATUS_BADGE, DASHBOARD_KPIS } from "@/models/dashboard"
 import { useAppController } from "@/controllers/useAppController"
+import { obtenerResumenDashboard, type DashboardKpis } from "@/api/dashboard"
 
 import SearchBar from "@/views/dashboard/SearchBar"
 import NotificationBell from "@/views/dashboard/NotificationBell"
@@ -104,6 +104,13 @@ export default function App() {
   const [currentUser, setCurrentUser] = useState(getStoredUser())
   const [mustChangePassword, setMustChangePassword] = useState(false)
   const [proformasProcesoId, setProformasProcesoId] = useState<number | null>(null)
+  const [headerKpis, setHeaderKpis] = useState<DashboardKpis | null>(null)
+
+  useEffect(() => {
+    obtenerResumenDashboard()
+      .then((res) => setHeaderKpis(res.kpis))
+      .catch(() => {})
+  }, [])
 
   if (screen === "login")
     return (
@@ -373,10 +380,12 @@ export default function App() {
                     className="text-2xl font-extrabold"
                     style={{ color: thText }}
                   >
-                    1,248
+                    {headerKpis?.total_solicitudes?.toLocaleString("es-GT") ?? "—"}
                   </span>
                   <span className="text-xs font-semibold text-emerald-500">
-                    +8% este mes
+                    {headerKpis?.solicitudes_variacion == null
+                      ? "sin variación"
+                      : `${headerKpis.solicitudes_variacion >= 0 ? "+" : ""}${headerKpis.solicitudes_variacion}% este mes`}
                   </span>
                 </div>
               </div>
@@ -396,7 +405,7 @@ export default function App() {
                     className="text-2xl font-extrabold"
                     style={{ color: thText }}
                   >
-                    64.5%
+                    {headerKpis ? `${headerKpis.presupuesto_ejecutado}%` : "—"}
                   </span>
                   <div
                     className="flex-1 h-2 rounded-full overflow-hidden"
@@ -404,7 +413,10 @@ export default function App() {
                   >
                     <div
                       className="h-full rounded-full"
-                      style={{ width: "64.5%", backgroundColor: ac }}
+                      style={{
+                        width: `${Math.min(100, headerKpis?.presupuesto_ejecutado ?? 0)}%`,
+                        backgroundColor: ac,
+                      }}
                     />
                   </div>
                 </div>

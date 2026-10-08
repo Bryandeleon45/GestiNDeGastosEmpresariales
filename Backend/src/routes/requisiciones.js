@@ -12,6 +12,7 @@ router.use(authenticate);
 const ROLES_GLOBALES = [
   "Administrador General",
   "Encargado de Compras",
+  "Encargado de Almacén",
   "DAFIM",
   "Alcalde Municipal",
 ];
@@ -470,7 +471,7 @@ router.post("/", authorize("solicitudes"), async (req, res, next) => {
   }
 });
 
-// ── Imágenes de la requisición ────────────────────────────────────────────────
+// ── Documentos PDF de la requisición ──────────────────────────────────────────
 router.post("/:id/imagenes", authorize("solicitudes"), async (req, res, next) => {
   const client = await pool.connect();
   try {
@@ -495,27 +496,32 @@ router.post("/:id/imagenes", authorize("solicitudes"), async (req, res, next) =>
     const { imagenes } = req.body;
     if (!Array.isArray(imagenes) || !imagenes.length) {
       await client.query("ROLLBACK");
-      return res.status(400).json({ error: "Debe incluir al menos una imagen" });
+      return res.status(400).json({ error: "Debe incluir al menos un documento" });
     }
 
-    const MAX_BYTES = 5 * 1024 * 1024; // 5 MB por imagen
+    const MAX_BYTES = 10 * 1024 * 1024; // 10 MB por PDF
     for (const img of imagenes) {
+      const mime = (img?.mime_type || "").toLowerCase();
+      if (mime !== "application/pdf") {
+        await client.query("ROLLBACK");
+        return res.status(400).json({ error: "Solo se permiten archivos PDF" });
+      }
       const contenido = img?.contenido_base64;
       if (!contenido || typeof contenido !== "string") {
         await client.query("ROLLBACK");
-        return res.status(400).json({ error: "Cada imagen requiere contenido_base64" });
+        return res.status(400).json({ error: "Cada documento requiere contenido_base64" });
       }
       if (Buffer.byteLength(contenido, "utf8") > MAX_BYTES) {
         await client.query("ROLLBACK");
-        return res.status(400).json({ error: "Cada imagen no debe superar 5 MB" });
+        return res.status(400).json({ error: "Cada PDF no debe superar 10 MB" });
       }
       await client.query(
         `INSERT INTO requisicion_imagen (id_requisicion, nombre_archivo, mime_type, contenido_base64)
          VALUES ($1, $2, $3, $4)`,
         [
           req.params.id,
-          img.nombre_archivo ?? "imagen",
-          img.mime_type ?? "image/jpeg",
+          img.nombre_archivo ?? "documento.pdf",
+          "application/pdf",
           contenido,
         ],
       );

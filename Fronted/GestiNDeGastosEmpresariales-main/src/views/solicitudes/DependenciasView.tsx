@@ -12,7 +12,6 @@ import SolicitudModal from "@/views/solicitudes/SolicitudModal"
 import { useDependenciasController } from "@/controllers/useDependenciasController"
 import {
   obtenerRequisicion,
-  cambiarEstadoRequisicion,
   type Requisicion,
 } from "@/api/requisiciones"
 import { puedeGestionarSolicitudes } from "@/utils/permisos"
@@ -54,9 +53,6 @@ export default function DependenciasView({
 
   const [solModal, setSolModal] = useState<SolModalState>(null)
   const [detailId, setDetailId] = useState<number | null>(null)
-  const [rechazoRow, setRechazoRow] = useState<SolicitudRow | null>(null)
-  const [motivo, setMotivo] = useState("")
-  const [working, setWorking] = useState(false)
 
   const puedeGestionar = puedeGestionarSolicitudes()
 
@@ -66,53 +62,6 @@ export default function DependenciasView({
       setSolModal({ mode: "edit", initial: r })
     } catch (e) {
       onToast("Error", e instanceof Error ? e.message : "No se pudo cargar la solicitud")
-    }
-  }
-
-  const aprobar = async (row: SolicitudRow) => {
-    if (!window.confirm(`¿Aprobar la solicitud #${row.id}?`)) return
-    setWorking(true)
-    try {
-      await cambiarEstadoRequisicion(row.id_requisicion, { estado: "Aprobada" })
-      onToast("Solicitud aprobada", `#${row.id} fue marcada como Aprobada.`)
-      reload()
-    } catch (e) {
-      onToast("Error", e instanceof Error ? e.message : "No se pudo aprobar")
-    } finally {
-      setWorking(false)
-    }
-  }
-
-  const cancelar = async (row: SolicitudRow) => {
-    if (!window.confirm(`¿Cancelar la solicitud #${row.id}?`)) return
-    setWorking(true)
-    try {
-      await cambiarEstadoRequisicion(row.id_requisicion, { estado: "Cancelada" })
-      onToast("Solicitud cancelada", `#${row.id} fue cancelada.`)
-      reload()
-    } catch (e) {
-      onToast("Error", e instanceof Error ? e.message : "No se pudo cancelar")
-    } finally {
-      setWorking(false)
-    }
-  }
-
-  const confirmarRechazo = async () => {
-    if (!rechazoRow || !motivo.trim()) return
-    setWorking(true)
-    try {
-      await cambiarEstadoRequisicion(rechazoRow.id_requisicion, {
-        estado: "Rechazada",
-        notas_aprobacion: motivo.trim(),
-      })
-      onToast("Solicitud rechazada", `#${rechazoRow.id} fue marcada como Rechazada.`)
-      setRechazoRow(null)
-      setMotivo("")
-      reload()
-    } catch (e) {
-      onToast("Error", e instanceof Error ? e.message : "No se pudo rechazar")
-    } finally {
-      setWorking(false)
     }
   }
 
@@ -362,8 +311,6 @@ export default function DependenciasView({
                               <RowMenu
                                 onVer={() => setDetailId(r.id_requisicion)}
                                 onEditar={() => abrirEditar(r)}
-                                onAprobar={() => aprobar(r)}
-                                onRechazar={() => setRechazoRow(r)}
                                 puedeGestionar={puedeGestionar}
                               />
                             </div>
@@ -465,49 +412,6 @@ export default function DependenciasView({
             setSolModal({ mode: "edit", initial: detail })
           }}
         />
-      )}
-
-      {rechazoRow && (
-        <div
-          onClick={(e) => e.target === e.currentTarget && setRechazoRow(null)}
-          className="fixed inset-0 z-[200] flex items-center justify-center p-4"
-          style={{ backgroundColor: "rgba(0,0,0,0.4)" }}
-        >
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-md p-6">
-            <h3 className="text-base font-bold text-gray-900">
-              Motivo de rechazo · #{rechazoRow.id}
-            </h3>
-            <p className="text-xs text-gray-500 mt-1">
-              El motivo es obligatorio y quedará registrado en la bitácora.
-            </p>
-            <textarea
-              value={motivo}
-              onChange={(e) => setMotivo(e.target.value)}
-              rows={3}
-              placeholder="Escriba el motivo del rechazo…"
-              className="w-full mt-3 px-3 py-2.5 text-sm bg-gray-50 border border-gray-200 rounded-lg outline-none resize-none focus:border-green-600"
-            />
-            <div className="flex justify-end gap-3 mt-4">
-              <button
-                onClick={() => {
-                  setRechazoRow(null)
-                  setMotivo("")
-                }}
-                className="px-4 py-2 text-sm font-semibold text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50 transition-all"
-              >
-                Cancelar
-              </button>
-              <button
-                disabled={!motivo.trim() || working}
-                onClick={confirmarRechazo}
-                className="px-4 py-2 text-sm font-bold text-white rounded-lg transition-all hover:opacity-90 disabled:opacity-50"
-                style={{ backgroundColor: "#DC2626" }}
-              >
-                Rechazar
-              </button>
-            </div>
-          </div>
-        </div>
       )}
     </>
   )

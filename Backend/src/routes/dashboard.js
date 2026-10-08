@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { pool } from "../db.js";
 import { authenticate } from "../middlewares/authenticate.js";
+import { resumenPresupuesto } from "../services/presupuesto.service.js";
 
 const router = Router();
 
@@ -26,12 +27,27 @@ router.get("/resumen", async (req, res, next) => {
              AND NOT EXISTS (SELECT 1 FROM orden_pago op WHERE op.id_factura = f.id_factura AND op.estado <> 'Anulada')) AS facturas_por_pagar,
          (SELECT COUNT(*)::int FROM vale_salida WHERE estado = 'Pendiente') AS vales_pendientes,
          (SELECT COUNT(*)::int FROM proveedor WHERE activo = TRUE) AS proveedores_activos,
-         (SELECT COALESCE(SUM(monto_total), 0)::numeric(12,2) FROM orden_compra WHERE estado <> 'Cancelada') AS compras_comprometidas`,
+         (SELECT COALESCE(SUM(monto_total), 0)::numeric(12,2) FROM orden_compra WHERE estado <> 'Cancelada') AS compras_comprometidas,
+         (SELECT COUNT(*)::int FROM requisicion
+           WHERE date_trunc('month', fecha_solicitud) = date_trunc('month', CURRENT_DATE)) AS solicitudes_mes,
+         (SELECT COUNT(*)::int FROM requisicion
+           WHERE date_trunc('month', fecha_solicitud) = date_trunc('month', CURRENT_DATE - INTERVAL '1 month')) AS solicitudes_mes_anterior`,
       [fi, ff],
     );
+    const presupuesto = await resumenPresupuesto();
+    const mes = rows[0].solicitudes_mes ?? 0;
+    const mesAnterior = rows[0].solicitudes_mes_anterior ?? 0;
+    const variacion = mesAnterior > 0 ? Math.round(((mes - mesAnterior) / mesAnterior) * 100) : null;
     res.json({
       generadoEn: new Date().toISOString(),
-      kpis: rows[0],
+      kpis: {
+        ...rows[0],
+        solicitudes_variacion: variacion,
+        presupuesto_asignado: presupuesto.asignado,
+        presupuesto_comprometido: presupuesto.comprometido,
+        presupuesto_pagado: presupuesto.pagado,
+        presupuesto_ejecutado: presupuesto.ejecutado_pct,
+      },
     });
   } catch (e) {
     next(e);

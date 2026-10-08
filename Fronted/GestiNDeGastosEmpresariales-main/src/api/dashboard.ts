@@ -11,6 +11,13 @@ export interface DashboardKpis {
   vales_pendientes: number
   proveedores_activos: number
   compras_comprometidas: string
+  solicitudes_mes: number
+  solicitudes_mes_anterior: number
+  solicitudes_variacion: number | null
+  presupuesto_asignado: number
+  presupuesto_comprometido: number
+  presupuesto_pagado: number
+  presupuesto_ejecutado: number
 }
 
 export interface DashboardResumen {

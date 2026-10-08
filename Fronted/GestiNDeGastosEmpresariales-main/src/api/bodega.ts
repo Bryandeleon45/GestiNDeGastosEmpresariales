@@ -93,6 +93,24 @@ export interface ResumenBodega {
   alertas_stock: number
 }
 
+export interface ValeSalida {
+  id_vale_salida: number
+  id_dependencia: number
+  id_usuario_solicitante: number
+  id_usuario_autoriza: number | null
+  fecha_salida: string
+  justificacion: string | null
+  estado: "Pendiente" | "Autorizado" | "Entregado" | "Cancelado"
+  nombre_dependencia?: string
+  nombre_usuario?: string
+}
+
+export interface ValeItemInput {
+  id_insumo: number
+  cantidad: number
+  observacion?: string
+}
+
 export function listarBodegas() {
   return api.get<Bodega[]>("/bodegas")
 }
@@ -147,4 +165,24 @@ export function listarKardex(params: { insumoId?: number } = {}) {
 
 export function obtenerResumenBodega() {
   return api.get<ResumenBodega>("/resumen")
+}
+
+export function listarValesSalida() {
+  return api.get<ValeSalida[]>("/vales-salida")
+}
+
+export function crearValeSalida(data: { id_dependencia: number; justificacion?: string; items: ValeItemInput[] }) {
+  return api.post<ValeSalida>("/vales-salida", data)
+}
+
+export function autorizarValeSalida(id: number | string) {
+  return api.patch<ValeSalida>(`/vales-salida/${id}/autorizar`)
+}
+
+export function entregarValeSalida(id: number | string) {
+  return api.patch<{ ok: boolean }>(`/vales-salida/${id}/entregar`)
+}
+
+export function cancelarValeSalida(id: number | string) {
+  return api.patch<ValeSalida>(`/vales-salida/${id}/cancelar`)
 }
