@@ -201,6 +201,22 @@ export function adjudicarProceso(idProceso: number | string, data: { id_cotizaci
   return api.post<{ orden: OrdenCompra }>(`/proformas/procesos/${idProceso}/adjudicar`, data)
 }
 
+export interface AutoAdjudicacionResult {
+  orden: OrdenCompra
+  cotizacion: Cotizacion
+  analisis: {
+    total_ofertas: number
+    proveedor_ganador: string
+    nit: string
+    monto: string
+    motivo: string
+  }
+}
+
+export function autoAdjudicarProceso(idProceso: number | string) {
+  return api.post<AutoAdjudicacionResult>(`/proformas/procesos/${idProceso}/auto-adjudicar`)
+}
+
 export function declararDesierto(idProceso: number | string, motivo_adjudicacion: string) {
   return api.post<Proceso>(`/proformas/procesos/${idProceso}/desierto`, { motivo_adjudicacion })
 }

@@ -389,38 +389,6 @@ export default function App() {
                   </span>
                 </div>
               </div>
-              <div
-                className="h-10 w-px"
-                style={{ backgroundColor: thBorder }}
-              />
-              <div className="flex-1 max-w-xs">
-                <p
-                  className="text-[10px] font-bold uppercase tracking-wider"
-                  style={{ color: thSub }}
-                >
-                  Presupuesto Ejecutado
-                </p>
-                <div className="flex items-center gap-3 mt-1">
-                  <span
-                    className="text-2xl font-extrabold"
-                    style={{ color: thText }}
-                  >
-                    {headerKpis ? `${headerKpis.presupuesto_ejecutado}%` : "—"}
-                  </span>
-                  <div
-                    className="flex-1 h-2 rounded-full overflow-hidden"
-                    style={{ backgroundColor: DK ? "#334155" : "#F3F4F6" }}
-                  >
-                    <div
-                      className="h-full rounded-full"
-                      style={{
-                        width: `${Math.min(100, headerKpis?.presupuesto_ejecutado ?? 0)}%`,
-                        backgroundColor: ac,
-                      }}
-                    />
-                  </div>
-                </div>
-              </div>
               <div className="ml-auto flex items-center gap-3">
                 <button
                   onClick={() => setShowAuditModal(true)}

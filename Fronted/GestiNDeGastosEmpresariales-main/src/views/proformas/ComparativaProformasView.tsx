@@ -4,6 +4,7 @@ import { Icons } from "@/components/common/Icons"
 import {
   obtenerComparativa,
   seleccionarCotizacion,
+  autoAdjudicarProceso,
   type Comparativa,
   type ComparativaProveedor,
 } from "@/api/proformas"
@@ -71,6 +72,23 @@ export default function ComparativaProformasView({
       await cargar()
     } catch (e) {
       onToast("Error", e instanceof ApiError ? e.message : "No se pudo seleccionar")
+    } finally {
+      setWorking(false)
+    }
+  }
+
+  const autoAdjudicar = async () => {
+    if (!window.confirm("¿Adjudicar automáticamente la oferta de mejor precio?")) return
+    setWorking(true)
+    try {
+      const r = await autoAdjudicarProceso(idProceso)
+      onToast(
+        "Proveedor asignado automáticamente",
+        `${r.analisis.proveedor_ganador} por Q ${Number(r.analisis.monto).toLocaleString("es-GT", { minimumFractionDigits: 2 })}.`,
+      )
+      cargar()
+    } catch (e) {
+      onToast("Error", e instanceof ApiError ? e.message : "No se pudo adjudicar automáticamente")
     } finally {
       setWorking(false)
     }
@@ -150,6 +168,16 @@ export default function ComparativaProformasView({
                 style={{ color: "#7C3AED", borderColor: "#7C3AED" }}
               >
                 <Icons.UserPlus /> Invitar a Ofertar
+              </button>
+            )}
+            {!resuelta && proveedores.length > 0 && (
+              <button
+                onClick={autoAdjudicar}
+                disabled={working}
+                className="flex items-center gap-2 px-4 py-2.5 text-sm font-bold rounded-xl border-2 transition-all hover:opacity-90 disabled:opacity-50"
+                style={{ color: "#D97706", borderColor: "#D97706" }}
+              >
+                <Icons.Zap /> Adjudicar Mejor Precio
               </button>
             )}
             {!resuelta && (

@@ -47,6 +47,63 @@ function dependenciaDeUsuario(id_usuario) {
     .then(({ rows }) => rows[0]?.id_dependencia ?? null);
 }
 
+// Ejecuta la adjudicación de una cotización ganadora: marca estados,
+// genera la orden de compra y actualiza proceso/requisición.
+async function adjudicarInterno(client, proceso, cotizacion, motivo, idUsuario) {
+  await client.query(
+    "UPDATE cotizacion SET estado_cotizacion = 'Rechazada', seleccionada = FALSE WHERE id_requisicion = $1 AND id_cotizacion <> $2",
+    [proceso.id_requisicion, cotizacion.id_cotizacion],
+  );
+  await client.query(
+    "UPDATE cotizacion SET estado_cotizacion = 'Aceptada', seleccionada = TRUE, motivo_rechazo = NULL WHERE id_cotizacion = $1",
+    [cotizacion.id_cotizacion],
+  );
+
+  const numeroOrden = await nextNumero("OC", "orden_compra", "numero_orden", client);
+  const { rows: ocRows } = await client.query(
+    `INSERT INTO orden_compra
+       (numero_orden, id_requisicion, id_cotizacion, id_proveedor, monto_total, id_usuario_emite)
+     VALUES ($1, $2, $3, $4, $5, $6)
+     RETURNING *`,
+    [
+      numeroOrden,
+      proceso.id_requisicion,
+      cotizacion.id_cotizacion,
+      cotizacion.id_proveedor,
+      cotizacion.monto_total,
+      idUsuario,
+    ],
+  );
+  const orden = ocRows[0];
+
+  const detRes = await client.query(
+    "SELECT * FROM detalle_cotizacion WHERE id_cotizacion = $1",
+    [cotizacion.id_cotizacion],
+  );
+  for (const d of detRes.rows) {
+    await client.query(
+      `INSERT INTO detalle_orden_compra
+         (id_orden_compra, id_detalle_requisicion, cantidad_comprada, precio_unitario)
+       VALUES ($1, $2, $3, $4)`,
+      [orden.id_orden_compra, d.id_detalle_requisicion, d.cantidad_cotizada, d.precio_unitario],
+    );
+  }
+
+  await client.query(
+    `UPDATE proceso_cotizacion
+        SET fase = 'Adjudicada', motivo_adjudicacion = $1,
+            id_usuario_adjudica = $2, fecha_adjudicacion = now()
+      WHERE id_proceso = $3`,
+    [motivo, idUsuario, proceso.id_proceso],
+  );
+  await client.query(
+    "UPDATE requisicion SET monto_adjudicado = $1 WHERE id_requisicion = $2",
+    [cotizacion.monto_total, proceso.id_requisicion],
+  );
+
+  return orden;
+}
+
 // ── Listado de procesos ───────────────────────────────────────────────────────
 router.get("/procesos", authorize("proformas"), async (req, res, next) => {
   try {
@@ -609,59 +666,8 @@ router.post("/procesos/:id/adjudicar", authorize("proformas"), async (req, res, 
       }
     }
 
-    // Marcar aceptada y rechazar las demás
-    await client.query(
-      "UPDATE cotizacion SET estado_cotizacion = 'Rechazada', seleccionada = FALSE WHERE id_requisicion = $1 AND id_cotizacion <> $2",
-      [proceso.id_requisicion, cotizacion.id_cotizacion],
-    );
-    await client.query(
-      "UPDATE cotizacion SET estado_cotizacion = 'Aceptada', seleccionada = TRUE, motivo_rechazo = NULL WHERE id_cotizacion = $1",
-      [cotizacion.id_cotizacion],
-    );
-
-    // Generar orden de compra
-    const numeroOrden = await nextNumero("OC", "orden_compra", "numero_orden", client);
-    const { rows: ocRows } = await client.query(
-      `INSERT INTO orden_compra
-         (numero_orden, id_requisicion, id_cotizacion, id_proveedor, monto_total, id_usuario_emite)
-       VALUES ($1, $2, $3, $4, $5, $6)
-       RETURNING *`,
-      [
-        numeroOrden,
-        proceso.id_requisicion,
-        cotizacion.id_cotizacion,
-        cotizacion.id_proveedor,
-        cotizacion.monto_total,
-        req.user.id_usuario,
-      ],
-    );
-    const orden = ocRows[0];
-
-    const detRes = await client.query(
-      "SELECT * FROM detalle_cotizacion WHERE id_cotizacion = $1",
-      [cotizacion.id_cotizacion],
-    );
-    for (const d of detRes.rows) {
-      await client.query(
-        `INSERT INTO detalle_orden_compra
-           (id_orden_compra, id_detalle_requisicion, cantidad_comprada, precio_unitario)
-         VALUES ($1, $2, $3, $4)`,
-        [orden.id_orden_compra, d.id_detalle_requisicion, d.cantidad_cotizada, d.precio_unitario],
-      );
-    }
-
-    // Actualizar proceso y requisición
-    await client.query(
-      `UPDATE proceso_cotizacion
-          SET fase = 'Adjudicada', motivo_adjudicacion = $1,
-              id_usuario_adjudica = $2, fecha_adjudicacion = now()
-        WHERE id_proceso = $3`,
-      [motivo_adjudicacion.trim(), req.user.id_usuario, proceso.id_proceso],
-    );
-    await client.query(
-      "UPDATE requisicion SET monto_adjudicado = $1 WHERE id_requisicion = $2",
-      [cotizacion.monto_total, proceso.id_requisicion],
-    );
+    // Marcar aceptada, generar orden de compra y actualizar proceso/requisición
+    const orden = await adjudicarInterno(client, proceso, cotizacion, motivo_adjudicacion.trim(), req.user.id_usuario);
 
     await client.query("COMMIT");
 
@@ -670,10 +676,121 @@ router.post("/procesos/:id/adjudicar", authorize("proformas"), async (req, res, 
       accion: "adjudicacion",
       ip: ipDe(req),
       modulo: "Proformas",
-      detalle: `Adjudicada ${requisicion.codigo_requisicion} → ${numeroOrden}`,
+      detalle: `Adjudicada ${requisicion.codigo_requisicion} → ${orden.numero_orden}`,
     });
 
     res.status(201).json({ orden, cotizacion: { ...cotizacion, estado_cotizacion: "Aceptada" } });
+  } catch (e) {
+    await client.query("ROLLBACK");
+    next(e);
+  } finally {
+    client.release();
+  }
+});
+
+// ── Adjudicación automática (mejor precio) ─────────────────────────────────────
+router.post("/procesos/:id/auto-adjudicar", authorize("proformas"), async (req, res, next) => {
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+
+    const { rows: procRows } = await client.query(
+      "SELECT * FROM proceso_cotizacion WHERE id_proceso = $1 FOR UPDATE",
+      [req.params.id],
+    );
+    const proceso = procRows[0];
+    if (!proceso) {
+      await client.query("ROLLBACK");
+      return res.status(404).json({ error: "Proceso no encontrado" });
+    }
+    if (proceso.fase !== "Comparación" && proceso.fase !== "Publicada") {
+      await client.query("ROLLBACK");
+      return res.status(400).json({ error: "El proceso debe estar en fase Publicada o Comparación" });
+    }
+
+    const reqRes = await client.query(
+      "SELECT * FROM requisicion WHERE id_requisicion = $1",
+      [proceso.id_requisicion],
+    );
+    const requisicion = reqRes.rows[0];
+
+    const { rows: cotizaciones } = await client.query(
+      `SELECT c.*, p.nit, p.razon_social
+         FROM cotizacion c
+         JOIN proveedor p ON p.id_proveedor = c.id_proveedor
+        WHERE c.id_requisicion = $1
+          AND c.estado_cotizacion != 'Rechazada'
+        ORDER BY c.monto_total ASC`,
+      [proceso.id_requisicion],
+    );
+
+    if (cotizaciones.length < proceso.min_ofertas) {
+      await client.query("ROLLBACK");
+      return res.status(400).json({
+        error: `Se requiere un mínimo de ${proceso.min_ofertas} ofertas para adjudicar automáticamente`,
+        total_ofertas: cotizaciones.length,
+      });
+    }
+
+    // Solo se consideran las que cumplen el requisito técnico.
+    const validas = cotizaciones.filter((c) => c.cumple_tecnico !== false);
+    if (validas.length === 0) {
+      await client.query("ROLLBACK");
+      return res.status(400).json({ error: "Ninguna oferta cumple los requisitos técnicos" });
+    }
+
+    const ganadora = validas[0];
+
+    // Validar presupuesto disponible
+    const presRes = await client.query(
+      `SELECT pd.monto_asignado,
+              COALESCE((SELECT SUM(r.monto_estimado)
+                          FROM requisicion r
+                         WHERE r.id_dependencia = pd.id_dependencia
+                           AND r.id_periodo = pd.id_periodo
+                           AND r.estado IN ('Aprobada','En Compra')
+                           AND r.id_requisicion <> $2), 0) AS ejecutado
+         FROM presupuesto_dependencia pd
+        WHERE pd.id_dependencia = $1 AND pd.id_periodo = $3`,
+      [requisicion.id_dependencia, requisicion.id_requisicion, requisicion.id_periodo],
+    );
+    if (presRes.rows[0]) {
+      const disponible =
+        parseFloat(presRes.rows[0].monto_asignado) - parseFloat(presRes.rows[0].ejecutado);
+      if (parseFloat(ganadora.monto_total) > disponible) {
+        await client.query("ROLLBACK");
+        return res.status(422).json({
+          error: "Presupuesto insuficiente para adjudicar",
+          disponible: disponible.toFixed(2),
+          solicitado: parseFloat(ganadora.monto_total).toFixed(2),
+        });
+      }
+    }
+
+    const motivo = `Adjudicación automática por mejor precio: ${ganadora.razon_social} (${ganadora.nit})`;
+    const orden = await adjudicarInterno(client, proceso, ganadora, motivo, req.user.id_usuario);
+
+    await client.query("COMMIT");
+
+    await registrarBitacora({
+      idUsuario: req.user.id_usuario,
+      accion: "adjudicacion_automatica",
+      ip: ipDe(req),
+      modulo: "Proformas",
+      detalle: `Adjudicación automática ${requisicion.codigo_requisicion} → ${orden.numero_orden} (${ganadora.razon_social})`,
+    });
+
+    res.status(201).json({
+      orden,
+      cotizacion: { ...ganadora, estado_cotizacion: "Aceptada" },
+      analisis: {
+        total_ofertas: cotizaciones.length,
+        proveedor_ganador: ganadora.razon_social,
+        nit: ganadora.nit,
+        monto: ganadora.monto_total,
+        motivo,
+      },
+    });
   } catch (e) {
     await client.query("ROLLBACK");
     next(e);
