@@ -133,6 +133,27 @@ export function listarOrdenesCompraRecepcion(params: { numero?: string } = {}) {
   return api.get<OrdenCompraRecepcion[]>(`/ordenes-compra/pendientes-recepcion${sp.toString() ? `?${sp.toString()}` : ""}`)
 }
 
+export interface OrdenEstadoRecepcionItem {
+  id_detalle_orden: number
+  descripcion: string
+  cantidad_ordenada: number
+  cantidad_recibida: number
+  cantidad_pendiente: number
+  entregado: boolean
+}
+
+export interface OrdenEstadoRecepcion {
+  id_orden_compra: number
+  numero_orden: string
+  estado: string
+  entregado_todo: boolean
+  items: OrdenEstadoRecepcionItem[]
+}
+
+export function obtenerEstadoRecepcion(idOrden: number) {
+  return api.get<OrdenEstadoRecepcion>(`/ordenes-compra/${idOrden}/estado-recepcion`)
+}
+
 export function crearRecepcion(data: { id_orden_compra: number; id_bodega?: number }) {
   return api.post<Recepcion>("/recepciones", data)
 }

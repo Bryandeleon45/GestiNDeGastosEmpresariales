@@ -12,19 +12,21 @@ import {
   marcarNotificacionLeida,
   listarOrdenes,
   listarEntregas,
+  listarPedidosAsignados,
   type PortalPerfil,
   type PortalResumen,
   type Oportunidad,
   type OportunidadDetalle,
   type OrdenPortal,
   type EntregaPortal,
+  type PedidoAsignado,
 } from "@/api/portal"
 
 export type TabPortal = "abiertas" | "cotizadas" | "adjudicadas" | "historial"
 
 export function useSupplierPortalController() {
   // UI
-  const [activeNav, setActiveNav] = useState<"oportunidades" | "ordenes" | "entregas" | "configuracion">("oportunidades")
+  const [activeNav, setActiveNav] = useState<"oportunidades" | "pedidos" | "ordenes" | "entregas" | "configuracion">("oportunidades")
   const [dark, setDark] = useState(false)
   const [tab, setTab] = useState<TabPortal>("abiertas")
   const [q, setQ] = useState("")
@@ -48,6 +50,7 @@ export function useSupplierPortalController() {
   const [oportunidades, setOportunidades] = useState<Oportunidad[]>([])
   const [ordenes, setOrdenes] = useState<OrdenPortal[]>([])
   const [entregas, setEntregas] = useState<EntregaPortal[]>([])
+  const [pedidosAsignados, setPedidosAsignados] = useState<PedidoAsignado[]>([])
   const [noLeidas, setNoLeidas] = useState(0)
   const [loading, setLoading] = useState(false)
 
@@ -88,6 +91,14 @@ export function useSupplierPortalController() {
     }
   }, [])
 
+  const cargarPedidosAsignados = useCallback(async () => {
+    try {
+      setPedidosAsignados(await listarPedidosAsignados())
+    } catch {
+      setPedidosAsignados([])
+    }
+  }, [])
+
   const cargarNotificaciones = useCallback(async () => {
     try {
       const n = await listarNotificaciones()
@@ -105,10 +116,11 @@ export function useSupplierPortalController() {
       cargarOportunidades(tab, q),
       cargarOrdenes(),
       cargarEntregas(),
+      cargarPedidosAsignados(),
       cargarNotificaciones(),
     ])
     setLoading(false)
-  }, [cargarResumen, cargarOportunidades, cargarOrdenes, cargarEntregas, cargarNotificaciones, tab, q])
+  }, [cargarResumen, cargarOportunidades, cargarOrdenes, cargarEntregas, cargarPedidosAsignados, cargarNotificaciones, tab, q])
 
   useEffect(() => {
     recargar()
@@ -182,6 +194,7 @@ export function useSupplierPortalController() {
     oportunidades,
     ordenes,
     entregas,
+    pedidosAsignados,
     noLeidas,
     loading,
     recargar,

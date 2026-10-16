@@ -222,3 +222,7 @@ export function listarUnidadesMedida() {
 export function buscarInsumos(q: string) {
   return api.get<Insumo[]>(`/requisiciones/insumos?q=${encodeURIComponent(q)}`)
 }
+
+export function asignarProveedorRequisicion(id: number | string, idProveedor: number) {
+  return api.post<{ ok: boolean; mensaje: string }>(`/requisiciones/${id}/asignar-proveedor`, { id_proveedor: idProveedor })
+}

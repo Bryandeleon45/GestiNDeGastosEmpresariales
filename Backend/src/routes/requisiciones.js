@@ -3,6 +3,7 @@ import { pool } from "../db.js";
 import { authenticate } from "../middlewares/authenticate.js";
 import { authorize } from "../middlewares/authorize.js";
 import { registrarBitacora, ipDe } from "../services/bitacora.service.js";
+import { enviar } from "../services/notificaciones.service.js";
 
 const router = Router();
 
@@ -716,6 +717,104 @@ router.patch("/:id/estado", authorize("solicitudes"), async (req, res, next) => 
     res.json(rows[0]);
   } catch (e) {
     await client.query("ROLLBACK");
+    next(e);
+  } finally {
+    client.release();
+  }
+});
+
+// ── Asignar proveedor a requisición aprobada ──────────────────────────────────
+router.post("/:id/asignar-proveedor", authorize("solicitudes"), async (req, res, next) => {
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+
+    const { rows: reqRows } = await client.query(
+      "SELECT * FROM requisicion WHERE id_requisicion = $1",
+      [req.params.id],
+    );
+    if (!reqRows[0]) {
+      await client.query("ROLLBACK");
+      return res.status(404).json({ error: "Requisición no encontrada" });
+    }
+    if (reqRows[0].estado !== "Aprobada") {
+      await client.query("ROLLBACK");
+      return res.status(400).json({ error: "La requisición debe estar en estado Aprobada" });
+    }
+
+    const { id_proveedor } = req.body;
+    if (!id_proveedor) {
+      await client.query("ROLLBACK");
+      return res.status(400).json({ error: "id_proveedor es requerido" });
+    }
+
+    const { rows: provRows } = await client.query(
+      "SELECT * FROM proveedor WHERE id_proveedor = $1 AND activo = TRUE",
+      [id_proveedor],
+    );
+    if (!provRows[0]) {
+      await client.query("ROLLBACK");
+      return res.status(404).json({ error: "Proveedor no encontrado o inactivo" });
+    }
+
+    const existente = await client.query(
+      "SELECT 1 FROM proceso_cotizacion WHERE id_requisicion = $1",
+      [req.params.id],
+    );
+    if (existente.rows[0]) {
+      await client.query("ROLLBACK");
+      return res.status(409).json({ error: "Esta requisición ya tiene un proceso de asignación" });
+    }
+
+    const fechaLimite = new Date(Date.now() + 5 * 24 * 3600 * 1000);
+    const { rows: procRows } = await client.query(
+      `INSERT INTO proceso_cotizacion (id_requisicion, fase, fecha_limite, min_ofertas, id_usuario_publica)
+       VALUES ($1, 'Publicada', $2, 1, $3) RETURNING id_proceso`,
+      [req.params.id, fechaLimite, req.user.id_usuario],
+    );
+    const idProceso = procRows[0].id_proceso;
+
+    await client.query(
+      `INSERT INTO invitacion_proveedor (id_proceso, id_proveedor)
+       VALUES ($1, $2)`,
+      [idProceso, id_proveedor],
+    );
+
+    const { rows: usrRows } = await client.query(
+      `SELECT pu.id_usuario FROM proveedor_usuario pu
+        JOIN usuario u ON u.id_usuario = pu.id_usuario
+       WHERE pu.id_proveedor = $1 AND u.activo = TRUE
+       ORDER BY pu.es_principal DESC LIMIT 1`,
+      [id_proveedor],
+    );
+    if (usrRows[0]) {
+      await enviar({
+        idUsuario: usrRows[0].id_usuario,
+        tipo: "ASIGNACION_PROVEEDOR",
+        titulo: "Nueva asignación de pedido",
+        mensaje: `Se le ha asignado el pedido ${reqRows[0].codigo_requisicion}. Ingrese al portal para más detalles.`,
+        referencia: String(idProceso),
+      });
+    }
+
+    await client.query("COMMIT");
+
+    await registrarBitacora({
+      idUsuario: req.user.id_usuario,
+      accion: "proveedor_asignado",
+      ip: ipDe(req),
+      modulo: "Dependencias",
+      detalle: `Proveedor ${provRows[0].razon_social} asignado a ${reqRows[0].codigo_requisicion}`,
+    });
+
+    res.json({
+      ok: true,
+      mensaje: `Se envió la información del pedido a ${provRows[0].razon_social}.`,
+      id_proceso: idProceso,
+    });
+  } catch (e) {
+    await client.query("ROLLBACK");
+    if (e.code === "23505") return res.status(409).json({ error: "Ya existe un proceso para esta requisición" });
     next(e);
   } finally {
     client.release();

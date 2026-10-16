@@ -1,3 +1,4 @@
+import { useState } from "react"
 import { G, GL, GB } from "@/constants/theme"
 import { Icons } from "@/components/common/Icons"
 import MunicipalSeal from "@/components/common/MunicipalSeal"
@@ -6,7 +7,7 @@ import Toast from "@/views/common/Toast"
 import SubirProformaModal from "@/views/portal/SubirProformaModal"
 import CotizarOportunidadModal from "@/views/portal/CotizarOportunidadModal"
 import { useSupplierPortalController } from "@/controllers/useSupplierPortalController"
-import type { Oportunidad } from "@/api/portal"
+import type { Oportunidad, PedidoAsignado } from "@/api/portal"
 
 const ESTADO_BADGE: Record<string, { bg: string; color: string }> = {
   Nueva: { bg: "#E0F2FE", color: "#0284C7" },
@@ -45,6 +46,324 @@ const fmtFecha = (iso?: string | null) =>
 const esCotizable = (o: Oportunidad) =>
   o.fase === "Publicada" && (o.estado === "Nueva" || o.estado === "Abierta")
 
+const PEDIDO_BADGE: Record<string, { bg: string; color: string }> = {
+  Asignado: { bg: "#E0F2FE", color: "#0284C7" },
+  "En Camino": { bg: "#FEF9C3", color: "#92400E" },
+  Entregado: { bg: "#DCFCE7", color: "#16A34A" },
+  Cancelado: { bg: "#FEE2E2", color: "#DC2626" },
+}
+
+function PdfViewerModal({
+  src,
+  nombre,
+  onClose,
+  dark,
+}: {
+  src: string
+  nombre: string
+  onClose: () => void
+  dark: boolean
+}) {
+  const border = dark ? "#334155" : "#E5E7EB"
+  const text = dark ? "#F1F5F9" : "#1F2937"
+  const sub = dark ? "#94A3B8" : "#6B7280"
+
+  return (
+    <div
+      onClick={(e) => e.target === e.currentTarget && onClose()}
+      className="fixed inset-0 z-[200] flex items-center justify-center p-4"
+      style={{ backgroundColor: "rgba(0,0,0,0.7)", backdropFilter: "blur(2px)" }}
+    >
+      <div
+        className="rounded-xl shadow-2xl w-full max-w-4xl h-[90vh] flex flex-col overflow-hidden"
+        style={{ backgroundColor: dark ? "#1E293B" : "#FFFFFF", animation: "modalIn 0.22s cubic-bezier(.16,1,.3,1)" }}
+      >
+        <div className="flex items-center justify-between px-5 py-3 border-b shrink-0" style={{ borderColor: border }}>
+          <div className="flex items-center gap-3 min-w-0">
+            <Icons.PDF />
+            <span className="text-sm font-bold truncate" style={{ color: text }}>{nombre}</span>
+          </div>
+          <button onClick={onClose} className="p-1.5 rounded-lg transition-all shrink-0" style={{ color: sub }}>
+            <Icons.X />
+          </button>
+        </div>
+        <div className="flex-1 overflow-hidden" style={{ backgroundColor: dark ? "#0F172A" : "#F3F4F6" }}>
+          <iframe
+            src={src}
+            className="w-full h-full border-0"
+            title={nombre}
+          />
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function PedidoDetalleModal({
+  pedido,
+  onClose,
+  dark,
+}: {
+  pedido: PedidoAsignado
+  onClose: () => void
+  dark: boolean
+}) {
+  const [pdfViewer, setPdfViewer] = useState<{ src: string; nombre: string } | null>(null)
+  const es = PEDIDO_BADGE[pedido.estado] ?? { bg: "#F3F4F6", color: "#6B7280" }
+  const card = dark ? "#1E293B" : "#FFFFFF"
+  const border = dark ? "#334155" : "#E5E7EB"
+  const text = dark ? "#F1F5F9" : "#1F2937"
+  const sub = dark ? "#94A3B8" : "#6B7280"
+
+  return (
+    <div
+      onClick={(e) => e.target === e.currentTarget && onClose()}
+      className="fixed inset-0 z-[150] flex items-center justify-center p-4"
+      style={{ backgroundColor: "rgba(0,0,0,0.52)", backdropFilter: "blur(1px)" }}
+    >
+      <div
+        className="rounded-xl shadow-2xl w-full max-w-2xl max-h-[92vh] flex flex-col"
+        style={{ backgroundColor: card, animation: "modalIn 0.22s cubic-bezier(.16,1,.3,1)" }}
+      >
+        <div className="flex items-center justify-between px-6 py-4 border-b shrink-0" style={{ borderColor: border }}>
+          <div>
+            <h2 className="text-lg font-bold" style={{ color: text }}>{pedido.codigo_requisicion}</h2>
+            <p className="text-xs" style={{ color: sub }}>{pedido.dependencia} · {pedido.tipo_solicitud}</p>
+          </div>
+          <div className="flex items-center gap-3">
+            <span className="text-xs font-bold px-2.5 py-1 rounded-full" style={{ backgroundColor: es.bg, color: es.color }}>
+              {pedido.estado}
+            </span>
+            <button onClick={onClose} className="p-1.5 rounded-lg transition-all" style={{ color: sub }}>
+              <Icons.X />
+            </button>
+          </div>
+        </div>
+
+        <div className="overflow-y-auto flex-1 px-6 py-5 space-y-5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="rounded-lg border p-3" style={{ borderColor: border }}>
+              <p className="text-[10px] font-extrabold uppercase tracking-widest" style={{ color: sub }}>Dependencia</p>
+              <p className="text-sm font-semibold mt-1" style={{ color: text }}>{pedido.dependencia}</p>
+            </div>
+            <div className="rounded-lg border p-3" style={{ borderColor: border }}>
+              <p className="text-[10px] font-extrabold uppercase tracking-widest" style={{ color: sub }}>Lugar de Entrega</p>
+              <p className="text-sm font-semibold mt-1" style={{ color: text }}>{pedido.lugar_entrega ?? "—"}</p>
+            </div>
+            <div className="rounded-lg border p-3" style={{ borderColor: border }}>
+              <p className="text-[10px] font-extrabold uppercase tracking-widest" style={{ color: sub }}>Fecha del Pedido</p>
+              <p className="text-sm font-semibold mt-1" style={{ color: text }}>{fmtFecha(pedido.fecha_solicitud)}</p>
+            </div>
+            <div className="rounded-lg border p-3" style={{ borderColor: border }}>
+              <p className="text-[10px] font-extrabold uppercase tracking-widest" style={{ color: sub }}>Fecha de Asignación</p>
+              <p className="text-sm font-semibold mt-1" style={{ color: text }}>{fmtFecha(pedido.fecha_asignacion)}</p>
+            </div>
+          </div>
+
+          <div>
+            <p className="text-[10px] font-extrabold uppercase tracking-widest mb-2" style={{ color: sub }}>Ítems del Pedido</p>
+            <div className="rounded-xl border divide-y" style={{ borderColor: border, backgroundColor: dark ? "#0F172A" : "#F9FAFB" }}>
+              {pedido.items.map((it) => (
+                <div key={it.id_detalle} className="px-4 py-3">
+                  <p className="text-sm font-semibold" style={{ color: text }}>{it.descripcion}</p>
+                  <p className="text-xs mt-0.5" style={{ color: sub }}>
+                    {Number(it.cantidad).toLocaleString("es-GT")} {it.unidad}
+                    {it.observaciones ? ` · ${it.observaciones}` : ""}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <p className="text-[10px] font-extrabold uppercase tracking-widest mb-1" style={{ color: sub }}>Justificación</p>
+            <p className="text-sm rounded-lg border p-3" style={{ color: text, borderColor: border, backgroundColor: dark ? "#0F172A" : "#F9FAFB" }}>
+              {pedido.justificacion}
+            </p>
+          </div>
+
+          {pedido.documentos.length > 0 && (
+            <div>
+              <p className="text-[10px] font-extrabold uppercase tracking-widest mb-2" style={{ color: sub }}>
+                Documentos Adjuntos ({pedido.documentos.length})
+              </p>
+              <div className="space-y-2">
+                {pedido.documentos.map((doc, i) => (
+                  <button key={i} onClick={() => setPdfViewer({ src: doc.contenido_base64, nombre: doc.nombre_archivo })} className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-gray-50 transition-colors rounded-lg border text-left" style={{ borderColor: border }}>
+                    <Icons.PDF />
+                    <span className="flex-1 min-w-0 text-left text-sm font-medium truncate" style={{ color: text }}>
+                      {doc.nombre_archivo}
+                    </span>
+                    <Icons.ArrowRight className="shrink-0" style={{ color: G }} />
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {pdfViewer && (
+          <PdfViewerModal
+            src={pdfViewer.src}
+            nombre={pdfViewer.nombre}
+            onClose={() => setPdfViewer(null)}
+            dark={dark}
+          />
+        )}
+      </div>
+    </div>
+  )
+}
+
+function PedidosAsignadosSection({
+  pedidos,
+  dark,
+  card,
+  border,
+  text,
+  sub,
+  onVerDetalle,
+}: {
+  pedidos: PedidoAsignado[]
+  dark: boolean
+  card: string
+  border: string
+  text: string
+  sub: string
+  onVerDetalle: (p: PedidoAsignado) => void
+}) {
+  const [pdfViewer, setPdfViewer] = useState<{ src: string; nombre: string } | null>(null)
+  return (
+    <div className="space-y-4">
+      <div>
+        <h1 className="text-2xl font-extrabold" style={{ color: text }}>Pedidos Asignados</h1>
+        <p className="text-sm" style={{ color: sub }}>
+          Pedidos que la Municipalidad le ha asignado directamente. Revise la información y prepare la entrega.
+        </p>
+      </div>
+
+      {pedidos.length === 0 ? (
+        <div className="rounded-xl border overflow-hidden" style={{ backgroundColor: card, borderColor: border }}>
+          <p className="px-5 py-12 text-center text-sm" style={{ color: sub }}>
+            No hay pedidos asignados por el momento.
+          </p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+                  {pedidos.map((p) => {
+            const es = PEDIDO_BADGE[p.estado] ?? { bg: "#F3F4F6", color: "#6B7280" }
+            const esEntregado = p.estado === "Entregado"
+            return (
+              <div
+                key={p.id_requisicion}
+                onClick={() => onVerDetalle(p)}
+                className="rounded-xl border overflow-hidden cursor-pointer hover:shadow-md transition-shadow"
+                style={{
+                  backgroundColor: esEntregado ? (dark ? "#052e16" : "#f0fdf4") : card,
+                  borderColor: esEntregado ? "#22c55e" : border,
+                }}
+              >
+                <div className="flex items-center gap-4 px-5 py-4">
+                  <div
+                    className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0"
+                    style={{
+                      backgroundColor: esEntregado ? "#22c55e" : dark ? "rgba(30,94,47,0.25)" : "#DCEEFE",
+                      color: esEntregado ? "#ffffff" : G,
+                    }}
+                  >
+                    <Icons.PackagePlus />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-bold" style={{ color: esEntregado ? "#15803d" : text }}>{p.codigo_requisicion}</p>
+                    <p className="text-xs truncate" style={{ color: esEntregado ? "#16a34a" : sub }}>
+                      {p.dependencia} · {p.tipo_solicitud}
+                    </p>
+                  </div>
+                  <p className="text-sm font-extrabold font-mono" style={{ color: esEntregado ? "#15803d" : text }}>{p.monto_estimado}</p>
+                  <span className="text-xs font-bold px-2.5 py-1 rounded-full shrink-0" style={{ backgroundColor: es.bg, color: es.color }}>
+                    {p.estado}
+                  </span>
+                </div>
+
+                <div className="border-t px-5 py-4 space-y-4" style={{ borderColor: border }}>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="rounded-lg border p-3" style={{ borderColor: border }}>
+                      <p className="text-[10px] font-extrabold uppercase tracking-widest" style={{ color: sub }}>Dependencia</p>
+                      <p className="text-sm font-semibold mt-1" style={{ color: text }}>{p.dependencia}</p>
+                    </div>
+                    <div className="rounded-lg border p-3" style={{ borderColor: border }}>
+                      <p className="text-[10px] font-extrabold uppercase tracking-widest" style={{ color: sub }}>Lugar de Entrega</p>
+                      <p className="text-sm font-semibold mt-1" style={{ color: text }}>{p.lugar_entrega ?? "—"}</p>
+                    </div>
+                    <div className="rounded-lg border p-3" style={{ borderColor: border }}>
+                      <p className="text-[10px] font-extrabold uppercase tracking-widest" style={{ color: sub }}>Fecha del Pedido</p>
+                      <p className="text-sm font-semibold mt-1" style={{ color: text }}>{fmtFecha(p.fecha_solicitud)}</p>
+                    </div>
+                    <div className="rounded-lg border p-3" style={{ borderColor: border }}>
+                      <p className="text-[10px] font-extrabold uppercase tracking-widest" style={{ color: sub }}>Fecha de Asignación</p>
+                      <p className="text-sm font-semibold mt-1" style={{ color: text }}>{fmtFecha(p.fecha_asignacion)}</p>
+                    </div>
+                  </div>
+
+                  <div>
+                    <p className="text-[10px] font-extrabold uppercase tracking-widest mb-2" style={{ color: sub }}>Ítems del Pedido</p>
+                    <div className="rounded-xl border divide-y" style={{ borderColor: border, backgroundColor: dark ? "#0F172A" : "#F9FAFB" }}>
+                      {p.items.map((it) => (
+                        <div key={it.id_detalle} className="px-4 py-3">
+                          <p className="text-sm font-semibold" style={{ color: text }}>{it.descripcion}</p>
+                          <p className="text-xs mt-0.5" style={{ color: sub }}>
+                            {Number(it.cantidad).toLocaleString("es-GT")} {it.unidad}
+                            {it.observaciones ? ` · ${it.observaciones}` : ""}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div>
+                    <p className="text-[10px] font-extrabold uppercase tracking-widest mb-1" style={{ color: sub }}>Justificación</p>
+                    <p className="text-sm rounded-lg border p-3" style={{ color: text, borderColor: border, backgroundColor: dark ? "#0F172A" : "#F9FAFB" }}>
+                      {p.justificacion}
+                    </p>
+                  </div>
+
+                  {p.documentos.length > 0 && (
+                    <div>
+                      <p className="text-[10px] font-extrabold uppercase tracking-widest mb-2" style={{ color: sub }}>
+                        Documentos Adjuntos ({p.documentos.length})
+                      </p>
+                      <div className="space-y-2">
+                        {p.documentos.map((doc, i) => (
+                          <button key={i} onClick={() => setPdfViewer({ src: doc.contenido_base64, nombre: doc.nombre_archivo })} className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-gray-50 transition-colors rounded-lg border text-left" style={{ borderColor: border }}>
+                            <Icons.PDF />
+                            <span className="flex-1 min-w-0 text-left text-sm font-medium truncate" style={{ color: text }}>
+                              {doc.nombre_archivo}
+                            </span>
+                            <Icons.ArrowRight className="shrink-0" style={{ color: G }} />
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )
+          })}
+
+          {pdfViewer && (
+            <PdfViewerModal
+              src={pdfViewer.src}
+              nombre={pdfViewer.nombre}
+              onClose={() => setPdfViewer(null)}
+              dark={dark}
+            />
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function SupplierPortal({ onLogout }: { onLogout: () => void }) {
   const {
     activeNav,
@@ -73,6 +392,7 @@ export default function SupplierPortal({ onLogout }: { onLogout: () => void }) {
     oportunidades,
     ordenes,
     entregas,
+    pedidosAsignados,
     noLeidas,
     loading,
     recargar,
@@ -83,6 +403,8 @@ export default function SupplierPortal({ onLogout }: { onLogout: () => void }) {
     enviar,
     declinar,
   } = useSupplierPortalController()
+
+  const [pedidoDetalle, setPedidoDetalle] = useState<PedidoAsignado | null>(null)
 
   const bg = dark ? "#0F172A" : "#F8F9FA"
   const card = dark ? "#1E293B" : "#FFFFFF"
@@ -103,6 +425,7 @@ export default function SupplierPortal({ onLogout }: { onLogout: () => void }) {
 
   const NAV_PROV = [
     { key: "oportunidades" as const, label: "Mis Oportunidades", icon: <Icons.Solicitudes /> },
+    { key: "pedidos" as const, label: "Pedidos Asignados", icon: <Icons.PackagePlus /> },
     { key: "ordenes" as const, label: "Órdenes y Facturas", icon: <Icons.Facturacion /> },
     { key: "entregas" as const, label: "Entregas en Bodega", icon: <Icons.Bodega /> },
     { key: "configuracion" as const, label: "Configuración", icon: <Icons.Config /> },
@@ -451,6 +774,18 @@ export default function SupplierPortal({ onLogout }: { onLogout: () => void }) {
               </>
             )}
 
+            {activeNav === "pedidos" && (
+              <PedidosAsignadosSection
+                pedidos={pedidosAsignados}
+                dark={dark}
+                card={card}
+                border={border}
+                text={text}
+                sub={sub}
+                onVerDetalle={setPedidoDetalle}
+              />
+            )}
+
             {activeNav === "ordenes" && (
               <div className="space-y-4">
                 <h1 className="text-2xl font-extrabold" style={{ color: text }}>Órdenes y Facturas</h1>
@@ -485,22 +820,61 @@ export default function SupplierPortal({ onLogout }: { onLogout: () => void }) {
               <div className="space-y-4">
                 <h1 className="text-2xl font-extrabold" style={{ color: text }}>Entregas en Bodega</h1>
                 <p className="text-sm" style={{ color: sub }}>Programación y estado de sus entregas físicas en la bodega municipal.</p>
-                <div className="rounded-xl border overflow-hidden" style={{ backgroundColor: card, borderColor: border }}>
+                <div className="space-y-3">
                   {entregas.length === 0 ? (
-                    <p className="px-5 py-12 text-center text-sm" style={{ color: sub }}>No hay entregas registradas.</p>
+                    <div className="rounded-xl border overflow-hidden" style={{ backgroundColor: card, borderColor: border }}>
+                      <p className="px-5 py-12 text-center text-sm" style={{ color: sub }}>No hay entregas registradas.</p>
+                    </div>
                   ) : (
                     entregas.map((r) => {
                       const es = ENTREGA_BADGE[r.estado] ?? { bg: "#F3F4F6", color: "#6B7280" }
+                      const esCompleta = r.estado === "Completa"
                       return (
-                        <div key={r.id_recepcion} className="flex items-center gap-4 px-5 py-4 border-b last:border-b-0 transition-colors" style={{ borderColor: border }}>
-                          <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: dark ? "rgba(30,94,47,0.25)" : GL, color: G }}>
-                            <Icons.Bodega />
+                        <div
+                          key={r.id_recepcion}
+                          className="rounded-xl border overflow-hidden"
+                          style={{
+                            backgroundColor: esCompleta ? (dark ? "#052e16" : "#f0fdf4") : card,
+                            borderColor: esCompleta ? "#22c55e" : border,
+                          }}
+                        >
+                          <div className="flex items-center gap-4 px-5 py-4">
+                            <div
+                              className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
+                              style={{
+                                backgroundColor: esCompleta ? "#22c55e" : dark ? "rgba(30,94,47,0.25)" : GL,
+                                color: esCompleta ? "#ffffff" : G,
+                              }}
+                            >
+                              <Icons.Bodega />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-bold" style={{ color: esCompleta ? "#15803d" : text }}>{r.numero_orden} · {r.numero_comprobante}</p>
+                              <p className="text-xs" style={{ color: esCompleta ? "#16a34a" : sub }}>{fmtFecha(r.fecha_recepcion)} · {r.total_items} ítem(s)</p>
+                            </div>
+                            <span className="text-xs font-bold px-2.5 py-1 rounded-full" style={{ backgroundColor: es.bg, color: es.color }}>{r.estado}</span>
                           </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-bold" style={{ color: text }}>{r.numero_orden} · {r.numero_comprobante}</p>
-                            <p className="text-xs" style={{ color: sub }}>{fmtFecha(r.fecha_recepcion)} · {r.total_items} ítem(s)</p>
-                          </div>
-                          <span className="text-xs font-bold px-2.5 py-1 rounded-full" style={{ backgroundColor: es.bg, color: es.color }}>{r.estado}</span>
+                          {r.items && r.items.length > 0 && (
+                            <div className="border-t px-5 py-3 space-y-2" style={{ borderColor: esCompleta ? "#22c55e" : border }}>
+                              {r.items.map((it) => {
+                                const itemEstado = it.estado_item === "Recibido" || it.estado_item === "Aceptado"
+                                return (
+                                  <div
+                                    key={it.id_detalle_recepcion}
+                                    className="flex items-center justify-between rounded-lg px-3 py-2"
+                                    style={{ backgroundColor: itemEstado ? "#DCFCE7" : "#FEF3C7" }}
+                                  >
+                                    <span className="text-sm font-semibold" style={{ color: itemEstado ? "#15803D" : "#92400E" }}>
+                                      {it.descripcion}
+                                    </span>
+                                    <span className="text-xs font-bold" style={{ color: itemEstado ? "#15803D" : "#B45309" }}>
+                                      {it.cantidad_aceptada}/{it.cantidad_esperada} {it.unidad_simbolo}
+                                    </span>
+                                  </div>
+                                )
+                              })}
+                            </div>
+                          )}
                         </div>
                       )
                     })
@@ -571,6 +945,14 @@ export default function SupplierPortal({ onLogout }: { onLogout: () => void }) {
             setShowLogout(false)
             setTimeout(onLogout, 280)
           }}
+        />
+      )}
+
+      {pedidoDetalle && (
+        <PedidoDetalleModal
+          pedido={pedidoDetalle}
+          onClose={() => setPedidoDetalle(null)}
+          dark={dark}
         />
       )}
 

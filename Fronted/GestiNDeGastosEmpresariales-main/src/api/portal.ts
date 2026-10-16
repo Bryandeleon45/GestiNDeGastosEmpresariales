@@ -117,6 +117,17 @@ export interface OrdenPortal {
   total_facturado: string
 }
 
+export interface EntregaItemDetalle {
+  id_detalle_recepcion: number
+  descripcion: string
+  cantidad_esperada: number
+  cantidad_recibida: number
+  cantidad_aceptada: number
+  estado_item: string
+  observacion: string | null
+  unidad_simbolo: string
+}
+
 export interface EntregaPortal {
   id_recepcion: number
   numero_comprobante: string
@@ -126,6 +137,7 @@ export interface EntregaPortal {
   numero_orden: string
   id_orden_compra: number
   total_items: number
+  items: EntregaItemDetalle[]
 }
 
 export function obtenerPerfilPortal() {
@@ -190,4 +202,34 @@ export function listarOrdenes() {
 
 export function listarEntregas() {
   return api.get<EntregaPortal[]>("/portal/entregas")
+}
+
+export interface PedidoAsignadoItem {
+  id_detalle: number
+  descripcion: string
+  cantidad: string
+  unidad: string
+  observaciones: string | null
+}
+
+export interface PedidoAsignado {
+  id_requisicion: number
+  codigo_requisicion: string
+  tipo_solicitud: string
+  prioridad: string
+  justificacion: string
+  dependencia: string
+  lugar_entrega: string | null
+  fecha_solicitud: string
+  fecha_asignacion: string
+  estado: string
+  monto_estimado: string
+  estado_orden: string | null
+  numero_orden: string | null
+  items: PedidoAsignadoItem[]
+  documentos: { nombre_archivo: string; contenido_base64: string }[]
+}
+
+export function listarPedidosAsignados() {
+  return api.get<PedidoAsignado[]>("/portal/pedidos-asignados")
 }

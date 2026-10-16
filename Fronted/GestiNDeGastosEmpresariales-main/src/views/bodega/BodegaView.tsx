@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { G } from "@/constants/theme"
 import { Icons } from "@/components/common/Icons"
 import { useBodegaController, ESTADOS_SOLICITUD_FILTRO } from "@/controllers/useBodegaController"
@@ -9,7 +9,8 @@ import {
   type Recepcion,
   type ValeSalida,
 } from "@/api/bodega"
-import { cambiarEstadoRequisicion, obtenerRequisicion, type Requisicion } from "@/api/requisiciones"
+import { cambiarEstadoRequisicion, obtenerRequisicion, asignarProveedorRequisicion, type Requisicion } from "@/api/requisiciones"
+import { listarProveedoresActivos } from "@/api/proformas"
 import { PRIORIDAD_STYLE, ESTADO_SOL_STYLE } from "@/models/solicitudes"
 import { ApiError } from "@/api/client"
 import NuevaRecepcionModal from "@/views/bodega/NuevaRecepcionModal"
@@ -80,6 +81,18 @@ export default function BodegaView({
   const [detalleSol, setDetalleSol] = useState<Requisicion | null>(null)
   const [loadingDetalle, setLoadingDetalle] = useState(false)
   const [pdfPreview, setPdfPreview] = useState<number | null>(null)
+  const [mostrarModalProveedor, setMostrarModalProveedor] = useState(false)
+  const [proveedores, setProveedores] = useState<{ id_proveedor: number; razon_social: string; nit: string; correo: string }[]>([])
+  const [proveedorSeleccionado, setProveedorSeleccionado] = useState<number | null>(null)
+  const [busquedaProveedor, setBusquedaProveedor] = useState("")
+  const [asignandoProveedor, setAsignandoProveedor] = useState(false)
+
+  useEffect(() => {
+    if (!mostrarModalProveedor) return
+    listarProveedoresActivos()
+      .then((res) => setProveedores(res))
+      .catch(() => setProveedores([]))
+  }, [mostrarModalProveedor])
 
   const abrirDetalle = async (r: Requisicion) => {
     setDetalleSol(r)
@@ -113,6 +126,30 @@ export default function BodegaView({
       onToast("Error", e instanceof ApiError ? e.message : "No se pudo aprobar la solicitud")
     } finally {
       setWorkingSol(false)
+    }
+  }
+
+  const abrirModalProveedor = (r: Requisicion) => {
+    setDetalleSol(r)
+    setMostrarModalProveedor(true)
+    setProveedorSeleccionado(null)
+    setBusquedaProveedor("")
+  }
+
+  const confirmarAsignacion = async () => {
+    if (!detalleSol || !proveedorSeleccionado) return
+    const prov = proveedores.find((p) => p.id_proveedor === proveedorSeleccionado)
+    if (!window.confirm(`¿Asignar el pedido ${detalleSol.codigo_requisicion} al proveedor ${prov?.razon_social}?`)) return
+    setAsignandoProveedor(true)
+    try {
+      await asignarProveedorRequisicion(detalleSol.id_requisicion, proveedorSeleccionado)
+      onToast("Proveedor asignado", `Se envió la información del pedido a ${prov?.razon_social}.`)
+      setMostrarModalProveedor(false)
+      reload()
+    } catch (e) {
+      onToast("Error", e instanceof ApiError ? e.message : "No se pudo asignar el proveedor")
+    } finally {
+      setAsignandoProveedor(false)
     }
   }
 
@@ -777,8 +814,104 @@ export default function BodegaView({
                   </button>
                 </>
               )}
+              {detalleSol.estado === "Aprobada" && (
+                <button
+                  onClick={() => abrirModalProveedor(detalleSol)}
+                  className="flex items-center gap-2 px-4 py-2.5 text-sm font-bold text-white rounded-xl transition-all hover:opacity-90 shadow-sm"
+                  style={{ backgroundColor: G }}
+                >
+                  <Icons.ArrowRight /> Asignar Proveedor
+                </button>
+              )}
             </div>
-          </aside>
+           </aside>
+        </div>
+      )}
+
+      {mostrarModalProveedor && detalleSol && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center">
+          <div
+            onClick={() => setMostrarModalProveedor(false)}
+            className="absolute inset-0"
+            style={{ backgroundColor: "rgba(0,0,0,0.45)", backdropFilter: "blur(1.5px)" }}
+          />
+          <div className="relative w-full max-w-lg bg-white rounded-2xl shadow-2xl overflow-hidden">
+            <div className="flex items-start justify-between px-6 py-5 border-b border-gray-100">
+              <div>
+                <h2 className="text-lg font-bold text-gray-900">Asignar Proveedor</h2>
+                <p className="text-sm text-gray-500 mt-0.5">
+                  Seleccione el proveedor que recibirá la información del pedido {detalleSol.codigo_requisicion}
+                </p>
+              </div>
+              <button
+                onClick={() => setMostrarModalProveedor(false)}
+                className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-all"
+              >
+                <Icons.X />
+              </button>
+            </div>
+            <div className="px-6 py-4 border-b border-gray-100">
+              <input
+                type="text"
+                value={busquedaProveedor}
+                onChange={(e) => setBusquedaProveedor(e.target.value)}
+                placeholder="Buscar por nombre o NIT…"
+                className="w-full px-4 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
+              />
+            </div>
+            <div className="max-h-80 overflow-y-auto">
+              {proveedores.length === 0 ? (
+                <p className="text-sm text-gray-400 text-center py-8">Cargando proveedores…</p>
+              ) : (
+                proveedores
+                  .filter((p) =>
+                    p.razon_social.toLowerCase().includes(busquedaProveedor.toLowerCase()) ||
+                    p.nit.includes(busquedaProveedor)
+                  )
+                  .map((p) => (
+                    <button
+                      key={p.id_proveedor}
+                      onClick={() => setProveedorSeleccionado(p.id_proveedor)}
+                      className="w-full flex items-center gap-4 px-6 py-4 border-b border-gray-50 hover:bg-gray-50 transition-colors text-left"
+                    >
+                      <div
+                        className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0"
+                        style={{ backgroundColor: "#DCFCE7", color: "#16A34A" }}
+                      >
+                        <Icons.Boxes />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-bold text-gray-900">{p.razon_social}</p>
+                        <p className="text-xs text-gray-500">NIT {p.nit} · {p.correo}</p>
+                      </div>
+                      <div
+                        className="w-5 h-5 rounded-full border-2 shrink-0 transition-all"
+                        style={{
+                          borderColor: proveedorSeleccionado === p.id_proveedor ? G : "#D1D5DB",
+                          backgroundColor: proveedorSeleccionado === p.id_proveedor ? G : "transparent",
+                        }}
+                      />
+                    </button>
+                  ))
+              )}
+            </div>
+            <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-100">
+              <button
+                onClick={() => setMostrarModalProveedor(false)}
+                className="px-5 py-2.5 text-sm font-semibold text-gray-600 border border-gray-200 rounded-xl hover:bg-gray-50 transition-all"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={confirmarAsignacion}
+                disabled={!proveedorSeleccionado || asignandoProveedor}
+                className="flex items-center gap-2 px-5 py-2.5 text-sm font-bold text-white rounded-xl transition-all hover:opacity-90 shadow-sm disabled:opacity-50"
+                style={{ backgroundColor: G }}
+              >
+                {asignandoProveedor ? "Asignando…" : "Confirmar Asignación"}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </>

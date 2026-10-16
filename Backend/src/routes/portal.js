@@ -723,21 +723,148 @@ router.get("/ordenes", resolveProveedor, async (req, res, next) => {
 
 // ── Entregas en bodega del proveedor ──────────────────────────────────────────
 router.get("/entregas", resolveProveedor, async (req, res, next) => {
+  const client = await pool.connect();
   try {
     const idProv = req.proveedor.id_proveedor;
-    const { rows } = await pool.query(
+    const { rows: entregas } = await client.query(
       `SELECT rb.id_recepcion, rb.numero_comprobante, rb.fecha_recepcion, rb.estado, rb.observaciones,
-              oc.numero_orden, oc.id_orden_compra,
-              (SELECT COUNT(*)::int FROM detalle_recepcion_bodega drb WHERE drb.id_recepcion = rb.id_recepcion) AS total_items
+              oc.numero_orden, oc.id_orden_compra
          FROM recepcion_bodega rb
          JOIN orden_compra oc ON oc.id_orden_compra = rb.id_orden_compra
         WHERE oc.id_proveedor = $1
         ORDER BY rb.fecha_recepcion DESC`,
       [idProv],
     );
-    res.json(rows);
+
+    const resultado = [];
+    for (const e of entregas) {
+      const { rows: items } = await client.query(
+        `SELECT drb.id_detalle_recepcion, drb.id_detalle_orden,
+                COALESCE(i.nombre, doc.descripcion_libre) AS descripcion,
+                drb.cantidad_esperada, drb.cantidad_recibida, drb.cantidad_aceptada,
+                drb.estado_item, drb.observacion, um.simbolo AS unidad_simbolo
+           FROM detalle_recepcion_bodega drb
+           JOIN detalle_orden_compra doc ON doc.id_detalle_orden = drb.id_detalle_orden
+           LEFT JOIN insumo i ON i.id_insumo = drb.id_insumo
+           JOIN unidad_medida um ON um.id_unidad_medida = doc.id_unidad_medida
+          WHERE drb.id_recepcion = $1
+          ORDER BY drb.id_detalle_recepcion`,
+        [e.id_recepcion],
+      );
+
+      resultado.push({
+        id_recepcion: e.id_recepcion,
+        numero_comprobante: e.numero_comprobante,
+        fecha_recepcion: e.fecha_recepcion,
+        estado: e.estado,
+        observaciones: e.observaciones,
+        numero_orden: e.numero_orden,
+        id_orden_compra: e.id_orden_compra,
+        total_items: items.length,
+        items: items.map((it) => ({
+          id_detalle_recepcion: it.id_detalle_recepcion,
+          descripcion: it.descripcion,
+          cantidad_esperada: Number(it.cantidad_esperada),
+          cantidad_recibida: Number(it.cantidad_recibida),
+          cantidad_aceptada: Number(it.cantidad_aceptada),
+          estado_item: it.estado_item,
+          observacion: it.observacion,
+          unidad_simbolo: it.unidad_simbolo,
+        })),
+      });
+    }
+
+    res.json(resultado);
   } catch (e) {
     next(e);
+  } finally {
+    client.release();
+  }
+});
+
+// ── Pedidos asignados (asignación directa de requisiciones aprobadas) ────────
+router.get("/pedidos-asignados", resolveProveedor, async (req, res, next) => {
+  const client = await pool.connect();
+  try {
+    const idProv = req.proveedor.id_proveedor;
+
+    const { rows: pedidos } = await client.query(
+      `SELECT r.id_requisicion, r.codigo_requisicion, r.tipo_solicitud, r.prioridad,
+              r.justificacion, r.lugar_entrega, r.fecha_solicitud, r.estado, r.monto_estimado,
+              d.nombre_dependencia, pc.fecha_publicacion AS fecha_asignacion,
+              oc.id_orden_compra, oc.numero_orden, oc.estado AS estado_orden,
+              rb.id_recepcion, rb.estado AS estado_recepcion, rb.fecha_recepcion
+         FROM proceso_cotizacion pc
+         JOIN invitacion_proveedor ip ON ip.id_proceso = pc.id_proceso
+         JOIN requisicion r ON r.id_requisicion = pc.id_requisicion
+         JOIN dependencia_municipal d ON d.id_dependencia = r.id_dependencia
+         LEFT JOIN orden_compra oc ON oc.id_requisicion = r.id_requisicion AND oc.id_proveedor = $1
+         LEFT JOIN recepcion_bodega rb ON rb.id_orden_compra = oc.id_orden_compra
+        WHERE ip.id_proveedor = $1
+        ORDER BY pc.fecha_publicacion DESC`,
+      [idProv],
+    );
+
+    const resultado = [];
+    for (const p of pedidos) {
+      const { rows: items } = await client.query(
+        `SELECT dr.id_detalle,
+                COALESCE(i.nombre, dr.descripcion_libre) AS descripcion,
+                dr.cantidad, um.simbolo AS unidad, dr.observaciones
+           FROM detalle_requisicion dr
+           LEFT JOIN insumo i ON i.id_insumo = dr.id_insumo
+           JOIN unidad_medida um ON um.id_unidad_medida = dr.id_unidad_medida
+          WHERE dr.id_requisicion = $1
+          ORDER BY dr.id_detalle`,
+        [p.id_requisicion],
+      );
+
+      const { rows: docs } = await client.query(
+        `SELECT nombre_archivo, contenido_base64
+           FROM requisicion_imagen
+          WHERE id_requisicion = $1
+          ORDER BY id_imagen`,
+        [p.id_requisicion],
+      );
+
+      let estadoEntrega = "Asignado";
+      if (p.estado_recepcion === "Completa") estadoEntrega = "Entregado";
+      else if (p.estado_recepcion === "Parcial" || p.estado_recepcion === "Con Novedades") estadoEntrega = "Entrega Parcial";
+      else if (p.estado_recepcion === "En Proceso") estadoEntrega = "En Camino";
+
+      resultado.push({
+        id_requisicion: p.id_requisicion,
+        codigo_requisicion: p.codigo_requisicion,
+        tipo_solicitud: p.tipo_solicitud,
+        prioridad: p.prioridad,
+        justificacion: p.justificacion,
+        dependencia: p.nombre_dependencia,
+        lugar_entrega: p.lugar_entrega,
+        fecha_solicitud: p.fecha_solicitud,
+        fecha_asignacion: p.fecha_asignacion,
+        estado: estadoEntrega,
+        monto_estimado: p.monto_estimado,
+        estado_orden: p.estado_orden || null,
+        numero_orden: p.numero_orden || null,
+        items: items.map((it) => ({
+          id_detalle: it.id_detalle,
+          descripcion: it.descripcion,
+          cantidad: String(it.cantidad),
+          unidad: it.unidad,
+          observaciones: it.observaciones,
+        })),
+        documentos: docs.map((d) => ({
+          nombre_archivo: d.nombre_archivo,
+          contenido_base64: d.contenido_base64,
+        })),
+      });
+    }
+
+    res.json(resultado);
+  } catch (e) {
+    next(e);
+  } finally {
+    client.release();
   }
 });
 

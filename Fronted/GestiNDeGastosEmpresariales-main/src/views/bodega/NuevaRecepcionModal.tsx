@@ -4,7 +4,9 @@ import { Icons } from "@/components/common/Icons"
 import {
   listarOrdenesCompraRecepcion,
   crearRecepcion,
+  obtenerEstadoRecepcion,
   type OrdenCompraRecepcion,
+  type OrdenEstadoRecepcion,
   type Recepcion,
 } from "@/api/bodega"
 import { ApiError } from "@/api/client"
@@ -25,6 +27,8 @@ export default function NuevaRecepcionModal({
   const [idOC, setIdOC] = useState<number | null>(null)
   const [busqueda, setBusqueda] = useState("")
   const [submitting, setSubmitting] = useState(false)
+  const [estadoRecepcion, setEstadoRecepcion] = useState<OrdenEstadoRecepcion | null>(null)
+  const [cargandoEstado, setCargandoEstado] = useState(false)
 
   const cargar = (q = "") => {
     listarOrdenesCompraRecepcion(q ? { numero: q } : {})
@@ -36,11 +40,25 @@ export default function NuevaRecepcionModal({
     cargar()
   }, [])
 
-  const ocSel = ocs.find((o) => o.id_orden_compra === idOC) ?? null
+  useEffect(() => {
+    if (idOC == null) {
+      setEstadoRecepcion(null)
+      return
+    }
+    setCargandoEstado(true)
+    obtenerEstadoRecepcion(idOC)
+      .then(setEstadoRecepcion)
+      .catch(() => setEstadoRecepcion(null))
+      .finally(() => setCargandoEstado(false))
+  }, [idOC])
 
   const crear = async () => {
     if (idOC == null) {
       onToast("Revisar formulario", "Seleccione una orden de compra")
+      return
+    }
+    if (estadoRecepcion?.entregado_todo) {
+      onToast("Orden entregada", "Esta orden ya fue completamente entregada.")
       return
     }
     setSubmitting(true)
@@ -113,15 +131,58 @@ export default function NuevaRecepcionModal({
               </button>
             ))}
           </div>
+
+          {cargandoEstado && (
+            <p className="text-sm text-gray-500 text-center py-2">Cargando estado de recepción...</p>
+          )}
+
+          {estadoRecepcion && estadoRecepcion.entregado_todo && (
+            <div className="rounded-xl border-2 border-green-500 bg-green-50 p-4 space-y-3">
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-6 rounded-full bg-green-500 flex items-center justify-center">
+                  <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                  </svg>
+                </div>
+                <span className="text-sm font-extrabold text-green-700 uppercase tracking-wide">Entregado Todo</span>
+              </div>
+              <div className="space-y-2">
+                {estadoRecepcion.items.map((it) => (
+                  <div key={it.id_detalle_orden} className="flex items-center justify-between bg-green-100 rounded-lg px-3 py-2">
+                    <span className="text-sm font-semibold text-green-800">{it.descripcion}</span>
+                    <span className="text-xs font-bold text-green-700">{it.cantidad_recibida}/{it.cantidad_ordenada}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {estadoRecepcion && !estadoRecepcion.entregado_todo && estadoRecepcion.items.length > 0 && (
+            <div className="rounded-xl border border-gray-200 p-4 space-y-2">
+              <p className="text-xs font-bold text-gray-500 uppercase tracking-widest">Estado de Recepción</p>
+              {estadoRecepcion.items.map((it) => (
+                <div
+                  key={it.id_detalle_orden}
+                  className="flex items-center justify-between rounded-lg px-3 py-2"
+                  style={{ backgroundColor: it.entregado ? "#DCFCE7" : "#FEF3C7" }}
+                >
+                  <span className="text-sm font-semibold text-gray-800">{it.descripcion}</span>
+                  <span className="text-xs font-bold" style={{ color: it.entregado ? "#15803D" : "#B45309" }}>
+                    {it.entregado ? "Entregado" : `Pendiente: ${it.cantidad_pendiente}`}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-100 shrink-0">
           <button onClick={onClose} className="px-5 py-2.5 text-sm font-semibold text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50 transition-all">
             Cancelar
           </button>
-          <button onClick={crear} disabled={submitting || idOC == null} className="flex items-center gap-2 px-5 py-2.5 text-sm font-bold text-white rounded-lg transition-all hover:opacity-90 shadow-sm disabled:opacity-50" style={{ backgroundColor: G }}>
+          <button onClick={crear} disabled={submitting || idOC == null || estadoRecepcion?.entregado_todo} className="flex items-center gap-2 px-5 py-2.5 text-sm font-bold text-white rounded-lg transition-all hover:opacity-90 shadow-sm disabled:opacity-50" style={{ backgroundColor: G }}>
             <Icons.Plus />
-            {submitting ? "Creando…" : "Crear Recepción"}
+            {submitting ? "Creando..." : "Crear Recepción"}
           </button>
         </div>
       </div>

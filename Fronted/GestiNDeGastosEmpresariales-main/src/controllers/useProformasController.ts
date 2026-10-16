@@ -6,7 +6,7 @@ import {
   type OrdenCompra,
 } from "@/api/proformas"
 
-export type ProformasTab = "procesos" | "ordenes"
+export type ProformasTab = "procesos" | "recibidas" | "ordenes"
 
 export function useProformasController(onToast: (m: string, s: string) => void) {
   const [tab, setTab] = useState<ProformasTab>("procesos")

@@ -916,4 +916,158 @@ router.patch("/ordenes-compra/:id/estado", authorize("proformas"), async (req, r
   }
 });
 
+// ── Proformas recibidas: listado global ─────────────────────────────────────────
+router.get("/cotizaciones", authorize("proformas"), async (req, res, next) => {
+  try {
+    const { estado, id_proveedor, fecha_desde, fecha_hasta, q, page = 1, pageSize = 20 } = req.query;
+    const where = ["1=1"];
+    const params = [];
+    const add = (v) => params.push(v);
+
+    if (estado) { where.push(`c.estado_cotizacion = $${params.length + 1}`); add(estado); }
+    if (id_proveedor) { where.push(`c.id_proveedor = $${params.length + 1}`); add(id_proveedor); }
+    if (fecha_desde) { where.push(`c.fecha_envio >= $${params.length + 1}`); add(fecha_desde); }
+    if (fecha_hasta) { where.push(`c.fecha_envio <= $${params.length + 1}`); add(fecha_hasta); }
+    if (q) {
+      where.push(`(p.razon_social ILIKE $${params.length + 1} OR r.codigo_requisicion ILIKE $${params.length + 1} OR c.numero_cotizacion ILIKE $${params.length + 1})`);
+      add(`%${q}%`);
+    }
+
+    const whereSql = `WHERE ${where.join(" AND ")}`;
+    const offset = (parseInt(page, 10) - 1) * parseInt(pageSize, 10);
+
+    const countRes = await pool.query(
+      `SELECT COUNT(*)::int AS total FROM cotizacion c
+        JOIN proveedor p ON p.id_proveedor = c.id_proveedor
+        JOIN requisicion r ON r.id_requisicion = c.id_requisicion
+        JOIN proceso_cotizacion pc ON pc.id_requisicion = c.id_requisicion
+       ${whereSql}`,
+      params,
+    );
+    const total = countRes.rows[0].total;
+
+    const { rows } = await pool.query(
+      `SELECT c.id_cotizacion, c.numero_cotizacion, c.monto_total, c.estado_cotizacion,
+              c.fecha_envio, c.origen, c.seleccionada,
+              p.nit, p.razon_social,
+              r.codigo_requisicion, r.tipo_solicitud,
+              pc.id_proceso, pc.fase AS fase_proceso
+         FROM cotizacion c
+         JOIN proveedor p ON p.id_proveedor = c.id_proveedor
+         JOIN requisicion r ON r.id_requisicion = c.id_requisicion
+         JOIN proceso_cotizacion pc ON pc.id_requisicion = c.id_requisicion
+        ${whereSql}
+        ORDER BY c.fecha_envio DESC
+        LIMIT $${params.length + 1} OFFSET $${params.length + 2}`,
+      [...params, parseInt(pageSize, 10), offset],
+    );
+
+    res.json({
+      data: rows,
+      total,
+      page: parseInt(page, 10),
+      pageSize: parseInt(pageSize, 10),
+    });
+  } catch (e) {
+    next(e);
+  }
+});
+
+// ── Detalle de proforma recibida ───────────────────────────────────────────────
+router.get("/cotizaciones/:id", authorize("proformas"), async (req, res, next) => {
+  try {
+    const { rows: cotRows } = await pool.query(
+      `SELECT c.*, p.nit, p.razon_social, p.correo, p.telefono,
+              r.codigo_requisicion, r.tipo_solicitud, r.justificacion, r.lugar_entrega,
+              d.nombre_dependencia, pc.id_proceso, pc.fase AS fase_proceso
+         FROM cotizacion c
+         JOIN proveedor p ON p.id_proveedor = c.id_proveedor
+         JOIN requisicion r ON r.id_requisicion = c.id_requisicion
+         JOIN dependencia_municipal d ON d.id_dependencia = r.id_dependencia
+         JOIN proceso_cotizacion pc ON pc.id_requisicion = c.id_requisicion
+        WHERE c.id_cotizacion = $1`,
+      [req.params.id],
+    );
+    if (!cotRows[0]) return res.status(404).json({ error: "Cotización no encontrada" });
+
+    const { rows: items } = await pool.query(
+      `SELECT dc.id_detalle_cotizacion, dc.id_detalle_requisicion,
+              dc.cantidad_cotizada, dc.precio_unitario, dc.subtotal, dc.descripcion_oferta,
+              dr.cantidad AS cantidad_solicitada, um.simbolo AS unidad_simbolo,
+              COALESCE(i.nombre, dr.descripcion_libre) AS descripcion
+         FROM detalle_cotizacion dc
+         JOIN detalle_requisicion dr ON dr.id_detalle = dc.id_detalle_requisicion
+         JOIN unidad_medida um ON um.id_unidad_medida = dr.id_unidad_medida
+         LEFT JOIN insumo i ON i.id_insumo = dr.id_insumo
+        WHERE dc.id_cotizacion = $1
+        ORDER BY dc.id_detalle_cotizacion`,
+      [req.params.id],
+    );
+
+    res.json({ ...cotRows[0], items });
+  } catch (e) {
+    next(e);
+  }
+});
+
+// ── Cambiar estado de proforma ─────────────────────────────────────────────────
+router.patch("/cotizaciones/:id/estado", authorize("proformas"), async (req, res, next) => {
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+
+    const { rows: cur } = await client.query(
+      "SELECT * FROM cotizacion WHERE id_cotizacion = $1 FOR UPDATE",
+      [req.params.id],
+    );
+    if (!cur[0]) {
+      await client.query("ROLLBACK");
+      return res.status(404).json({ error: "Cotización no encontrada" });
+    }
+
+    const { estado, observaciones } = req.body;
+    const validos = ["Recibida", "En Evaluación", "Aceptada", "Rechazada"];
+    if (!validos.includes(estado)) {
+      await client.query("ROLLBACK");
+      return res.status(400).json({ error: "Estado inválido" });
+    }
+
+    const transicionesValidas = {
+      "Recibida": ["En Evaluación", "Rechazada"],
+      "En Evaluación": ["Aceptada", "Rechazada"],
+      "Aceptada": [],
+      "Rechazada": [],
+    };
+    if (!transicionesValidas[cur[0].estado_cotizacion].includes(estado)) {
+      await client.query("ROLLBACK");
+      return res.status(400).json({ error: `No se puede cambiar de ${cur[0].estado_cotizacion} a ${estado}` });
+    }
+
+    const { rows } = await client.query(
+      `UPDATE cotizacion
+          SET estado_cotizacion = $1, observaciones_tecnicas = COALESCE($2, observaciones_tecnicas)
+        WHERE id_cotizacion = $3
+        RETURNING *`,
+      [estado, observaciones ?? null, req.params.id],
+    );
+
+    await client.query("COMMIT");
+
+    await registrarBitacora({
+      idUsuario: req.user.id_usuario,
+      accion: `cotizacion_${estado.toLowerCase().replace(/\s+/g, "_")}`,
+      ip: ipDe(req),
+      modulo: "Proformas",
+      detalle: `Cotización ${cur[0].numero_cotizacion}: ${cur[0].estado_cotizacion} → ${estado}`,
+    });
+
+    res.json(rows[0]);
+  } catch (e) {
+    await client.query("ROLLBACK");
+    next(e);
+  } finally {
+    client.release();
+  }
+});
+
 export default router;

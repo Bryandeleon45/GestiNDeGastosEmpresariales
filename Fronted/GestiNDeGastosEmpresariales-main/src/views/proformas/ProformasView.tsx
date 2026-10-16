@@ -6,6 +6,7 @@ import { cambiarEstadoOrden, type Proceso, type OrdenCompra } from "@/api/profor
 import ComparativaProformasView from "@/views/proformas/ComparativaProformasView"
 import PublicarProcesoModal from "@/views/proformas/PublicarProcesoModal"
 import RegistrarCotizacionModal from "@/views/proformas/RegistrarCotizacionModal"
+import ProformasRecibidasView from "@/views/proformas/ProformasRecibidasView"
 
 const FASE_STYLE: Record<string, string> = {
   Publicada: "bg-sky-50 text-sky-700 border border-sky-200",
@@ -101,7 +102,7 @@ export default function ProformasView({
             </div>
             <div className="flex items-center gap-2 shrink-0">
               <div className="flex items-center bg-white border border-gray-200 rounded-xl p-1">
-                {(["procesos", "ordenes"] as const).map((t) => (
+                {(["procesos", "recibidas", "ordenes"] as const).map((t) => (
                   <button
                     key={t}
                     onClick={() => setTab(t)}
@@ -112,7 +113,7 @@ export default function ProformasView({
                         : { color: "#6B7280" }
                     }
                   >
-                    {t === "procesos" ? "Procesos de Cotización" : "Órdenes de Compra"}
+                    {t === "procesos" ? "Procesos" : t === "recibidas" ? "Proformas Recibidas" : "Órdenes"}
                   </button>
                 ))}
               </div>
@@ -127,6 +128,13 @@ export default function ProformasView({
               )}
             </div>
           </div>
+
+          {tab === "recibidas" && (
+            <ProformasRecibidasView
+              onToast={onToast}
+              onVerComparativa={(idProceso) => setProcesoId(idProceso)}
+            />
+          )}
 
           {tab === "procesos" ? (
             <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">

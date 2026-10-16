@@ -232,3 +232,78 @@ export function listarOrdenesCompra(params: { estado?: string } = {}) {
 export function cambiarEstadoOrden(id: number | string, estado: string) {
   return api.patch<OrdenCompra>(`/proformas/ordenes-compra/${id}/estado`, { estado })
 }
+
+export interface ProformaRecibidaItem {
+  id_cotizacion: number
+  numero_cotizacion: string
+  monto_total: string
+  estado_cotizacion: string
+  fecha_envio: string
+  origen: string
+  seleccionada: boolean
+  nit: string
+  razon_social: string
+  codigo_requisicion: string
+  tipo_solicitud: string
+  id_proceso: number
+  fase_proceso: string
+}
+
+export interface ProformaRecibidaData {
+  data: ProformaRecibidaItem[]
+  total: number
+  page: number
+  pageSize: number
+}
+
+export function listarCotizacionesRecibidas(params: {
+  estado?: string
+  id_proveedor?: number
+  fecha_desde?: string
+  fecha_hasta?: string
+  q?: string
+  page?: number
+  pageSize?: number
+} = {}) {
+  const sp = new URLSearchParams()
+  Object.entries(params).forEach(([k, v]) => {
+    if (v !== undefined && v !== null && v !== "") sp.set(k, String(v))
+  })
+  return api.get<ProformaRecibidaData>(`/proformas/cotizaciones${sp.toString() ? `?${sp.toString()}` : ""}`)
+}
+
+export interface ProformaRecibidaDetalle extends ProformaRecibidaItem {
+  id_requisicion: number
+  id_proveedor: number
+  referencia_proveedor: string | null
+  fecha_cotizacion: string
+  condiciones_pago: string | null
+  tiempo_entrega_dias: number | null
+  tiempo_entrega_texto: string | null
+  cumple_tecnico: boolean | null
+  motivo_rechazo: string | null
+  correo: string
+  telefono: string | null
+  justificacion: string
+  lugar_entrega: string | null
+  nombre_dependencia: string
+  items: Array<{
+    id_detalle_cotizacion: number
+    id_detalle_requisicion: number
+    cantidad_cotizada: string
+    cantidad_solicitada: string
+    precio_unitario: string
+    subtotal: string
+    descripcion_oferta: string | null
+    descripcion: string
+    unidad_simbolo: string
+  }>
+}
+
+export function obtenerCotizacion(id: number | string) {
+  return api.get<ProformaRecibidaDetalle>(`/proformas/cotizaciones/${id}`)
+}
+
+export function cambiarEstadoCotizacion(id: number | string, estado: string, observaciones?: string) {
+  return api.patch<ProformaRecibidaItem>(`/proformas/cotizaciones/${id}/estado`, { estado, observaciones })
+}

@@ -182,6 +182,51 @@ router.get("/ordenes-compra/pendientes-recepcion", authorize("bodega"), async (r
   }
 });
 
+router.get("/ordenes-compra/:id/estado-recepcion", authorize("bodega"), async (req, res, next) => {
+  try {
+    const { rows: ocRows } = await pool.query(
+      "SELECT id_orden_compra, numero_orden, estado FROM orden_compra WHERE id_orden_compra = $1",
+      [req.params.id],
+    );
+    if (!ocRows[0]) return res.status(404).json({ error: "Orden no encontrada" });
+
+    const { rows: items } = await pool.query(
+      `SELECT doc.id_detalle_orden,
+              COALESCE(i.nombre, doc.descripcion_libre) AS descripcion,
+              doc.cantidad AS cantidad_ordenada,
+              COALESCE(SUM(drb.cantidad_aceptada), 0) AS cantidad_recibida
+         FROM detalle_orden_compra doc
+         LEFT JOIN insumo i ON i.id_insumo = doc.id_insumo
+         LEFT JOIN detalle_recepcion_bodega drb ON drb.id_detalle_orden = doc.id_detalle_orden
+        WHERE doc.id_orden_compra = $1
+        GROUP BY doc.id_detalle_orden, i.nombre, doc.descripcion_libre, doc.cantidad
+        ORDER BY doc.id_detalle_orden`,
+      [req.params.id],
+    );
+
+    const itemsConEstado = items.map((it) => ({
+      id_detalle_orden: it.id_detalle_orden,
+      descripcion: it.descripcion,
+      cantidad_ordenada: Number(it.cantidad_ordenada),
+      cantidad_recibida: Number(it.cantidad_recibida),
+      cantidad_pendiente: Math.max(0, Number(it.cantidad_ordenada) - Number(it.cantidad_recibida)),
+      entregado: Number(it.cantidad_recibida) >= Number(it.cantidad_ordenada),
+    }));
+
+    const entregadoTodo = itemsConEstado.length > 0 && itemsConEstado.every((it) => it.entregado);
+
+    res.json({
+      id_orden_compra: ocRows[0].id_orden_compra,
+      numero_orden: ocRows[0].numero_orden,
+      estado: ocRows[0].estado,
+      entregado_todo: entregadoTodo,
+      items: itemsConEstado,
+    });
+  } catch (e) {
+    next(e);
+  }
+});
+
 // ── Recepciones: listado e historial ──────────────────────────────────────────
 router.get("/recepciones", authorize("bodega"), async (req, res, next) => {
   try {
