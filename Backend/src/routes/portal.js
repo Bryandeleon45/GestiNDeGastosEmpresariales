@@ -1,4 +1,5 @@
 import { Router } from "express";
+import PDFDocument from "pdfkit";
 import { pool } from "../db.js";
 import { authenticate } from "../middlewares/authenticate.js";
 import { registrarBitacora, ipDe } from "../services/bitacora.service.js";
@@ -893,12 +894,8 @@ router.get("/ordenes-facturables", resolveProveedor, async (req, res, next) => {
               r.codigo_requisicion, r.tipo_solicitud,
               COALESCE((SELECT SUM(f.monto_total) FROM factura f
                          WHERE f.id_orden_compra = oc.id_orden_compra AND f.estado <> 'Rechazada'), 0)::numeric(12,2) AS total_facturado,
-              COALESCE((SELECT SUM(drb.cantidad_aceptada * doc.precio_unitario)
-                          FROM recepcion_bodega rb
-                          JOIN detalle_recepcion_bodega drb ON drb.id_recepcion = rb.id_recepcion
-                          JOIN detalle_orden_compra doc ON doc.id_detalle_orden = drb.id_detalle_orden
-                         WHERE rb.id_orden_compra = oc.id_orden_compra
-                           AND rb.estado IN ('Completa','Parcial','Con Novedades')), 0)::numeric(12,2) AS recibido_valorizado
+              COALESCE((SELECT monto_recibido FROM v_recibido_oc
+                         WHERE id_orden_compra = oc.id_orden_compra), 0)::numeric(12,2) AS recibido_valorizado
          FROM orden_compra oc
          JOIN requisicion r ON r.id_requisicion = oc.id_requisicion
         WHERE oc.id_proveedor = $1
@@ -912,7 +909,51 @@ router.get("/ordenes-facturables", resolveProveedor, async (req, res, next) => {
   }
 });
 
-// ── Facturas del proveedor ─────────────────────────────────────────────────────
+// ── Detalle de una orden facturable del proveedor (con sus ítems) ──────────────
+router.get("/ordenes-facturables/:id", resolveProveedor, async (req, res, next) => {
+  try {
+    const idProv = req.proveedor.id_proveedor;
+    const { rows } = await pool.query(
+      `SELECT oc.id_orden_compra, oc.numero_orden, oc.fecha_emision, oc.monto_total, oc.estado,
+              r.codigo_requisicion, r.tipo_solicitud, r.justificacion, r.lugar_entrega,
+              d.nombre_dependencia,
+              COALESCE((SELECT SUM(f.monto_total) FROM factura f
+                         WHERE f.id_orden_compra = oc.id_orden_compra AND f.estado <> 'Rechazada'), 0)::numeric(12,2) AS total_facturado,
+              COALESCE((SELECT monto_recibido FROM v_recibido_oc
+                         WHERE id_orden_compra = oc.id_orden_compra), 0)::numeric(12,2) AS recibido_valorizado
+         FROM orden_compra oc
+         JOIN requisicion r ON r.id_requisicion = oc.id_requisicion
+         JOIN dependencia_municipal d ON d.id_dependencia = r.id_dependencia
+        WHERE oc.id_orden_compra = $1 AND oc.id_proveedor = $2`,
+      [req.params.id, idProv],
+    );
+    if (!rows[0]) return res.status(404).json({ error: "Orden no encontrada" });
+
+    const { rows: items } = await pool.query(
+      `SELECT doc.id_detalle_orden,
+              COALESCE(i.nombre, dr.descripcion_libre) AS descripcion,
+              doc.cantidad_comprada, doc.precio_unitario,
+              (doc.cantidad_comprada * doc.precio_unitario)::numeric(12,2) AS subtotal,
+              um.simbolo AS unidad_simbolo,
+              COALESCE((SELECT SUM(drb.cantidad_aceptada)
+                          FROM detalle_recepcion_bodega drb
+                          JOIN recepcion_bodega rb ON rb.id_recepcion = drb.id_recepcion
+                         WHERE drb.id_detalle_orden = doc.id_detalle_orden
+                           AND rb.estado IN ('Completa','Parcial','Con Novedades')), 0) AS cantidad_recibida
+         FROM detalle_orden_compra doc
+         JOIN detalle_requisicion dr ON dr.id_detalle = doc.id_detalle_requisicion
+         LEFT JOIN insumo i ON i.id_insumo = dr.id_insumo
+         JOIN unidad_medida um ON um.id_unidad_medida = dr.id_unidad_medida
+        WHERE doc.id_orden_compra = $1
+        ORDER BY doc.id_detalle_orden`,
+      [req.params.id],
+    );
+
+    res.json({ ...rows[0], items });
+  } catch (e) {
+    next(e);
+  }
+});
 router.get("/facturas", resolveProveedor, async (req, res, next) => {
   try {
     const idProv = req.proveedor.id_proveedor;
@@ -1002,27 +1043,27 @@ router.post("/facturas", resolveProveedor, async (req, res, next) => {
       "SELECT COALESCE(SUM(monto_total), 0) AS total FROM factura WHERE id_orden_compra = $1 AND estado <> 'Rechazada'",
       [id_orden_compra],
     );
-    const recibidoRes = await client.query(
-      `SELECT COALESCE(SUM(drb.cantidad_aceptada * doc.precio_unitario), 0) AS recibido
-         FROM recepcion_bodega rb
+    const recepcionRes = await client.query(
+      `SELECT 1 FROM recepcion_bodega rb
          JOIN detalle_recepcion_bodega drb ON drb.id_recepcion = rb.id_recepcion
-         JOIN detalle_orden_compra doc ON doc.id_detalle_orden = drb.id_detalle_orden
         WHERE rb.id_orden_compra = $1
-          AND rb.estado IN ('Completa','Parcial','Con Novedades')`,
+          AND rb.estado IN ('Completa','Parcial','Con Novedades')
+          AND drb.cantidad_aceptada > 0
+        LIMIT 1`,
       [id_orden_compra],
     );
     const facturado = parseFloat(facturadoRes.rows[0].total);
-    const recibido = parseFloat(recibidoRes.rows[0].recibido);
     const nuevo = parseFloat(monto_total);
-    if (recibido <= 0) {
+    if (!recepcionRes.rows[0]) {
       await client.query("ROLLBACK");
       return res.status(422).json({ error: "No hay recepción de bodega registrada para esta orden de compra" });
     }
-    if (facturado + nuevo > recibido + 0.001) {
+    const limite = parseFloat(oc.monto_total) || 0;
+    if (limite > 0 && facturado + nuevo > limite + 0.001) {
       await client.query("ROLLBACK");
       return res.status(422).json({
-        error: "El monto facturado supera lo recibido en bodega",
-        disponible: (recibido - facturado).toFixed(2),
+        error: "El monto facturado supera el monto de la orden de compra",
+        disponible: (limite - facturado).toFixed(2),
       });
     }
 
@@ -1058,6 +1099,23 @@ router.post("/facturas", resolveProveedor, async (req, res, next) => {
       ],
     );
 
+    // El monto de la factura es la fuente del monto del sistema: se copia a la
+    // orden y a la solicitud (la orden solo se actualiza si estaba en 0).
+    if (parseFloat(oc.monto_total) === 0) {
+      await client.query(
+        "UPDATE orden_compra SET monto_total = $1 WHERE id_orden_compra = $2",
+        [nuevo.toFixed(2), id_orden_compra],
+      );
+    }
+    const ocAct = await client.query("SELECT * FROM orden_compra WHERE id_orden_compra = $1", [id_orden_compra]);
+    await client.query(
+      `UPDATE requisicion
+          SET monto_adjudicado = $1,
+              monto_estimado = CASE WHEN monto_estimado = 0 THEN $1 ELSE monto_estimado END
+        WHERE id_requisicion = $2`,
+      [ocAct.rows[0].monto_total, oc.id_requisicion],
+    );
+
     await client.query("COMMIT");
 
     await registrarBitacora({
@@ -1074,6 +1132,279 @@ router.post("/facturas", resolveProveedor, async (req, res, next) => {
     next(e);
   } finally {
     client.release();
+  }
+});
+
+// ── Informe consolidado: solicitudes pagadas y recibidas en bodega ────────────
+const INFORME_COLUMNAS = [
+  { campo: "codigo_requisicion", titulo: "Solicitud" },
+  { campo: "dependencia", titulo: "Dependencia" },
+  { campo: "tipo_solicitud", titulo: "Tipo" },
+  { campo: "numero_orden", titulo: "Orden" },
+  { campo: "monto_orden", titulo: "Monto" },
+  { campo: "recibido_valorizado", titulo: "Recibido" },
+  { campo: "estado_recepcion", titulo: "Est. Recepción" },
+  { campo: "facturado", titulo: "Facturado" },
+  { campo: "estado_factura", titulo: "Est. Factura" },
+  { campo: "pagado", titulo: "Pagado" },
+  { campo: "estado_pago", titulo: "Est. Pago" },
+  { campo: "fecha_pago", titulo: "Fecha Pago" },
+];
+
+function fechaValor(v) {
+  if (!v) return "";
+  if (v instanceof Date) return v.toISOString().slice(0, 10);
+  return String(v).slice(0, 10);
+}
+
+function estadoInforme(f) {
+  if (f.pagada && f.recibida_en_bodega) return "Pagada y recibida";
+  if (f.pagada) return "Pagada";
+  if (f.facturado) return "Pendiente de pago";
+  return "Pendiente de factura";
+}
+
+async function obtenerInformeProveedor(idProveedor, { fechaInicio, fechaFin, q } = {}) {
+  const where = ["oc.id_proveedor = $1"];
+  const params = [idProveedor];
+  if (fechaInicio) {
+    where.push(`oc.fecha_emision >= $${params.length + 1}`);
+    params.push(fechaInicio);
+  }
+  if (fechaFin) {
+    where.push(`oc.fecha_emision < $${params.length + 1}::date + 1`);
+    params.push(fechaFin);
+  }
+  if (q) {
+    where.push(`(r.codigo_requisicion ILIKE $${params.length + 1} OR oc.numero_orden ILIKE $${params.length + 1})`);
+    params.push(`%${q}%`);
+  }
+
+  const { rows } = await pool.query(
+    `SELECT oc.id_orden_compra, oc.numero_orden, oc.fecha_emision, oc.monto_total,
+            oc.estado AS estado_orden,
+            r.codigo_requisicion, r.tipo_solicitud,
+            d.nombre_dependencia,
+            COALESCE((SELECT monto_recibido FROM v_recibido_oc
+                       WHERE id_orden_compra = oc.id_orden_compra), 0)::numeric(12,2) AS recibido_valorizado,
+            (SELECT MAX(rb.fecha_recepcion)
+               FROM recepcion_bodega rb
+              WHERE rb.id_orden_compra = oc.id_orden_compra
+                AND rb.estado IN ('Completa','Parcial','Con Novedades')) AS fecha_recepcion,
+            (SELECT rb.estado
+               FROM recepcion_bodega rb
+              WHERE rb.id_orden_compra = oc.id_orden_compra
+                AND rb.estado IN ('Completa','Parcial','Con Novedades')
+              ORDER BY rb.fecha_recepcion DESC, rb.id_recepcion DESC LIMIT 1) AS estado_recepcion,
+            COALESCE((SELECT SUM(f.monto_total)
+                        FROM factura f
+                       WHERE f.id_orden_compra = oc.id_orden_compra
+                         AND f.estado <> 'Rechazada'), 0)::numeric(12,2) AS facturado,
+            (SELECT f.estado
+               FROM factura f
+              WHERE f.id_orden_compra = oc.id_orden_compra AND f.estado <> 'Rechazada'
+              ORDER BY f.id_factura DESC LIMIT 1) AS estado_factura,
+            COALESCE((SELECT SUM(op.monto)
+                        FROM factura f
+                        JOIN orden_pago op ON op.id_factura = f.id_factura
+                       WHERE f.id_orden_compra = oc.id_orden_compra
+                         AND op.estado = 'Pagada'), 0)::numeric(12,2) AS pagado,
+            (SELECT op.estado
+               FROM factura f
+               JOIN orden_pago op ON op.id_factura = f.id_factura
+              WHERE f.id_orden_compra = oc.id_orden_compra AND op.estado <> 'Anulada'
+              ORDER BY op.id_orden_pago DESC LIMIT 1) AS estado_pago,
+            (SELECT MAX(op.fecha_pago_real)
+               FROM factura f
+               JOIN orden_pago op ON op.id_factura = f.id_factura
+              WHERE f.id_orden_compra = oc.id_orden_compra AND op.estado = 'Pagada') AS fecha_pago
+       FROM orden_compra oc
+       JOIN requisicion r ON r.id_requisicion = oc.id_requisicion
+       JOIN dependencia_municipal d ON d.id_dependencia = r.id_dependencia
+      WHERE ${where.join(" AND ")}
+      ORDER BY oc.fecha_emision DESC, oc.id_orden_compra DESC`,
+    params,
+  );
+
+  return rows.map((r) => {
+    const recibida = Number(r.recibido_valorizado) > 0;
+    const pagada = Number(r.pagado) > 0;
+    const facturado = Number(r.facturado) > 0;
+    return {
+      id_orden_compra: r.id_orden_compra,
+      codigo_requisicion: r.codigo_requisicion,
+      dependencia: r.nombre_dependencia,
+      tipo_solicitud: r.tipo_solicitud,
+      numero_orden: r.numero_orden,
+      fecha_emision: r.fecha_emision,
+      monto_orden: r.monto_total,
+      estado_orden: r.estado_orden,
+      recibido_valorizado: r.recibido_valorizado,
+      estado_recepcion: r.estado_recepcion,
+      fecha_recepcion: fechaValor(r.fecha_recepcion),
+      facturado: r.facturado,
+      estado_factura: r.estado_factura,
+      pagado: r.pagado,
+      estado_pago: r.estado_pago,
+      fecha_pago: fechaValor(r.fecha_pago),
+      pagada: pagada,
+      recibida_en_bodega: recibida,
+      estado: estadoInforme({ pagada, recibida_en_bodega: recibida, facturado }),
+    };
+  });
+}
+
+function filtrarInforme(filas, estado) {
+  if (!estado || estado === "todas") return filas;
+  if (estado === "pagadas") return filas.filter((f) => f.pagada);
+  if (estado === "pendientes") return filas.filter((f) => f.estado === "Pendiente de pago");
+  if (estado === "recibidas") return filas.filter((f) => f.recibida_en_bodega);
+  return filas;
+}
+
+function calcularTotales(filas) {
+  const sum = (k) => filas.reduce((s, f) => s + Number(f[k] || 0), 0);
+  return {
+    ordenes: filas.length,
+    monto_orden: sum("monto_orden").toFixed(2),
+    recibido: sum("recibido_valorizado").toFixed(2),
+    facturado: sum("facturado").toFixed(2),
+    pagado: sum("pagado").toFixed(2),
+    pendientes: filas.filter((f) => f.estado === "Pendiente de pago").length,
+  };
+}
+
+function buildInformeCsv(filas) {
+  const esc = (v) => `"${String(v ?? "").replace(/"/g, '""')}"`;
+  return [
+    INFORME_COLUMNAS.map((c) => esc(c.titulo)).join(","),
+    ...filas.map((f) =>
+      INFORME_COLUMNAS.map((c) => esc(f[c.campo] ?? "")).join(","),
+    ),
+  ].join("\n");
+}
+
+function buildInformePdf(proveedor, filas, totales) {
+  return new Promise((resolve, reject) => {
+    const doc = new PDFDocument({ layout: "landscape", size: "A4", margin: 40 });
+    const chunks = [];
+    doc.on("data", (c) => chunks.push(c));
+    doc.on("end", () => resolve(Buffer.concat(chunks)));
+    doc.on("error", reject);
+
+    const trunc = (v, n) => {
+      const s = String(v ?? "—");
+      return s.length > n ? `${s.slice(0, n - 1)}…` : s;
+    };
+    const cols = [
+      { k: "codigo_requisicion", t: "Solicitud", w: 95 },
+      { k: "dependencia", t: "Dependencia", w: 100 },
+      { k: "numero_orden", t: "Orden", w: 90 },
+      { k: "monto_orden", t: "Monto", w: 62, right: true },
+      { k: "recibido_valorizado", t: "Recibido", w: 62, right: true },
+      { k: "pagado", t: "Pagado", w: 62, right: true },
+      { k: "estado", t: "Estado", w: 160 },
+    ];
+    const x0 = 40;
+    const ancho = cols.reduce((s, c) => s + c.w, 0);
+    const rowH = 20;
+    const headerH = 24;
+
+    doc.fontSize(16).fillColor("#1E5E2F").text("Informe de Solicitudes — Pagadas y Recibidas en Bodega");
+    doc.fontSize(10).fillColor("#333333").text(`Proveedor: ${proveedor.razon_social}  ·  NIT: ${proveedor.nit}`);
+    doc.fontSize(9).fillColor("#666666").text(`Generado: ${new Date().toLocaleString("es-GT")}`);
+    doc.moveDown(0.6);
+
+    let y = doc.y;
+    doc.rect(x0, y, ancho, headerH).fill("#1E5E2F");
+    let x = x0;
+    doc.fontSize(8).fillColor("#FFFFFF");
+    for (const c of cols) {
+      doc.text(c.t.toUpperCase(), x + 4, y + 8, { width: c.w - 8, align: c.right ? "right" : "left" });
+      x += c.w;
+    }
+    y += headerH;
+
+    doc.fontSize(8);
+    filas.forEach((f, i) => {
+      if (y + rowH > doc.page.height - 60) {
+        doc.addPage();
+        y = 40;
+      }
+      if (i % 2 === 0) doc.rect(x0, y, ancho, rowH).fill("#F3F4F6");
+      x = x0;
+      for (const c of cols) {
+        const val = c.k === "estado" ? f.estado : c.right ? f[c.k] : trunc(f[c.k], c.k === "dependencia" ? 16 : 22);
+        doc.fillColor("#222222").text(String(val), x + 4, y + 6, { width: c.w - 8, align: c.right ? "right" : "left" });
+        x += c.w;
+      }
+      y += rowH;
+    });
+
+    y += 8;
+    doc.fontSize(9).fillColor("#1E5E2F").text(
+      `Totales — Órdenes: ${totales.ordenes} · Monto: Q ${totales.monto_orden} · Recibido: Q ${totales.recibido} · Facturado: Q ${totales.facturado} · Pagado: Q ${totales.pagado} · Pendientes: ${totales.pendientes}`,
+      x0,
+      y,
+    );
+
+    doc.end();
+  });
+}
+
+router.get("/informe", resolveProveedor, async (req, res, next) => {
+  try {
+    const { fechaInicio, fechaFin, estado, q } = req.query;
+    const filas = await obtenerInformeProveedor(req.proveedor.id_proveedor, { fechaInicio, fechaFin, q });
+    const filtradas = filtrarInforme(filas, estado);
+
+    await registrarBitacora({
+      idUsuario: req.user.id_usuario,
+      accion: "portal_informe",
+      ip: ipDe(req),
+      modulo: "Portal",
+      detalle: "Consulta de informe de solicitudes pagadas y recibidas",
+    });
+
+    res.json({
+      filas: filtradas,
+      totales: calcularTotales(filtradas),
+      proveedor: { razon_social: req.proveedor.razon_social, nit: req.proveedor.nit },
+    });
+  } catch (e) {
+    next(e);
+  }
+});
+
+router.get("/informe/exportar", resolveProveedor, async (req, res, next) => {
+  try {
+    const { fechaInicio, fechaFin, estado, q, formato } = req.query;
+    const filas = await obtenerInformeProveedor(req.proveedor.id_proveedor, { fechaInicio, fechaFin, q });
+    const filtradas = filtrarInforme(filas, estado);
+    const totales = calcularTotales(filtradas);
+    const proveedor = { razon_social: req.proveedor.razon_social, nit: req.proveedor.nit };
+
+    await registrarBitacora({
+      idUsuario: req.user.id_usuario,
+      accion: "portal_informe_exportar",
+      ip: ipDe(req),
+      modulo: "Portal",
+      detalle: `Exportación de informe (${formato === "pdf" ? "PDF" : "CSV"})`,
+    });
+
+    if (formato === "pdf") {
+      const buf = await buildInformePdf(proveedor, filtradas, totales);
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader("Content-Disposition", 'attachment; filename="informe_solicitudes.pdf"');
+      return res.send(buf);
+    }
+
+    const csv = buildInformeCsv(filtradas);
+    res.setHeader("Content-Type", "text/csv; charset=utf-8");
+    res.setHeader("Content-Disposition", 'attachment; filename="informe_solicitudes.csv"');
+    return res.send(csv);
+  } catch (e) {
+    next(e);
   }
 });
 

@@ -31,6 +31,8 @@ const ESTADO_BADGE: Record<string, string> = {
 const fmtQ = (n: number | string) =>
   `Q ${Number(n).toLocaleString("es-GT", { minimumFractionDigits: 2 })}`
 
+const fmtQ0 = (n: number | string) => (Number(n || 0) > 0 ? fmtQ(n) : "—")
+
 const fmtShort = (n: number) => (n >= 1000 ? `Q${(n / 1000).toFixed(0)}k` : `Q${n}`)
 
 function fmtFecha(iso: string) {
@@ -51,6 +53,8 @@ export default function DashboardView({
 }) {
   const { kpis, comprasDep, solicitudesEstado, alertas, actividad, cargar } =
     useDashboardController()
+
+  const comprasDepConMonto = comprasDep.filter((c) => Number(c.value) > 0)
 
   return (
     <div className="flex-1 overflow-auto p-5" style={{ background: "#F8F9FA" }}>
@@ -122,7 +126,7 @@ export default function DashboardView({
             />
             <KpiCard
               title="Compras Comprometidas"
-              value={fmtQ(kpis?.compras_comprometidas ?? 0)}
+              value={fmtQ0(kpis?.compras_comprometidas ?? 0)}
               sub="Total de órdenes activas"
               icon={<Icons.Wallet />}
             />
@@ -131,9 +135,9 @@ export default function DashboardView({
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
             <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
               <h2 className="text-base font-bold text-gray-900 mb-4">Compras por Dependencia</h2>
-              {comprasDep.length > 0 ? (
+              {comprasDepConMonto.length > 0 ? (
                 <div style={{ height: 240 }}>
-                  <BarChart data={comprasDep} width={undefined as unknown as number} height={240} margin={{ top: 8, right: 8, bottom: 40, left: 10 }} style={{ width: "100%" }} className="w-full">
+                  <BarChart data={comprasDepConMonto} width={undefined as unknown as number} height={240} margin={{ top: 8, right: 8, bottom: 40, left: 10 }} style={{ width: "100%" }} className="w-full">
                     <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" vertical={false} />
                     <XAxis dataKey="name" tick={{ fontSize: 10, fill: "#9CA3AF" }} angle={-20} textAnchor="end" interval={0} axisLine={false} tickLine={false} />
                     <YAxis tickFormatter={fmtShort} tick={{ fontSize: 10, fill: "#9CA3AF" }} axisLine={false} tickLine={false} />
@@ -209,7 +213,7 @@ export default function DashboardView({
                       <tr key={row.codigo_requisicion} className="border-b border-gray-50 hover:bg-gray-50/60 transition-colors">
                         <td className="px-5 py-3.5 text-sm font-semibold text-gray-900 font-mono">{row.codigo_requisicion}</td>
                         <td className="px-5 py-3.5 text-sm text-gray-700">{row.nombre_dependencia}</td>
-                        <td className="px-5 py-3.5 text-sm font-semibold text-gray-900 font-mono whitespace-nowrap">{fmtQ(row.monto)}</td>
+                        <td className="px-5 py-3.5 text-sm font-semibold text-gray-900 font-mono whitespace-nowrap">{fmtQ0(row.monto)}</td>
                         <td className="px-5 py-3.5">
                           <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${ESTADO_BADGE[row.estado] ?? "bg-gray-100 text-gray-600"}`}>
                             {row.estado}

@@ -1,4 +1,8 @@
-import { api } from "./client"
+import { api, getToken } from "./client"
+
+const BASE_URL =
+  (import.meta.env.VITE_API_URL as string | undefined) ||
+  "http://localhost:4000/api"
 
 export interface PortalPerfil {
   id_proveedor: number
@@ -251,6 +255,23 @@ export interface OrdenFacturable {
   recibido_valorizado: string
 }
 
+export interface OrdenFacturableItem {
+  id_detalle_orden: number
+  descripcion: string
+  cantidad_comprada: string
+  precio_unitario: string
+  subtotal: string
+  unidad_simbolo: string
+  cantidad_recibida: string
+}
+
+export interface OrdenFacturableDetalle extends OrdenFacturable {
+  justificacion: string | null
+  lugar_entrega: string | null
+  nombre_dependencia: string
+  items: OrdenFacturableItem[]
+}
+
 export interface FacturaPortal {
   id_factura: number
   numero_factura: string
@@ -267,6 +288,10 @@ export interface FacturaPortal {
 
 export function listarOrdenesFacturables() {
   return api.get<OrdenFacturable[]>("/portal/ordenes-facturables")
+}
+
+export function obtenerOrdenFacturable(id: number | string) {
+  return api.get<OrdenFacturableDetalle>(`/portal/ordenes-facturables/${id}`)
 }
 
 export function listarFacturas() {
@@ -289,4 +314,72 @@ export function registrarFacturaPortal(data: {
   archivo_xml_base64?: string
 }) {
   return api.post<FacturaPortal>("/portal/facturas", data)
+}
+
+export interface InformeFiltros {
+  fechaInicio?: string
+  fechaFin?: string
+  estado?: string
+  q?: string
+}
+
+export interface InformeFila {
+  id_orden_compra: number
+  codigo_requisicion: string
+  dependencia: string
+  tipo_solicitud: string
+  numero_orden: string
+  fecha_emision: string
+  monto_orden: string
+  estado_orden: string
+  recibido_valorizado: string
+  estado_recepcion: string | null
+  fecha_recepcion: string
+  facturado: string
+  estado_factura: string | null
+  pagado: string
+  estado_pago: string | null
+  fecha_pago: string
+  pagada: boolean
+  recibida_en_bodega: boolean
+  estado: string
+}
+
+export interface InformeTotales {
+  ordenes: number
+  monto_orden: string
+  recibido: string
+  facturado: string
+  pagado: string
+  pendientes: number
+}
+
+export interface InformePortal {
+  filas: InformeFila[]
+  totales: InformeTotales
+  proveedor: { razon_social: string; nit: string }
+}
+
+export function obtenerInformePortal(filtros: InformeFiltros = {}) {
+  const sp = new URLSearchParams()
+  Object.entries(filtros).forEach(([k, v]) => {
+    if (v !== undefined && v !== null && v !== "") sp.set(k, String(v))
+  })
+  return api.get<InformePortal>(`/portal/informe${sp.toString() ? `?${sp.toString()}` : ""}`)
+}
+
+export async function exportarInformePortal(
+  formato: "csv" | "pdf",
+  filtros: InformeFiltros = {},
+): Promise<Blob> {
+  const sp = new URLSearchParams()
+  sp.set("formato", formato)
+  Object.entries(filtros).forEach(([k, v]) => {
+    if (v !== undefined && v !== null && v !== "") sp.set(k, String(v))
+  })
+  const res = await fetch(`${BASE_URL}/portal/informe/exportar?${sp.toString()}`, {
+    headers: { Authorization: `Bearer ${getToken() ?? ""}` },
+  })
+  if (!res.ok) throw new Error(`Error ${res.status}`)
+  return res.blob()
 }

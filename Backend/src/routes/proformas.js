@@ -72,10 +72,10 @@ async function adjudicarInterno(client, proceso, cotizacion, motivo, idUsuario) 
     const prev = ocExistente.rows[0];
     const { rows: updRows } = await client.query(
       `UPDATE orden_compra
-          SET id_cotizacion = $1, id_proveedor = $2, monto_total = $3
-        WHERE id_orden_compra = $4
+          SET id_cotizacion = $1, id_proveedor = $2
+        WHERE id_orden_compra = $3
         RETURNING *`,
-      [cotizacion.id_cotizacion, cotizacion.id_proveedor, cotizacion.monto_total, prev.id_orden_compra],
+      [cotizacion.id_cotizacion, cotizacion.id_proveedor, prev.id_orden_compra],
     );
     orden = updRows[0];
     await client.query("DELETE FROM detalle_orden_compra WHERE id_orden_compra = $1", [orden.id_orden_compra]);
@@ -83,14 +83,13 @@ async function adjudicarInterno(client, proceso, cotizacion, motivo, idUsuario) 
     const { rows: ocRows } = await client.query(
       `INSERT INTO orden_compra
          (numero_orden, id_requisicion, id_cotizacion, id_proveedor, monto_total, id_usuario_emite)
-       VALUES ($1, $2, $3, $4, $5, $6)
+       VALUES ($1, $2, $3, $4, 0, $5)
        RETURNING *`,
       [
         numeroOrden,
         proceso.id_requisicion,
         cotizacion.id_cotizacion,
         cotizacion.id_proveedor,
-        cotizacion.monto_total,
         idUsuario,
       ],
     );
@@ -116,10 +115,6 @@ async function adjudicarInterno(client, proceso, cotizacion, motivo, idUsuario) 
             id_usuario_adjudica = $2, fecha_adjudicacion = now()
       WHERE id_proceso = $3`,
     [motivo, idUsuario, proceso.id_proceso],
-  );
-  await client.query(
-    "UPDATE requisicion SET monto_adjudicado = $1 WHERE id_requisicion = $2",
-    [cotizacion.monto_total, proceso.id_requisicion],
   );
 
   return orden;
@@ -175,7 +170,29 @@ router.get("/requisiciones-aprobadas", authorize("proformas"), async (_req, res,
           AND NOT EXISTS (SELECT 1 FROM proceso_cotizacion pc WHERE pc.id_requisicion = r.id_requisicion)
         ORDER BY r.fecha_solicitud DESC`,
     );
-    res.json(rows);
+
+    const ids = rows.map((r) => r.id_requisicion);
+    const itemsPorRequisicion = new Map();
+    if (ids.length) {
+      const { rows: items } = await pool.query(
+        `SELECT dr.id_requisicion, dr.id_detalle, dr.cantidad, dr.precio_estimado,
+                dr.descripcion_libre, dr.observaciones,
+                i.nombre AS insumo_nombre, i.codigo_insumo,
+                um.nombre AS unidad_nombre, um.simbolo AS unidad_simbolo
+           FROM detalle_requisicion dr
+           LEFT JOIN insumo i ON i.id_insumo = dr.id_insumo
+           JOIN unidad_medida um ON um.id_unidad_medida = dr.id_unidad_medida
+          WHERE dr.id_requisicion = ANY($1::int[])
+          ORDER BY dr.id_requisicion, dr.id_detalle`,
+        [ids],
+      );
+      for (const it of items) {
+        if (!itemsPorRequisicion.has(it.id_requisicion)) itemsPorRequisicion.set(it.id_requisicion, []);
+        itemsPorRequisicion.get(it.id_requisicion).push(it);
+      }
+    }
+
+    res.json(rows.map((r) => ({ ...r, items: itemsPorRequisicion.get(r.id_requisicion) ?? [] })));
   } catch (e) {
     next(e);
   }
@@ -212,6 +229,21 @@ router.post("/procesos", authorize("proformas"), async (req, res, next) => {
       return res.status(400).json({ error: "La fecha límite es requerida" });
     }
 
+    // fecha_limite llega como "YYYY-MM-DD" (solo fecha, sin hora).
+    const fechaDia = new Date(`${fecha_limite}T00:00:00`);
+    if (Number.isNaN(fechaDia.getTime())) {
+      await client.query("ROLLBACK");
+      return res.status(400).json({ error: "Fecha límite inválida" });
+    }
+    const hoy = new Date();
+    hoy.setHours(0, 0, 0, 0);
+    if (fechaDia < hoy) {
+      await client.query("ROLLBACK");
+      return res.status(400).json({ error: "La fecha límite no puede ser anterior a hoy" });
+    }
+    // Se guarda al final del día para que el plazo venza hasta terminar esa fecha.
+    const fechaLimite = new Date(`${fecha_limite}T23:59:59`);
+
     const reqRes = await client.query(
       "SELECT * FROM requisicion WHERE id_requisicion = $1",
       [id_requisicion],
@@ -240,7 +272,7 @@ router.post("/procesos", authorize("proformas"), async (req, res, next) => {
          (id_requisicion, fecha_limite, min_ofertas, id_usuario_publica)
        VALUES ($1, $2, $3, $4)
        RETURNING *`,
-      [id_requisicion, fecha_limite, min_ofertas, req.user.id_usuario],
+      [id_requisicion, fechaLimite, min_ofertas, req.user.id_usuario],
     );
     const proceso = procRows[0];
 
@@ -271,6 +303,9 @@ router.post("/procesos", authorize("proformas"), async (req, res, next) => {
     res.status(201).json(proceso);
   } catch (e) {
     await client.query("ROLLBACK");
+    if (e.code === "23514") {
+      return res.status(400).json({ error: "La fecha límite debe ser hoy o una fecha futura" });
+    }
     next(e);
   } finally {
     client.release();
@@ -656,36 +691,12 @@ router.post("/procesos/:id/adjudicar", authorize("proformas"), async (req, res, 
       return res.status(400).json({ error: `Se requiere un mínimo de ${proceso.min_ofertas} ofertas` });
     }
 
-    // Validar presupuesto disponible
+    // Validar presupuesto disponible (el monto se establece al cargar la factura)
     const reqRes = await client.query(
       "SELECT * FROM requisicion WHERE id_requisicion = $1",
       [proceso.id_requisicion],
     );
     const requisicion = reqRes.rows[0];
-    const presRes = await client.query(
-      `SELECT pd.monto_asignado,
-              COALESCE((SELECT SUM(r.monto_estimado)
-                          FROM requisicion r
-                         WHERE r.id_dependencia = pd.id_dependencia
-                           AND r.id_periodo = pd.id_periodo
-                           AND r.estado IN ('Aprobada','En Compra')
-                           AND r.id_requisicion <> $2), 0) AS ejecutado
-         FROM presupuesto_dependencia pd
-        WHERE pd.id_dependencia = $1 AND pd.id_periodo = $3`,
-      [requisicion.id_dependencia, requisicion.id_requisicion, requisicion.id_periodo],
-    );
-    if (presRes.rows[0]) {
-      const disponible =
-        parseFloat(presRes.rows[0].monto_asignado) - parseFloat(presRes.rows[0].ejecutado);
-      if (parseFloat(cotizacion.monto_total) > disponible) {
-        await client.query("ROLLBACK");
-        return res.status(422).json({
-          error: "Presupuesto insuficiente para adjudicar",
-          disponible: disponible.toFixed(2),
-          solicitado: parseFloat(cotizacion.monto_total).toFixed(2),
-        });
-      }
-    }
 
     // Marcar aceptada, generar orden de compra y actualizar proceso/requisición
     const orden = await adjudicarInterno(client, proceso, cotizacion, motivo_adjudicacion.trim(), req.user.id_usuario);
@@ -762,32 +773,7 @@ router.post("/procesos/:id/auto-adjudicar", authorize("proformas"), async (req, 
 
     const ganadora = validas[0];
 
-    // Validar presupuesto disponible
-    const presRes = await client.query(
-      `SELECT pd.monto_asignado,
-              COALESCE((SELECT SUM(r.monto_estimado)
-                          FROM requisicion r
-                         WHERE r.id_dependencia = pd.id_dependencia
-                           AND r.id_periodo = pd.id_periodo
-                           AND r.estado IN ('Aprobada','En Compra')
-                           AND r.id_requisicion <> $2), 0) AS ejecutado
-         FROM presupuesto_dependencia pd
-        WHERE pd.id_dependencia = $1 AND pd.id_periodo = $3`,
-      [requisicion.id_dependencia, requisicion.id_requisicion, requisicion.id_periodo],
-    );
-    if (presRes.rows[0]) {
-      const disponible =
-        parseFloat(presRes.rows[0].monto_asignado) - parseFloat(presRes.rows[0].ejecutado);
-      if (parseFloat(ganadora.monto_total) > disponible) {
-        await client.query("ROLLBACK");
-        return res.status(422).json({
-          error: "Presupuesto insuficiente para adjudicar",
-          disponible: disponible.toFixed(2),
-          solicitado: parseFloat(ganadora.monto_total).toFixed(2),
-        });
-      }
-    }
-
+    // Validar presupuesto disponible (el monto se establece al cargar la factura)
     const motivo = `Adjudicación automática por mejor precio: ${ganadora.razon_social} (${ganadora.nit})`;
     const orden = await adjudicarInterno(client, proceso, ganadora, motivo, req.user.id_usuario);
 
@@ -854,24 +840,107 @@ router.post("/procesos/:id/desierto", authorize("proformas"), async (req, res, n
 router.get("/ordenes-compra", authorize("proformas"), async (req, res, next) => {
   try {
     const { estado } = req.query;
-    const where = ["1=1"];
+    // Solo órdenes generadas a partir de una proforma (adjudicación).
+    // Las órdenes directas/provisionales (id_cotizacion NULL) no se listan aquí.
+    const where = ["oc.id_cotizacion IS NOT NULL"];
     const params = [];
     if (estado) {
       where.push(`oc.estado = $${params.length + 1}`);
       params.push(estado);
     }
     const { rows } = await pool.query(
-      `SELECT oc.*, r.codigo_requisicion, p.nit, p.razon_social,
-              d.nombre_dependencia
+      `SELECT oc.*, r.codigo_requisicion, r.tipo_solicitud, r.justificacion,
+              r.monto_estimado, p.nit, p.razon_social, d.nombre_dependencia,
+              pc.id_proceso, pc.fase AS fase_proceso, pc.motivo_adjudicacion
          FROM orden_compra oc
          JOIN requisicion r ON r.id_requisicion = oc.id_requisicion
          JOIN proveedor p ON p.id_proveedor = oc.id_proveedor
          JOIN dependencia_municipal d ON d.id_dependencia = r.id_dependencia
+         LEFT JOIN proceso_cotizacion pc ON pc.id_requisicion = oc.id_requisicion
         WHERE ${where.join(" AND ")}
-        ORDER BY oc.fecha_emision DESC`,
+        ORDER BY oc.fecha_emision DESC, r.id_requisicion`,
       params,
     );
-    res.json(rows);
+
+    // A quién se le envió la solicitud (proveedores invitados) y su estado de cotización.
+    const idsProceso = [...new Set(rows.map((r) => r.id_proceso).filter(Boolean))];
+    const invitadosPorProceso = new Map();
+    if (idsProceso.length) {
+      const { rows: inv } = await pool.query(
+        `SELECT ip.id_proceso, p.nit, p.razon_social,
+                c.estado_cotizacion, c.monto_total, c.seleccionada
+           FROM invitacion_proveedor ip
+           JOIN proveedor p ON p.id_proveedor = ip.id_proveedor
+           LEFT JOIN cotizacion c
+                  ON c.id_requisicion = (SELECT id_requisicion FROM proceso_cotizacion WHERE id_proceso = ip.id_proceso)
+                 AND c.id_proveedor = ip.id_proveedor
+          WHERE ip.id_proceso = ANY($1::int[])
+          ORDER BY p.razon_social`,
+        [idsProceso],
+      );
+      for (const i of inv) {
+        if (!invitadosPorProceso.has(i.id_proceso)) invitadosPorProceso.set(i.id_proceso, []);
+        invitadosPorProceso.get(i.id_proceso).push(i);
+      }
+    }
+
+    // Solo órdenes de procesos competitivos (2 o más proveedores invitados).
+    const resultado = rows
+      .map((r) => ({ ...r, invitados: invitadosPorProceso.get(r.id_proceso) ?? [] }))
+      .filter((r) => r.invitados.length >= 2);
+
+    res.json(resultado);
+  } catch (e) {
+    next(e);
+  }
+});
+
+// ── Detalle de orden de compra ─────────────────────────────────────────────────
+router.get("/ordenes-compra/:id", authorize("proformas"), async (req, res, next) => {
+  try {
+    const { rows: ocRows } = await pool.query(
+      `SELECT oc.*, r.codigo_requisicion, r.tipo_solicitud, r.justificacion, r.lugar_entrega,
+              r.monto_estimado, p.nit, p.razon_social, p.correo, p.telefono, d.nombre_dependencia,
+              pc.id_proceso, pc.fase AS fase_proceso, pc.motivo_adjudicacion
+         FROM orden_compra oc
+         JOIN requisicion r ON r.id_requisicion = oc.id_requisicion
+         JOIN proveedor p ON p.id_proveedor = oc.id_proveedor
+         JOIN dependencia_municipal d ON d.id_dependencia = r.id_dependencia
+         LEFT JOIN proceso_cotizacion pc ON pc.id_requisicion = oc.id_requisicion
+        WHERE oc.id_orden_compra = $1 AND oc.id_cotizacion IS NOT NULL`,
+      [req.params.id],
+    );
+    if (!ocRows[0]) return res.status(404).json({ error: "Orden de compra no encontrada" });
+    const orden = ocRows[0];
+
+    const { rows: items } = await pool.query(
+      `SELECT doc.id_detalle_orden, doc.cantidad_comprada, doc.precio_unitario, doc.subtotal,
+              COALESCE(i.nombre, dr.descripcion_libre) AS descripcion,
+              um.simbolo AS unidad_simbolo
+         FROM detalle_orden_compra doc
+         JOIN detalle_requisicion dr ON dr.id_detalle = doc.id_detalle_requisicion
+         JOIN unidad_medida um ON um.id_unidad_medida = dr.id_unidad_medida
+         LEFT JOIN insumo i ON i.id_insumo = dr.id_insumo
+        WHERE doc.id_orden_compra = $1
+        ORDER BY doc.id_detalle_orden`,
+      [orden.id_orden_compra],
+    );
+
+    let invitados = [];
+    if (orden.id_proceso) {
+      const { rows: inv } = await pool.query(
+        `SELECT p.nit, p.razon_social, c.estado_cotizacion, c.monto_total, c.seleccionada
+           FROM invitacion_proveedor ip
+           JOIN proveedor p ON p.id_proveedor = ip.id_proveedor
+           LEFT JOIN cotizacion c ON c.id_requisicion = $2 AND c.id_proveedor = ip.id_proveedor
+          WHERE ip.id_proceso = $1
+          ORDER BY p.razon_social`,
+        [orden.id_proceso, orden.id_requisicion],
+      );
+      invitados = inv;
+    }
+
+    res.json({ ...orden, items, invitados });
   } catch (e) {
     next(e);
   }
@@ -944,6 +1013,9 @@ router.get("/cotizaciones", authorize("proformas"), async (req, res, next) => {
     const where = ["1=1"];
     const params = [];
     const add = (v) => params.push(v);
+
+    // Solo proformas de procesos enviados a un único proveedor (compra directa).
+    where.push(`(SELECT COUNT(*)::int FROM invitacion_proveedor ip WHERE ip.id_proceso = pc.id_proceso) = 1`);
 
     if (estado) { where.push(`c.estado_cotizacion = $${params.length + 1}`); add(estado); }
     if (id_proveedor) { where.push(`c.id_proveedor = $${params.length + 1}`); add(id_proveedor); }

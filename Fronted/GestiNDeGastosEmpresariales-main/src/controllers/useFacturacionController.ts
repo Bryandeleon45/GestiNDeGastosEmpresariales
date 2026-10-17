@@ -8,7 +8,7 @@ import {
   type CronogramaItem,
 } from "@/api/facturacion"
 
-export type FacturaEstadoFilter = "Todos" | "Pagado" | "Pendiente" | "Vencido" | "Rechazada"
+export type FacturaEstadoFilter = "Todos" | "Pagado" | "Pagado con atraso" | "Pendiente" | "Vencido" | "Rechazada"
 
 export function useFacturacionController(onToast: (m: string, s: string) => void) {
   const [facturas, setFacturas] = useState<Factura[]>([])

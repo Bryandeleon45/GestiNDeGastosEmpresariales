@@ -25,6 +25,17 @@ export interface RequisicionAprobada {
   prioridad: string
   fecha_solicitud: string
   nombre_dependencia: string
+  items: Array<{
+    id_detalle: number
+    cantidad: string
+    precio_estimado: string | null
+    descripcion_libre: string | null
+    observaciones: string | null
+    insumo_nombre: string | null
+    codigo_insumo: string | null
+    unidad_nombre: string
+    unidad_simbolo: string
+  }>
 }
 
 export interface ProveedorActivo {
@@ -126,9 +137,22 @@ export interface OrdenCompra {
   id_usuario_aprobador: number | null
   fecha_aprobacion: string | null
   codigo_requisicion: string
+  tipo_solicitud: string
+  justificacion: string | null
+  monto_estimado: string
   nit: string
   razon_social: string
   nombre_dependencia: string
+  id_proceso: number | null
+  fase_proceso: string | null
+  motivo_adjudicacion: string | null
+  invitados: Array<{
+    nit: string
+    razon_social: string
+    estado_cotizacion: string | null
+    monto_total: string | null
+    seleccionada: boolean | null
+  }>
 }
 
 export function listarProcesos(params: { fase?: string; q?: string } = {}) {
@@ -233,6 +257,24 @@ export function cambiarEstadoOrden(id: number | string, estado: string) {
   return api.patch<OrdenCompra>(`/proformas/ordenes-compra/${id}/estado`, { estado })
 }
 
+export interface OrdenCompraDetalle extends OrdenCompra {
+  correo: string | null
+  telefono: string | null
+  lugar_entrega: string | null
+  items: Array<{
+    id_detalle_orden: number
+    cantidad_comprada: string
+    precio_unitario: string
+    subtotal: string
+    descripcion: string
+    unidad_simbolo: string
+  }>
+}
+
+export function obtenerOrdenCompra(id: number | string) {
+  return api.get<OrdenCompraDetalle>(`/proformas/ordenes-compra/${id}`)
+}
+
 export interface ProformaRecibidaItem {
   id_cotizacion: number
   numero_cotizacion: string
@@ -281,6 +323,7 @@ export interface ProformaRecibidaDetalle extends ProformaRecibidaItem {
   tiempo_entrega_dias: number | null
   tiempo_entrega_texto: string | null
   cumple_tecnico: boolean | null
+  observaciones_tecnicas: string | null
   motivo_rechazo: string | null
   correo: string
   telefono: string | null

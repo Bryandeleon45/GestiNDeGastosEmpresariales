@@ -8,6 +8,8 @@ export interface Factura {
   numero_factura: string
   numero_autorizacion: string | null
   npg: string | null
+  npg_pdf_nombre?: string | null
+  npg_pdf_base64?: string | null
   fecha_emision: string
   monto_total: string
   plazo_credito_dias: number
@@ -27,7 +29,25 @@ export interface Factura {
   numero_orden_pago?: string | null
   estado_pago?: string | null
   oc_monto?: string
+  oc_fecha_emision?: string | null
+  codigo_requisicion?: string
+  tipo_solicitud?: string
+  justificacion?: string | null
+  lugar_entrega?: string | null
+  nombre_dependencia?: string
+  recibido_valorizado?: string
   orden_pago?: OrdenPago | null
+  items?: FacturaItem[]
+}
+
+export interface FacturaItem {
+  id_detalle_orden: number
+  descripcion: string
+  cantidad_comprada: string
+  precio_unitario: string
+  subtotal: string
+  unidad_simbolo: string
+  cantidad_recibida: string
 }
 
 export interface OrdenCompraFacturable {
@@ -71,6 +91,7 @@ export interface OrdenPago {
   fecha_pago_real: string | null
   referencia_pago: string | null
   estado: "Pendiente" | "Programada" | "Pagada" | "Anulada"
+  pagado_atraso?: boolean
   motivo_anulacion: string | null
   nit: string
   razon_social: string
@@ -128,8 +149,17 @@ export function registrarFactura(data: {
   return api.post<Factura>("/facturas", data)
 }
 
-export function revisarFactura(id: number | string, accion: "iniciar" | "aprobar" | "rechazar", motivo_rechazo?: string) {
-  return api.patch<Factura>(`/facturas/${id}/revision`, { accion, motivo_rechazo })
+export function revisarFactura(
+  id: number | string,
+  accion: "iniciar" | "aprobar" | "rechazar",
+  data: {
+    motivo_rechazo?: string
+    npg?: string
+    archivo_npg_pdf_nombre?: string
+    archivo_npg_pdf_base64?: string
+  } = {},
+) {
+  return api.patch<Factura>(`/facturas/${id}/revision`, { accion, ...data })
 }
 
 export function listarOrdenesCompraFacturables() {
@@ -159,7 +189,7 @@ export function programarOrdenPago(id: number | string, data: { fecha_pago_progr
   return api.patch<OrdenPago>(`/ordenes-pago/${id}/programar`, data)
 }
 
-export function pagarOrdenPago(id: number | string, data: { fecha_pago_real: string; referencia_pago: string }) {
+export function pagarOrdenPago(id: number | string, data: { fecha_pago_real?: string; referencia_pago?: string }) {
   return api.patch<OrdenPago>(`/ordenes-pago/${id}/pago`, data)
 }
 

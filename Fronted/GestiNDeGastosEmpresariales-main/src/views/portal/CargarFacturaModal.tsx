@@ -3,13 +3,17 @@ import { G } from "@/constants/theme"
 import { Icons } from "@/components/common/Icons"
 import {
   listarOrdenesFacturables,
+  obtenerOrdenFacturable,
   registrarFacturaPortal,
   type OrdenFacturable,
+  type OrdenFacturableDetalle,
 } from "@/api/portal"
 import { ApiError } from "@/api/client"
 
 const fmtQ = (n: number | string) =>
   `Q ${Number(n).toLocaleString("es-GT", { minimumFractionDigits: 2 })}`
+
+const fmtMonto = (n: number | string) => (Number(n || 0) > 0 ? fmtQ(n) : "—")
 
 function fmtFecha(iso: string) {
   if (!iso) return "—"
@@ -29,27 +33,29 @@ export default function CargarFacturaModal({
   onClose,
   onToast,
   onSuccess,
+  initialIdOC,
+  nit,
 }: {
   onClose: () => void
   onToast: (m: string, s: string) => void
   onSuccess: () => void
+  initialIdOC?: number | null
+  nit?: string
 }) {
   const [ordenes, setOrdenes] = useState<OrdenFacturable[]>([])
   const [loadingOrdenes, setLoadingOrdenes] = useState(true)
   const [idOC, setIdOC] = useState<number | null>(null)
+  const [detalle, setDetalle] = useState<OrdenFacturableDetalle | null>(null)
+  const [loadingDetalle, setLoadingDetalle] = useState(false)
   const [serie, setSerie] = useState("")
   const [numeroFactura, setNumeroFactura] = useState("")
-  const [numeroAutorizacion, setNumeroAutorizacion] = useState("")
-  const [npg, setNpg] = useState("")
   const [fechaEmision, setFechaEmision] = useState("")
   const [montoTotal, setMontoTotal] = useState("")
   const [plazoCredito, setPlazoCredito] = useState("")
   const [observaciones, setObservaciones] = useState("")
   const [pdfFile, setPdfFile] = useState<File | null>(null)
-  const [xmlFile, setXmlFile] = useState<File | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const pdfInputRef = useRef<HTMLInputElement>(null)
-  const xmlInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     listarOrdenesFacturables()
@@ -58,7 +64,21 @@ export default function CargarFacturaModal({
       .finally(() => setLoadingOrdenes(false))
   }, [onToast])
 
-  const ocSel = ordenes.find((o) => o.id_orden_compra === idOC) ?? null
+  useEffect(() => {
+    if (initialIdOC != null) setIdOC(initialIdOC)
+  }, [initialIdOC])
+
+  useEffect(() => {
+    if (idOC == null) {
+      setDetalle(null)
+      return
+    }
+    setLoadingDetalle(true)
+    obtenerOrdenFacturable(idOC)
+      .then(setDetalle)
+      .catch(() => setDetalle(null))
+      .finally(() => setLoadingDetalle(false))
+  }, [idOC])
 
   const handleSubmit = async () => {
     if (idOC == null) {
@@ -86,27 +106,17 @@ export default function CargarFacturaModal({
         pdfBase64 = await fileToBase64(pdfFile)
         pdfNombre = pdfFile.name
       }
-      let xmlBase64: string | undefined
-      let xmlNombre: string | undefined
-      if (xmlFile) {
-        xmlBase64 = await fileToBase64(xmlFile)
-        xmlNombre = xmlFile.name
-      }
 
       await registrarFacturaPortal({
         id_orden_compra: idOC,
         serie: serie.trim() || undefined,
         numero_factura: numeroFactura.trim(),
-        numero_autorizacion: numeroAutorizacion.trim() || undefined,
-        npg: npg.trim() || undefined,
         fecha_emision: fechaEmision,
         monto_total: parseFloat(montoTotal),
         plazo_credito_dias: plazoCredito ? parseInt(plazoCredito, 10) : undefined,
         observaciones: observaciones.trim() || undefined,
         archivo_pdf_nombre: pdfNombre,
         archivo_pdf_base64: pdfBase64,
-        archivo_xml_nombre: xmlNombre,
-        archivo_xml_base64: xmlBase64,
       })
 
       onToast("Factura enviada", "La factura fue registrada correctamente y enviada a revisión.")
@@ -157,22 +167,76 @@ export default function CargarFacturaModal({
                   const disponible = Number(o.recibido_valorizado) - Number(o.total_facturado)
                   return (
                     <option key={o.id_orden_compra} value={o.id_orden_compra}>
-                      {o.numero_orden} · {o.codigo_requisicion} · Disponible: {fmtQ(disponible)}
+                      {o.numero_orden} · {o.codigo_requisicion} · Disponible: {fmtMonto(disponible)}
                     </option>
                   )
                 })}
               </select>
             )}
-            {ocSel && (
-              <div className="mt-2 grid grid-cols-2 gap-2 text-xs">
-                <div className="rounded-lg border border-gray-200 p-2">
-                  <p className="text-gray-400">Monto OC</p>
-                  <p className="font-bold text-gray-800">{fmtQ(ocSel.monto_total)}</p>
+            {loadingDetalle && (
+              <p className="text-xs text-gray-400 mt-2">Cargando detalle…</p>
+            )}
+            {detalle && (
+              <div className="mt-3 rounded-xl border border-gray-200 bg-gray-50 p-3 space-y-3">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+                  <div>
+                    <p className="text-gray-400">Solicitud</p>
+                    <p className="font-bold text-gray-800">{detalle.codigo_requisicion}</p>
+                  </div>
+                  <div>
+                    <p className="text-gray-400">Dependencia</p>
+                    <p className="font-bold text-gray-800">{detalle.nombre_dependencia}</p>
+                  </div>
+                  <div>
+                    <p className="text-gray-400">Tipo</p>
+                    <p className="font-bold text-gray-800">{detalle.tipo_solicitud}</p>
+                  </div>
+                  <div>
+                    <p className="text-gray-400">Fecha Orden</p>
+                    <p className="font-bold text-gray-800">{fmtFecha(detalle.fecha_emision)}</p>
+                  </div>
                 </div>
-                <div className="rounded-lg border border-gray-200 p-2">
-                  <p className="text-gray-400">Disponible</p>
-                  <p className="font-bold text-green-700">{fmtQ(Number(ocSel.recibido_valorizado) - Number(ocSel.total_facturado))}</p>
+
+                <div className="grid grid-cols-3 gap-2 text-xs">
+                  <div className="rounded-lg border border-gray-200 bg-white p-2">
+                    <p className="text-gray-400">Monto OC</p>
+                    <p className="font-bold text-gray-800">{fmtMonto(detalle.monto_total)}</p>
+                  </div>
+                  <div className="rounded-lg border border-gray-200 bg-white p-2">
+                    <p className="text-gray-400">Recibido</p>
+                    <p className="font-bold text-gray-800">{fmtMonto(detalle.recibido_valorizado)}</p>
+                  </div>
+                  <div className="rounded-lg border border-gray-200 bg-white p-2">
+                    <p className="text-gray-400">Disponible</p>
+                    <p className="font-bold text-green-700">{fmtMonto(Number(detalle.recibido_valorizado) - Number(detalle.total_facturado))}</p>
+                  </div>
                 </div>
+
+                {detalle.justificacion && (
+                  <p className="text-xs text-gray-600 leading-relaxed">{detalle.justificacion}</p>
+                )}
+
+                {detalle.items.length > 0 && (
+                  <div className="rounded-lg border border-gray-200 bg-white divide-y divide-gray-100">
+                    {detalle.items.map((it) => (
+                      <div key={it.id_detalle_orden} className="px-3 py-2 flex items-center justify-between gap-2">
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs font-semibold text-gray-800 truncate">{it.descripcion}</p>
+                          <p className="text-[11px] text-gray-500">
+                            {Number(it.cantidad_comprada).toLocaleString("es-GT")} {it.unidad_simbolo}
+                            {Number(it.cantidad_recibida) > 0 ? ` · Recibido: ${Number(it.cantidad_recibida).toLocaleString("es-GT")}` : ""}
+                          </p>
+                        </div>
+                        <div className="text-right shrink-0">
+                          <p className="text-xs font-bold font-mono text-gray-900">{fmtMonto(it.subtotal)}</p>
+                          {Number(it.precio_unitario) > 0 && (
+                            <p className="text-[10px] text-gray-400 font-mono">{fmtQ(it.precio_unitario)} c/u</p>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -197,21 +261,11 @@ export default function CargarFacturaModal({
               />
             </div>
             <div>
-              <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Número Autorización</label>
+              <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">NIT</label>
               <input
-                value={numeroAutorizacion}
-                onChange={(e) => setNumeroAutorizacion(e.target.value)}
-                placeholder="FEL"
-                className="w-full mt-1 px-3 py-2.5 text-sm bg-gray-50 border border-gray-200 rounded-lg outline-none focus:border-green-600"
-              />
-            </div>
-            <div>
-              <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">NPG</label>
-              <input
-                value={npg}
-                onChange={(e) => setNpg(e.target.value)}
-                placeholder="Número de Pago"
-                className="w-full mt-1 px-3 py-2.5 text-sm bg-gray-50 border border-gray-200 rounded-lg outline-none focus:border-green-600"
+                value={nit ?? ""}
+                readOnly
+                className="w-full mt-1 px-3 py-2.5 text-sm bg-gray-50 border border-gray-200 rounded-lg outline-none text-gray-500"
               />
             </div>
             <div>
@@ -259,45 +313,24 @@ export default function CargarFacturaModal({
             />
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Archivo PDF</label>
-              <input
-                ref={pdfInputRef}
-                type="file"
-                accept="application/pdf"
-                className="hidden"
-                onChange={(e) => setPdfFile(e.target.files?.[0] ?? null)}
-              />
-              <button
-                onClick={() => pdfInputRef.current?.click()}
-                className="w-full mt-1 flex items-center gap-2 px-3 py-2.5 text-sm border border-dashed border-gray-300 rounded-lg hover:border-green-500 hover:bg-green-50 transition-all text-left"
-              >
-                <Icons.PDF />
-                <span className="truncate text-gray-600">
-                  {pdfFile ? pdfFile.name : "Seleccionar PDF..."}
-                </span>
-              </button>
-            </div>
-            <div>
-              <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Archivo XML</label>
-              <input
-                ref={xmlInputRef}
-                type="file"
-                accept=".xml,application/xml"
-                className="hidden"
-                onChange={(e) => setXmlFile(e.target.files?.[0] ?? null)}
-              />
-              <button
-                onClick={() => xmlInputRef.current?.click()}
-                className="w-full mt-1 flex items-center gap-2 px-3 py-2.5 text-sm border border-dashed border-gray-300 rounded-lg hover:border-green-500 hover:bg-green-50 transition-all text-left"
-              >
-                <Icons.Doc />
-                <span className="truncate text-gray-600">
-                  {xmlFile ? xmlFile.name : "Seleccionar XML..."}
-                </span>
-              </button>
-            </div>
+          <div>
+            <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Archivo PDF</label>
+            <input
+              ref={pdfInputRef}
+              type="file"
+              accept="application/pdf"
+              className="hidden"
+              onChange={(e) => setPdfFile(e.target.files?.[0] ?? null)}
+            />
+            <button
+              onClick={() => pdfInputRef.current?.click()}
+              className="w-full mt-1 flex items-center gap-2 px-3 py-2.5 text-sm border border-dashed border-gray-300 rounded-lg hover:border-green-500 hover:bg-green-50 transition-all text-left"
+            >
+              <Icons.PDF />
+              <span className="truncate text-gray-600">
+                {pdfFile ? pdfFile.name : "Seleccionar PDF..."}
+              </span>
+            </button>
           </div>
         </div>
 

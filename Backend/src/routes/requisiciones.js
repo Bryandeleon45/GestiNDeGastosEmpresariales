@@ -404,42 +404,17 @@ router.post("/", authorize("solicitudes"), async (req, res, next) => {
       return res.status(400).json({ error: "No hay período fiscal activo" });
     }
 
-    const monto = montoDeItems(items);
-
-    // Validación de presupuesto disponible
-    const presRes = await client.query(
-      `SELECT pd.monto_asignado,
-              COALESCE((SELECT SUM(COALESCE(r.monto_adjudicado, r.monto_estimado))
-                          FROM requisicion r
-                         WHERE r.id_dependencia = pd.id_dependencia
-                           AND r.id_periodo = pd.id_periodo
-                           AND r.estado IN ('Aprobada', 'En Compra')), 0) AS ejecutado
-         FROM presupuesto_dependencia pd
-        WHERE pd.id_dependencia = $1 AND pd.id_periodo = $2`,
-      [depId, periodo.id_periodo],
-    );
-    if (presRes.rows[0]) {
-      const disponible = parseFloat(presRes.rows[0].monto_asignado) - parseFloat(presRes.rows[0].ejecutado);
-      if (monto > disponible) {
-        await client.query("ROLLBACK");
-        return res.status(422).json({
-          error: "Presupuesto insuficiente",
-          disponible: disponible.toFixed(2),
-          solicitado: monto.toFixed(2),
-        });
-      }
-    }
-
+    // El monto del sistema se establece al cargar la factura; la solicitud se crea sin monto.
     const codigo = await nextCodigo(periodo.anio, client);
 
     const { rows: reqRows } = await client.query(
       `INSERT INTO requisicion
          (codigo_requisicion, id_usuario, id_dependencia, id_periodo, tipo_solicitud,
           justificacion, lugar_entrega, prioridad, monto_estimado)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 0)
        RETURNING *`,
       [codigo, req.user.id_usuario, depId, periodo.id_periodo, tipo_solicitud,
-        justificacion, lugar_entrega ?? null, prioridad, monto],
+        justificacion, lugar_entrega ?? null, prioridad],
     );
     const requisicion = reqRows[0];
 
@@ -467,8 +442,8 @@ router.post("/", authorize("solicitudes"), async (req, res, next) => {
     await client.query(
       `INSERT INTO orden_compra
          (numero_orden, id_requisicion, id_cotizacion, id_proveedor, monto_total, id_usuario_emite)
-       VALUES ($1, $2, NULL, NULL, $3, $4)`,
-      [numeroOrden, requisicion.id_requisicion, monto, req.user.id_usuario],
+       VALUES ($1, $2, NULL, NULL, 0, $3)`,
+      [numeroOrden, requisicion.id_requisicion, req.user.id_usuario],
     );
 
     await client.query("COMMIT");
@@ -478,7 +453,7 @@ router.post("/", authorize("solicitudes"), async (req, res, next) => {
       accion: "requisicion_creada",
       ip: ipDe(req),
       modulo: "Dependencias",
-      detalle: `Creada requisición ${codigo} por Q${monto.toFixed(2)} (OC ${numeroOrden})`,
+      detalle: `Creada requisición ${codigo} (OC ${numeroOrden})`,
     });
 
     res.status(201).json({ ...requisicion, numero_orden: numeroOrden });
@@ -601,15 +576,13 @@ router.put("/:id", authorize("solicitudes"), async (req, res, next) => {
       return res.status(400).json({ error: "Debe incluir al menos un ítem" });
     }
 
-    const monto = montoDeItems(items);
-
     const { rows } = await client.query(
       `UPDATE requisicion
           SET tipo_solicitud = $1, justificacion = $2, lugar_entrega = $3,
-              prioridad = $4, monto_estimado = $5
-        WHERE id_requisicion = $6
+              prioridad = $4, monto_estimado = 0
+        WHERE id_requisicion = $5
         RETURNING *`,
-      [tipo_solicitud, justificacion, lugar_entrega ?? null, prioridad, monto, req.params.id],
+      [tipo_solicitud, justificacion, lugar_entrega ?? null, prioridad, req.params.id],
     );
 
     await client.query("DELETE FROM detalle_requisicion WHERE id_requisicion = $1", [req.params.id]);
@@ -685,37 +658,7 @@ router.patch("/:id/estado", authorize("solicitudes"), async (req, res, next) => 
       return res.status(400).json({ error: "No se puede cambiar el estado desde Rechazada o Cancelada" });
     }
 
-    // Revalidar presupuesto al aprobar
-    if (estado === "Aprobada") {
-      const periodo = await periodoActivo();
-      if (!periodo) {
-        await client.query("ROLLBACK");
-        return res.status(400).json({ error: "No hay período fiscal activo" });
-      }
-      const presRes = await client.query(
-        `SELECT pd.monto_asignado,
-                COALESCE((SELECT SUM(COALESCE(r.monto_adjudicado, r.monto_estimado))
-                            FROM requisicion r
-                           WHERE r.id_dependencia = pd.id_dependencia
-                             AND r.id_periodo = pd.id_periodo
-                             AND r.estado IN ('Aprobada', 'En Compra')), 0) AS ejecutado
-           FROM presupuesto_dependencia pd
-          WHERE pd.id_dependencia = $1 AND pd.id_periodo = $2`,
-        [current[0].id_dependencia, periodo.id_periodo],
-      );
-      if (presRes.rows[0]) {
-        const disponible = parseFloat(presRes.rows[0].monto_asignado) - parseFloat(presRes.rows[0].ejecutado);
-        const solicitado = parseFloat(current[0].monto_adjudicado ?? current[0].monto_estimado);
-        if (solicitado > disponible) {
-          await client.query("ROLLBACK");
-          return res.status(422).json({
-            error: "Presupuesto insuficiente al aprobar",
-            disponible: disponible.toFixed(2),
-            solicitado: solicitado.toFixed(2),
-          });
-        }
-      }
-    }
+    // (El presupuesto se valida al registrar el pago en facturación; no hay monto antes de la factura.)
 
     const { rows } = await client.query(
       `UPDATE requisicion

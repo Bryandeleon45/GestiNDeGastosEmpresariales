@@ -14,6 +14,9 @@ import {
   listarEntregas,
   listarPedidosAsignados,
   listarFacturas,
+  listarOrdenesFacturables,
+  obtenerInformePortal,
+  exportarInformePortal,
   type PortalPerfil,
   type PortalResumen,
   type Oportunidad,
@@ -22,6 +25,10 @@ import {
   type EntregaPortal,
   type PedidoAsignado,
   type FacturaPortal,
+  type OrdenFacturable,
+  type InformeFila,
+  type InformeTotales,
+  type InformeFiltros,
 } from "@/api/portal"
 
 export type TabPortal = "abiertas" | "cotizadas" | "adjudicadas" | "historial"
@@ -53,12 +60,20 @@ export function useSupplierPortalController() {
   const [entregas, setEntregas] = useState<EntregaPortal[]>([])
   const [pedidosAsignados, setPedidosAsignados] = useState<PedidoAsignado[]>([])
   const [facturas, setFacturas] = useState<FacturaPortal[]>([])
+  const [ordenesFacturables, setOrdenesFacturables] = useState<OrdenFacturable[]>([])
+  const [facturaTargetOC, setFacturaTargetOC] = useState<number | null>(null)
+  const [informe, setInforme] = useState<InformeFila[]>([])
+  const [informeTotales, setInformeTotales] = useState<InformeTotales | null>(null)
+  const [informeFiltros, setInformeFiltros] = useState<InformeFiltros>({})
   const [noLeidas, setNoLeidas] = useState(0)
   const [loading, setLoading] = useState(false)
   const [showCargarFactura, setShowCargarFactura] = useState(false)
 
   // Cotización
   const [cotizarTarget, setCotizarTarget] = useState<OportunidadDetalle | null>(null)
+
+  // Detalle de oportunidad (solo lectura)
+  const [detalleTarget, setDetalleTarget] = useState<OportunidadDetalle | null>(null)
 
   const cargarResumen = useCallback(async () => {
     try {
@@ -110,6 +125,43 @@ export function useSupplierPortalController() {
     }
   }, [])
 
+  const cargarOrdenesFacturables = useCallback(async () => {
+    try {
+      setOrdenesFacturables(await listarOrdenesFacturables())
+    } catch {
+      setOrdenesFacturables([])
+    }
+  }, [])
+
+  const cargarInforme = useCallback(async (f = informeFiltros) => {
+    try {
+      const r = await obtenerInformePortal(f)
+      setInforme(r.filas)
+      setInformeTotales(r.totales)
+    } catch {
+      setInforme([])
+      setInformeTotales(null)
+    }
+  }, [informeFiltros])
+
+  const exportarInforme = useCallback(
+    async (formato: "csv" | "pdf") => {
+      try {
+        const blob = await exportarInformePortal(formato, informeFiltros)
+        const url = window.URL.createObjectURL(blob)
+        const a = document.createElement("a")
+        a.href = url
+        a.download = `informe_solicitudes.${formato === "pdf" ? "pdf" : "csv"}`
+        a.click()
+        window.URL.revokeObjectURL(url)
+        fireToast("Exportado", `El archivo ${formato.toUpperCase()} se descargó correctamente.`)
+      } catch (e) {
+        fireToast("Error", e instanceof Error ? e.message : "No se pudo exportar")
+      }
+    },
+    [informeFiltros, fireToast],
+  )
+
   const cargarNotificaciones = useCallback(async () => {
     try {
       const n = await listarNotificaciones()
@@ -129,10 +181,12 @@ export function useSupplierPortalController() {
       cargarEntregas(),
       cargarPedidosAsignados(),
       cargarFacturas(),
+      cargarOrdenesFacturables(),
+      cargarInforme(informeFiltros),
       cargarNotificaciones(),
     ])
     setLoading(false)
-  }, [cargarResumen, cargarOportunidades, cargarOrdenes, cargarEntregas, cargarPedidosAsignados, cargarFacturas, cargarNotificaciones, tab, q])
+  }, [cargarResumen, cargarOportunidades, cargarOrdenes, cargarEntregas, cargarPedidosAsignados, cargarFacturas, cargarOrdenesFacturables, cargarInforme, cargarNotificaciones, informeFiltros, tab, q])
 
   useEffect(() => {
     recargar()
@@ -150,6 +204,17 @@ export function useSupplierPortalController() {
   }, [fireToast])
 
   const cerrarCotizar = useCallback(() => setCotizarTarget(null), [])
+
+  const verOportunidad = useCallback(async (idProceso: number) => {
+    try {
+      const det = await obtenerOportunidad(idProceso)
+      setDetalleTarget(det)
+    } catch (e) {
+      fireToast("Error", (e as Error).message || "No se pudo cargar la oportunidad")
+    }
+  }, [fireToast])
+
+  const cerrarDetalle = useCallback(() => setDetalleTarget(null), [])
 
   const guardarBorrador = useCallback(
     async (idProceso: number, data: Parameters<typeof guardarBorradorCotizacion>[1]) => {
@@ -208,6 +273,16 @@ export function useSupplierPortalController() {
     entregas,
     pedidosAsignados,
     facturas,
+    ordenesFacturables,
+    facturaTargetOC,
+    setFacturaTargetOC,
+    cargarOrdenesFacturables,
+    informe,
+    informeTotales,
+    informeFiltros,
+    setInformeFiltros,
+    cargarInforme,
+    exportarInforme,
     noLeidas,
     loading,
     recargar,
@@ -217,6 +292,9 @@ export function useSupplierPortalController() {
     abrirOportunidad,
     cotizarTarget,
     cerrarCotizar,
+    verOportunidad,
+    detalleTarget,
+    cerrarDetalle,
     guardarBorrador,
     enviar,
     retirar,

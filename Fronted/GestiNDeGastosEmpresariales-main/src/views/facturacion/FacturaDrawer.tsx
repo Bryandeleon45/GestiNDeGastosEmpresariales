@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { G, GL } from "@/constants/theme"
 import { Icons } from "@/components/common/Icons"
 import {
@@ -13,6 +13,7 @@ import { ApiError } from "@/api/client"
 
 const ESTADO_STYLE: Record<string, { bg: string; color: string }> = {
   Pagado: { bg: "#DCFCE7", color: "#16A34A" },
+  "Pagado con atraso": { bg: "#FDE68A", color: "#92400E" },
   Pendiente: { bg: "#FEF9C3", color: "#854D0E" },
   Vencido: { bg: "#FEE2E2", color: "#DC2626" },
   Rechazada: { bg: "#F1F5F9", color: "#64748B" },
@@ -20,6 +21,15 @@ const ESTADO_STYLE: Record<string, { bg: string; color: string }> = {
 
 const fmt = (n: number | string) =>
   `Q ${Number(n).toLocaleString("es-GT", { minimumFractionDigits: 2 })}`
+
+function fileToBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(reader.result as string)
+    reader.onerror = reject
+    reader.readAsDataURL(file)
+  })
+}
 
 export default function FacturaDrawer({
   facturaId,
@@ -38,6 +48,11 @@ export default function FacturaDrawer({
   const [motivo, setMotivo] = useState("")
   const [showRechazo, setShowRechazo] = useState(false)
   const [working, setWorking] = useState(false)
+  const [showAprobar, setShowAprobar] = useState(false)
+  const [npg, setNpg] = useState("")
+  const [npgFile, setNpgFile] = useState<File | null>(null)
+  const npgInputRef = useRef<HTMLInputElement>(null)
+  const [pdfViewer, setPdfViewer] = useState<{ src: string; nombre: string } | null>(null)
 
   const cargar = async () => {
     try {
@@ -66,12 +81,36 @@ export default function FacturaDrawer({
       onToast("Revisar formulario", "El motivo de rechazo es obligatorio")
       return
     }
+    if (a === "aprobar") {
+      if (!npg.trim()) {
+        onToast("Revisar formulario", "El número de NPG es obligatorio")
+        return
+      }
+      if (!npgFile) {
+        onToast("Revisar formulario", "Debe cargar el PDF del NPG")
+        return
+      }
+    }
     setWorking(true)
     try {
-      await revisarFactura(facturaId, a, a === "rechazar" ? motivo.trim() : undefined)
-      onToast("Factura actualizada", `La factura pasó a ${a === "iniciar" ? "En Revisión" : a === "aprobar" ? "Aprobada" : "Rechazada"}.`)
+      const payload: Record<string, string | undefined> = {
+        motivo_rechazo: a === "rechazar" ? motivo.trim() : undefined,
+      }
+      if (a === "aprobar") {
+        payload.npg = npg.trim()
+        payload.archivo_npg_pdf_nombre = npgFile!.name
+        payload.archivo_npg_pdf_base64 = await fileToBase64(npgFile!)
+      }
+      await revisarFactura(facturaId, a, payload)
+      onToast(
+        "Factura actualizada",
+        a === "aprobar" ? "La factura fue aprobada y quedó pagada." : `La factura pasó a ${a === "iniciar" ? "En Revisión" : "Rechazada"}.`,
+      )
       setShowRechazo(false)
+      setShowAprobar(false)
       setMotivo("")
+      setNpg("")
+      setNpgFile(null)
       await cargar()
       onChanged()
     } catch (e) {
@@ -90,9 +129,7 @@ export default function FacturaDrawer({
         await programarOrdenPago(op.id_orden_pago, { fecha_pago_programada: new Date().toISOString().slice(0, 10) })
         onToast("Pago programado", "La orden quedó Programada.")
       } else if (accion === "pagar") {
-        const ref = window.prompt("Referencia del pago (cheque o transferencia):")
-        if (!ref) return
-        await pagarOrdenPago(op.id_orden_pago, { fecha_pago_real: new Date().toISOString().slice(0, 10), referencia_pago: ref })
+        await pagarOrdenPago(op.id_orden_pago, { fecha_pago_real: new Date().toISOString().slice(0, 10) })
         onToast("Pago registrado", "La orden quedó Pagada.")
       } else {
         const motivo = window.prompt("Motivo de anulación:")
@@ -159,6 +196,58 @@ export default function FacturaDrawer({
                 ))}
               </div>
 
+              {factura.codigo_requisicion && (
+                <div className="rounded-xl border border-gray-100 bg-gray-50 px-4 py-3">
+                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Solicitud / Orden</p>
+                  <div className="grid grid-cols-2 gap-2 mt-2">
+                    <div>
+                      <p className="text-[10px] text-gray-400 uppercase">Solicitud</p>
+                      <p className="text-sm font-bold text-gray-900">{factura.codigo_requisicion}</p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] text-gray-400 uppercase">Dependencia</p>
+                      <p className="text-sm font-bold text-gray-900">{factura.nombre_dependencia}</p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] text-gray-400 uppercase">Tipo</p>
+                      <p className="text-sm font-bold text-gray-900">{factura.tipo_solicitud}</p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] text-gray-400 uppercase">Fecha Orden</p>
+                      <p className="text-sm font-bold text-gray-900">{factura.oc_fecha_emision ?? "—"}</p>
+                    </div>
+                  </div>
+                  {factura.justificacion && <p className="text-xs text-gray-600 mt-2">{factura.justificacion}</p>}
+                </div>
+              )}
+
+              {factura.items && factura.items.length > 0 && (
+                <div className="rounded-xl border border-gray-100 overflow-hidden">
+                  <div className="px-4 py-3 border-b border-gray-100 bg-gray-50">
+                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Ítems de la Orden</p>
+                  </div>
+                  <div className="divide-y divide-gray-100">
+                    {factura.items.map((it) => (
+                      <div key={it.id_detalle_orden} className="px-4 py-3 flex items-center justify-between gap-3">
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-semibold text-gray-900 truncate">{it.descripcion}</p>
+                          <p className="text-xs text-gray-500 mt-0.5">
+                            {Number(it.cantidad_comprada).toLocaleString("es-GT")} {it.unidad_simbolo}
+                            {Number(it.cantidad_recibida) > 0 ? ` · Recibido: ${Number(it.cantidad_recibida).toLocaleString("es-GT")}` : ""}
+                          </p>
+                        </div>
+                        <div className="text-right shrink-0">
+                          <p className="text-sm font-bold font-mono text-gray-900">{fmt(it.subtotal)}</p>
+                          {Number(it.precio_unitario) > 0 && (
+                            <p className="text-[11px] text-gray-400 font-mono">{fmt(it.precio_unitario)} c/u</p>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {factura.observaciones && (
                 <div className="rounded-xl border border-gray-100 bg-gray-50 px-4 py-3">
                   <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Observaciones</p>
@@ -178,8 +267,28 @@ export default function FacturaDrawer({
                   <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Orden de Pago</p>
                   <p className="text-sm font-bold text-gray-900 mt-1">{factura.orden_pago.numero_orden_pago}</p>
                   <p className="text-xs text-gray-500 mt-0.5">
-                    Estado: {factura.orden_pago.estado} · {fmt(factura.orden_pago.monto)}
+                    Estado: {factura.orden_pago.pagado_atraso ? "Pagada con atraso" : factura.orden_pago.estado} · {fmt(factura.orden_pago.monto)}
                   </p>
+                </div>
+              )}
+
+              {factura.npg && (
+                <div className="rounded-xl border border-gray-100 bg-gray-50 px-4 py-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">NPG</p>
+                      <p className="text-sm font-bold text-gray-900 mt-1">{factura.npg}</p>
+                    </div>
+                    {factura.npg_pdf_base64 && (
+                      <button
+                        onClick={() => setPdfViewer({ src: factura.npg_pdf_base64!, nombre: factura.npg_pdf_nombre ?? "NPG.pdf" })}
+                        className="shrink-0 flex items-center gap-2 px-3 py-2 text-xs font-bold text-white rounded-lg transition-all hover:opacity-90"
+                        style={{ backgroundColor: G }}
+                      >
+                        <Icons.PDF /> Ver PDF
+                      </button>
+                    )}
+                  </div>
                 </div>
               )}
 
@@ -191,7 +300,7 @@ export default function FacturaDrawer({
                 )}
                 {factura.estado === "En Revisión" && (
                   <>
-                    <button onClick={() => accion("aprobar")} disabled={working} className="w-full py-3 text-sm font-bold text-white rounded-xl transition-all hover:opacity-90 shadow-sm flex items-center justify-center gap-2 disabled:opacity-50" style={{ backgroundColor: G }}>
+                    <button onClick={() => setShowAprobar(true)} disabled={working} className="w-full py-3 text-sm font-bold text-white rounded-xl transition-all hover:opacity-90 shadow-sm flex items-center justify-center gap-2 disabled:opacity-50" style={{ backgroundColor: G }}>
                       <Icons.CheckMark /> Aprobar
                     </button>
                     <button onClick={() => setShowRechazo(true)} disabled={working} className="w-full py-3 text-sm font-bold text-white rounded-xl transition-all hover:opacity-90 shadow-sm flex items-center justify-center gap-2 disabled:opacity-50" style={{ backgroundColor: "#DC2626" }}>
@@ -201,6 +310,9 @@ export default function FacturaDrawer({
                 )}
                 {factura.orden_pago && factura.orden_pago.estado === "Pendiente" && (
                   <>
+                    <button onClick={() => pagoAccion("pagar")} disabled={working} className="w-full py-3 text-sm font-bold text-white rounded-xl transition-all hover:opacity-90 shadow-sm flex items-center justify-center gap-2 disabled:opacity-50" style={{ backgroundColor: G }}>
+                      <Icons.CheckMark /> Registrar Pago
+                    </button>
                     <button onClick={() => pagoAccion("programar")} disabled={working} className="w-full py-3 text-sm font-bold text-white rounded-xl transition-all hover:opacity-90 shadow-sm flex items-center justify-center gap-2 disabled:opacity-50" style={{ backgroundColor: G }}>
                       <Icons.HistoryClock /> Programar Pago
                     </button>
@@ -235,11 +347,76 @@ export default function FacturaDrawer({
                 </div>
               </div>
             )}
+
+            {showAprobar && (
+              <div className="border-t border-gray-100 px-6 py-4 space-y-3">
+                <div>
+                  <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Número de NPG</label>
+                  <input
+                    value={npg}
+                    onChange={(e) => setNpg(e.target.value)}
+                    placeholder="NPG"
+                    className="w-full mt-1 px-3 py-2.5 text-sm bg-gray-50 border border-gray-200 rounded-lg outline-none focus:border-green-600"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">PDF del NPG</label>
+                  <input
+                    ref={npgInputRef}
+                    type="file"
+                    accept="application/pdf"
+                    className="hidden"
+                    onChange={(e) => setNpgFile(e.target.files?.[0] ?? null)}
+                  />
+                  <button
+                    onClick={() => npgInputRef.current?.click()}
+                    className="w-full mt-1 flex items-center gap-2 px-3 py-2.5 text-sm border border-dashed border-gray-300 rounded-lg hover:border-green-500 hover:bg-green-50 transition-all text-left"
+                  >
+                    <Icons.PDF />
+                    <span className="truncate text-gray-600">
+                      {npgFile ? npgFile.name : "Seleccionar PDF del NPG..."}
+                    </span>
+                  </button>
+                </div>
+                <div className="flex gap-3">
+                  <button onClick={() => setShowAprobar(false)} className="flex-1 py-2.5 text-sm font-semibold text-gray-600 border border-gray-200 rounded-xl hover:bg-gray-50 transition-all">
+                    Cancelar
+                  </button>
+                  <button onClick={() => accion("aprobar")} disabled={working || !npg.trim() || !npgFile} className="flex-1 py-2.5 text-sm font-bold text-white rounded-xl transition-all hover:opacity-90 disabled:opacity-50" style={{ backgroundColor: G }}>
+                    Confirmar Aprobar
+                  </button>
+                </div>
+              </div>
+            )}
           </>
         ) : (
           <div className="flex items-center justify-center h-full text-sm text-red-500">No se pudo cargar la factura.</div>
         )}
       </div>
+
+      {pdfViewer && (
+        <div
+          className="fixed inset-0 z-[300] flex items-center justify-center p-4"
+          style={{ backgroundColor: "rgba(0,0,0,0.7)", backdropFilter: "blur(2px)" }}
+          onClick={() => setPdfViewer(null)}
+        >
+          <div
+            className="rounded-xl shadow-2xl w-full max-w-3xl h-[90vh] flex flex-col overflow-hidden bg-white"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100 shrink-0">
+              <div className="flex items-center gap-2 min-w-0">
+                <Icons.PDF />
+                <span className="text-sm font-bold text-gray-800 truncate">{pdfViewer.nombre}</span>
+              </div>
+              <button onClick={() => setPdfViewer(null)} className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-all">
+                <Icons.X />
+              </button>
+            </div>
+            <iframe src={pdfViewer.src} className="w-full flex-1 border-0" title={pdfViewer.nombre} />
+          </div>
+        </div>
+      )}
     </>
   )
 }

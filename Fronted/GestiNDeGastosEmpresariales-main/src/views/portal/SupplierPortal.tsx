@@ -6,6 +6,7 @@ import CerrarSesionModal from "@/views/common/CerrarSesionModal"
 import Toast from "@/views/common/Toast"
 import SubirProformaModal from "@/views/portal/SubirProformaModal"
 import CotizarOportunidadModal from "@/views/portal/CotizarOportunidadModal"
+import OportunidadDetalleModal from "@/views/portal/OportunidadDetalleModal"
 import CargarFacturaModal from "@/views/portal/CargarFacturaModal"
 import { useSupplierPortalController } from "@/controllers/useSupplierPortalController"
 import type { Oportunidad, PedidoAsignado } from "@/api/portal"
@@ -45,8 +46,17 @@ const ENTREGA_BADGE: Record<string, { bg: string; color: string }> = {
   Cancelada: { bg: "#FEE2E2", color: "#DC2626" },
 }
 
+const INFORME_ESTADO_BADGE: Record<string, { bg: string; color: string }> = {
+  "Pagada y recibida": { bg: "#DCFCE7", color: "#16A34A" },
+  Pagada: { bg: "#DBEAFE", color: "#2563EB" },
+  "Pendiente de pago": { bg: "#FEF3C7", color: "#B45309" },
+  "Pendiente de factura": { bg: "#F3F4F6", color: "#6B7280" },
+}
+
 const fmtQ = (n: number | string) =>
   `Q ${Number(n || 0).toLocaleString("es-GT", { minimumFractionDigits: 2 })}`
+
+const fmtQ0 = (n: number | string) => (Number(n || 0) > 0 ? fmtQ(n) : "—")
 
 const fmtFecha = (iso?: string | null) =>
   iso ? new Date(iso).toLocaleDateString("es-GT") : "—"
@@ -403,6 +413,16 @@ export default function SupplierPortal({ onLogout }: { onLogout: () => void }) {
     entregas,
     pedidosAsignados,
     facturas,
+    ordenesFacturables,
+    facturaTargetOC,
+    setFacturaTargetOC,
+    cargarOrdenesFacturables,
+    informe,
+    informeTotales,
+    informeFiltros,
+    setInformeFiltros,
+    cargarInforme,
+    exportarInforme,
     noLeidas,
     loading,
     showCargarFactura,
@@ -413,12 +433,32 @@ export default function SupplierPortal({ onLogout }: { onLogout: () => void }) {
     abrirOportunidad,
     cotizarTarget,
     cerrarCotizar,
+    verOportunidad,
+    detalleTarget,
+    cerrarDetalle,
     guardarBorrador,
     enviar,
     declinar,
   } = useSupplierPortalController()
 
   const [pedidoDetalle, setPedidoDetalle] = useState<PedidoAsignado | null>(null)
+
+  const [fi, setFi] = useState("")
+  const [ff, setFf] = useState("")
+  const [estadoF, setEstadoF] = useState("")
+
+  const aplicarInforme = () => {
+    const f: Record<string, string> = {}
+    if (fi) f.fechaInicio = fi
+    if (ff) f.fechaFin = ff
+    if (estadoF) f.estado = estadoF
+    setInformeFiltros(f)
+    cargarInforme(f)
+  }
+
+  const pendientesFacturar = ordenesFacturables.filter(
+    (o) => Number(o.recibido_valorizado) - Number(o.total_facturado) > 0,
+  )
 
   const bg = dark ? "#0F172A" : "#F8F9FA"
   const card = dark ? "#1E293B" : "#FFFFFF"
@@ -668,7 +708,13 @@ export default function SupplierPortal({ onLogout }: { onLogout: () => void }) {
                               return (
                                 <tr key={sol.id_proceso} className="border-b transition-colors" style={{ borderColor: border }}>
                                   <td className="px-4 py-4">
-                                    <p className="text-sm font-extrabold" style={{ color: G }}>{sol.codigo_requisicion}</p>
+                                    <button
+                                      onClick={() => verOportunidad(sol.id_proceso)}
+                                      className="text-sm font-extrabold text-left hover:underline transition-all"
+                                      style={{ color: G }}
+                                    >
+                                      {sol.codigo_requisicion}
+                                    </button>
                                   </td>
                                   <td className="px-4 py-4">
                                     <p className="text-sm" style={{ color: text }}>{sol.dependencia}</p>
@@ -722,7 +768,13 @@ export default function SupplierPortal({ onLogout }: { onLogout: () => void }) {
                           return (
                             <div key={sol.id_proceso} className="p-4 space-y-2">
                               <div className="flex items-start justify-between gap-2">
-                                <p className="text-sm font-extrabold" style={{ color: G }}>{sol.codigo_requisicion}</p>
+                                <button
+                                  onClick={() => verOportunidad(sol.id_proceso)}
+                                  className="text-sm font-extrabold text-left hover:underline transition-all"
+                                  style={{ color: G }}
+                                >
+                                  {sol.codigo_requisicion}
+                                </button>
                                 <span className="text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0" style={{ backgroundColor: es.bg, color: es.color }}>{sol.estado}</span>
                               </div>
                               <p className="text-sm font-medium" style={{ color: text }}>{sol.dependencia} · {sol.tipo_solicitud}</p>
@@ -774,10 +826,12 @@ export default function SupplierPortal({ onLogout }: { onLogout: () => void }) {
                 <div className="flex items-start justify-between gap-4 flex-wrap">
                   <div>
                     <h1 className="text-2xl font-extrabold" style={{ color: text }}>Órdenes y Facturas</h1>
-                    <p className="text-sm" style={{ color: sub }}>Historial de órdenes de compra adjudicadas y estado de pago de sus facturas.</p>
+                    <p className="text-sm" style={{ color: sub }}>
+                      Facturas pendientes de envío. Seleccione una orden para cargar y enviar su factura.
+                    </p>
                   </div>
                   <button
-                    onClick={() => setShowCargarFactura(true)}
+                    onClick={() => { setFacturaTargetOC(null); setShowCargarFactura(true) }}
                     className="flex items-center gap-2 px-5 py-2.5 text-sm font-bold text-white rounded-xl shadow-sm transition-all hover:opacity-90"
                     style={{ backgroundColor: G }}
                   >
@@ -785,76 +839,33 @@ export default function SupplierPortal({ onLogout }: { onLogout: () => void }) {
                   </button>
                 </div>
 
-                {facturas.length > 0 && (
-                  <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
-                    <div className="px-5 py-4 border-b border-gray-100">
-                      <h2 className="text-base font-bold" style={{ color: G }}>Mis Facturas</h2>
-                    </div>
-                    <div className="overflow-x-auto">
-                      <table className="w-full">
-                        <thead>
-                          <tr className="border-b border-gray-100">
-                            {["FACTURA", "ORDEN", "MONTO", "ESTADO", "FECHA"].map((h) => (
-                              <th key={h} className="px-4 py-3 text-left text-[10px] font-bold text-gray-400 uppercase tracking-wider whitespace-nowrap bg-gray-50">
-                                {h}
-                              </th>
-                            ))}
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {facturas.map((f) => {
-                            const es = FACTURA_BADGE[f.estado] ?? { bg: "#F3F4F6", color: "#6B7280" }
-                            return (
-                              <tr key={f.id_factura} className="border-b border-gray-50 last:border-0 hover:bg-gray-50/60 transition-colors">
-                                <td className="px-4 py-4">
-                                  <p className="text-xs font-bold font-mono text-gray-700">{f.numero_factura}</p>
-                                  {f.serie && <p className="text-[11px] text-gray-400 mt-0.5">Serie {f.serie}</p>}
-                                </td>
-                                <td className="px-4 py-4">
-                                  <p className="text-xs font-mono text-gray-600">{f.numero_orden}</p>
-                                </td>
-                                <td className="px-4 py-4 whitespace-nowrap">
-                                  <p className="text-sm font-bold font-mono text-gray-800">{fmtQ(f.monto_total)}</p>
-                                </td>
-                                <td className="px-4 py-4">
-                                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold whitespace-nowrap ${es.bg} ${es.color}`}>
-                                    {f.estado}
-                                  </span>
-                                </td>
-                                <td className="px-4 py-4 whitespace-nowrap">
-                                  <p className="text-sm text-gray-600 font-mono">{fmtFecha(f.fecha_emision)}</p>
-                                </td>
-                              </tr>
-                            )
-                          })}
-                        </tbody>
-                      </table>
-                    </div>
+                <div className="rounded-xl border overflow-hidden" style={{ backgroundColor: card, borderColor: border }}>
+                  <div className="px-5 py-4 border-b" style={{ borderColor: border }}>
+                    <h2 className="text-base font-bold" style={{ color: G }}>Facturas pendientes de envío</h2>
                   </div>
-                )}
-
-                <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
-                  <div className="px-5 py-4 border-b border-gray-100">
-                    <h2 className="text-base font-bold" style={{ color: G }}>Órdenes de Compra</h2>
-                  </div>
-                  {ordenes.length === 0 ? (
-                    <p className="px-5 py-12 text-center text-sm" style={{ color: sub }}>No hay órdenes de compra.</p>
+                  {pendientesFacturar.length === 0 ? (
+                    <p className="px-5 py-12 text-center text-sm" style={{ color: sub }}>No hay facturas pendientes de envío.</p>
                   ) : (
-                    ordenes.map((r) => {
-                      const es = ORDEN_BADGE[r.estado] ?? { bg: "#F3F4F6", color: "#6B7280" }
+                    pendientesFacturar.map((o) => {
+                      const disponible = Number(o.recibido_valorizado) - Number(o.total_facturado)
                       return (
-                        <div key={r.id_orden_compra} className="flex items-center gap-4 px-5 py-4 border-b last:border-b-0 transition-colors" style={{ borderColor: border }}>
-                          <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: dark ? "rgba(30,94,47,0.25)" : GL, color: G }}>
+                        <button
+                          key={o.id_orden_compra}
+                          onClick={() => { setFacturaTargetOC(o.id_orden_compra); setShowCargarFactura(true) }}
+                          className="w-full flex items-center gap-4 px-5 py-4 border-b last:border-b-0 transition-colors hover:bg-gray-50/60 text-left"
+                          style={{ borderColor: border, opacity: 0.65, filter: "grayscale(1)" }}
+                        >
+                          <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: dark ? "rgba(30,94,47,0.25)" : "#EEF2F6", color: sub }}>
                             <Icons.Doc />
                           </div>
                           <div className="flex-1 min-w-0">
-                            <p className="text-sm font-bold" style={{ color: text }}>{r.numero_orden}</p>
-                            <p className="text-xs" style={{ color: sub }}>{r.codigo_requisicion} · {r.tipo_solicitud}</p>
+                            <p className="text-sm font-bold" style={{ color: sub }}>{o.numero_orden}</p>
+                            <p className="text-xs" style={{ color: sub }}>{o.codigo_requisicion} · {o.tipo_solicitud}</p>
                           </div>
-                          <p className="text-sm font-extrabold font-mono" style={{ color: text }}>{fmtQ(r.monto_total)}</p>
-                          <span className="text-xs font-bold px-2.5 py-1 rounded-full" style={{ backgroundColor: es.bg, color: es.color }}>{r.estado}</span>
-                          <p className="text-xs" style={{ color: sub }}>{fmtFecha(r.fecha_emision)}</p>
-                        </div>
+                          <p className="text-sm font-extrabold font-mono" style={{ color: sub }}>{fmtQ0(disponible)}</p>
+                          <span className="text-xs font-bold px-2.5 py-1 rounded-full shrink-0" style={{ backgroundColor: "#F3F4F6", color: "#6B7280" }}>Pendiente</span>
+                          <p className="text-xs" style={{ color: sub }}>{fmtFecha(o.fecha_emision)}</p>
+                        </button>
                       )
                     })
                   )}
@@ -863,89 +874,125 @@ export default function SupplierPortal({ onLogout }: { onLogout: () => void }) {
             )}
 
             {activeNav === "entregas" && (
-              <div className="space-y-4">
-                <h1 className="text-2xl font-extrabold" style={{ color: text }}>Entregas en Bodega</h1>
-                <p className="text-sm" style={{ color: sub }}>Programación y estado de sus entregas físicas en la bodega municipal.</p>
-                <div className="space-y-3">
-                  {entregas.length === 0 ? (
-                    <div className="rounded-xl border overflow-hidden" style={{ backgroundColor: card, borderColor: border }}>
-                      <p className="px-5 py-12 text-center text-sm" style={{ color: sub }}>No hay entregas registradas.</p>
-                    </div>
-                  ) : (
-                    entregas.map((r) => {
-                      const es = ENTREGA_BADGE[r.estado] ?? { bg: "#F3F4F6", color: "#6B7280" }
-                      const esCompleta = r.estado === "Completa"
-                      return (
-                        <div
-                          key={r.id_recepcion}
-                          className="rounded-xl border overflow-hidden"
-                          style={{
-                            backgroundColor: esCompleta ? (dark ? "#052e16" : "#f0fdf4") : card,
-                            borderColor: esCompleta ? "#22c55e" : border,
-                          }}
-                        >
-                          <div className="flex items-center gap-4 px-5 py-4">
-                            <div
-                              className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
-                              style={{
-                                backgroundColor: esCompleta ? "#22c55e" : dark ? "rgba(30,94,47,0.25)" : GL,
-                                color: esCompleta ? "#ffffff" : G,
-                              }}
-                            >
-                              <Icons.Bodega />
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm font-bold" style={{ color: esCompleta ? "#15803d" : text }}>{r.numero_orden} · {r.numero_comprobante}</p>
-                              <p className="text-xs" style={{ color: esCompleta ? "#16a34a" : sub }}>{fmtFecha(r.fecha_recepcion)} · {fmtHora(r.fecha_recepcion)} · {r.total_items} ítem(s)</p>
-                            </div>
-                            <span className="text-xs font-bold px-2.5 py-1 rounded-full" style={{ backgroundColor: es.bg, color: es.color }}>{r.estado}</span>
-                          </div>
+              <div className="space-y-5">
+                <div className="flex items-start justify-between gap-4 flex-wrap">
+                  <div>
+                    <h1 className="text-2xl font-extrabold" style={{ color: text }}>Entregas en Bodega</h1>
+                    <p className="text-sm mt-1" style={{ color: sub }}>
+                      Estado consolidado de sus solicitudes: recepción en bodega, facturación y pago.
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => exportarInforme("csv")}
+                      className="flex items-center gap-2 px-4 py-2.5 text-sm font-bold rounded-xl border transition-all hover:opacity-80"
+                      style={{ color: G, borderColor: G }}
+                    >
+                      <Icons.Download /> Exportar CSV
+                    </button>
+                    <button
+                      onClick={() => exportarInforme("pdf")}
+                      className="flex items-center gap-2 px-4 py-2.5 text-sm font-bold text-white rounded-xl shadow-sm transition-all hover:opacity-90"
+                      style={{ backgroundColor: G }}
+                    >
+                      <Icons.Download /> Exportar PDF
+                    </button>
+                  </div>
+                </div>
 
-                          <div className="border-t px-5 py-3 space-y-1.5" style={{ borderColor: esCompleta ? "#22c55e" : border }}>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
-                              <div className="rounded-lg border p-2" style={{ borderColor: border }}>
-                                <p className="font-bold uppercase tracking-widest" style={{ color: sub }}>Entregado a</p>
-                                <p className="font-semibold mt-0.5" style={{ color: text }}>{r.nombre_dependencia}</p>
-                              </div>
-                              <div className="rounded-lg border p-2" style={{ borderColor: border }}>
-                                <p className="font-bold uppercase tracking-widest" style={{ color: sub }}>Lugar</p>
-                                <p className="font-semibold mt-0.5" style={{ color: text }}>{r.nombre_bodega}{r.ubicacion ? ` · ${r.ubicacion}` : ""}</p>
-                              </div>
-                              <div className="rounded-lg border p-2" style={{ borderColor: border }}>
-                                <p className="font-bold uppercase tracking-widest" style={{ color: sub }}>Recibido por</p>
-                                <p className="font-semibold mt-0.5" style={{ color: text }}>{r.recibido_por ?? r.encargado ?? "—"}</p>
-                              </div>
-                              <div className="rounded-lg border p-2" style={{ borderColor: border }}>
-                                <p className="font-bold uppercase tracking-widest" style={{ color: sub }}>Fecha y Hora</p>
-                                <p className="font-semibold mt-0.5" style={{ color: text }}>{fmtFecha(r.fecha_recepcion)} · {fmtHora(r.fecha_recepcion)}</p>
-                              </div>
-                            </div>
-                          </div>
-                          {r.items && r.items.length > 0 && (
-                            <div className="border-t px-5 py-3 space-y-2" style={{ borderColor: esCompleta ? "#22c55e" : border }}>
-                              {r.items.map((it) => {
-                                const itemEstado = it.estado_item === "Recibido" || it.estado_item === "Aceptado"
-                                return (
-                                  <div
-                                    key={it.id_detalle_recepcion}
-                                    className="flex items-center justify-between rounded-lg px-3 py-2"
-                                    style={{ backgroundColor: itemEstado ? "#DCFCE7" : "#FEF3C7" }}
-                                  >
-                                    <span className="text-sm font-semibold" style={{ color: itemEstado ? "#15803D" : "#92400E" }}>
-                                      {it.descripcion}
-                                    </span>
-                                    <span className="text-xs font-bold" style={{ color: itemEstado ? "#15803D" : "#B45309" }}>
-                                      {it.cantidad_aceptada}/{it.cantidad_esperada} {it.unidad_simbolo}
-                                    </span>
-                                  </div>
-                                )
-                              })}
-                            </div>
-                          )}
+                <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3">
+                  {[
+                    { label: "ÓRDENES", value: String(informeTotales?.ordenes ?? 0), color: G, icon: <Icons.Doc /> },
+                    { label: "MONTO TOTAL", value: fmtQ0(informeTotales?.monto_orden ?? 0), color: "#0EA5E9", icon: <Icons.Wallet /> },
+                    { label: "RECIBIDO EN BODEGA", value: fmtQ0(informeTotales?.recibido ?? 0), color: "#16A34A", icon: <Icons.Bodega /> },
+                    { label: "PAGADO", value: fmtQ0(informeTotales?.pagado ?? 0), color: "#D97706", icon: <Icons.CheckBadge /> },
+                    { label: "PENDIENTES", value: String(informeTotales?.pendientes ?? 0), color: "#DC2626", icon: <Icons.Solicitudes /> },
+                  ].map((k) => (
+                    <div key={k.label} className="rounded-xl border p-4" style={{ backgroundColor: card, borderColor: border }}>
+                      <div className="flex items-center gap-2 mb-2">
+                        <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: dark ? "rgba(30,94,47,0.25)" : GL, color: k.color }}>
+                          {k.icon}
                         </div>
-                      )
-                    })
-                  )}
+                        <p className="text-[10px] font-bold uppercase tracking-wider leading-tight" style={{ color: sub }}>{k.label}</p>
+                      </div>
+                      <p className="text-xl font-extrabold font-mono leading-none" style={{ color: text }}>{k.value}</p>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="flex items-end gap-3 flex-wrap">
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-[10px] font-bold uppercase tracking-widest" style={{ color: sub }}>Desde</label>
+                    <input type="date" value={fi} onChange={(e) => setFi(e.target.value)} className="px-3 py-2 text-sm rounded-lg border outline-none" style={{ backgroundColor: card, borderColor: border, color: text }} />
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-[10px] font-bold uppercase tracking-widest" style={{ color: sub }}>Hasta</label>
+                    <input type="date" value={ff} onChange={(e) => setFf(e.target.value)} className="px-3 py-2 text-sm rounded-lg border outline-none" style={{ backgroundColor: card, borderColor: border, color: text }} />
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-[10px] font-bold uppercase tracking-widest" style={{ color: sub }}>Estado</label>
+                    <select value={estadoF} onChange={(e) => setEstadoF(e.target.value)} className="px-3 py-2 text-sm rounded-lg border outline-none min-w-[160px]" style={{ backgroundColor: card, borderColor: border, color: text }}>
+                      <option value="">Todas</option>
+                      <option value="pagadas">Pagadas</option>
+                      <option value="recibidas">Recibidas en bodega</option>
+                      <option value="pendientes">Pendientes de pago</option>
+                    </select>
+                  </div>
+                  <button onClick={aplicarInforme} className="px-4 py-2 text-sm font-bold text-white rounded-lg transition-all hover:opacity-90" style={{ backgroundColor: G }}>
+                    Aplicar
+                  </button>
+                </div>
+
+                <div className="rounded-xl border overflow-hidden" style={{ backgroundColor: card, borderColor: border }}>
+                  <div className="overflow-x-auto">
+                    <table className="w-full min-w-[760px]">
+                      <thead>
+                        <tr className="border-b" style={{ borderColor: border, backgroundColor: dark ? "#0F172A" : "#F9FAFB" }}>
+                          {["SOLICITUD", "DEPENDENCIA", "ORDEN", "MONTO", "RECIBIDO", "FACTURADO", "PAGADO", "ESTADO"].map((h) => (
+                            <th key={h} className="px-4 py-3 text-left text-[10px] font-extrabold uppercase tracking-widest whitespace-nowrap" style={{ color: sub }}>{h}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {informe.length === 0 ? (
+                          <tr><td colSpan={8} className="px-4 py-12 text-center text-sm" style={{ color: sub }}>Sin solicitudes para los filtros aplicados.</td></tr>
+                        ) : (
+                          informe.map((f) => {
+                            const es = INFORME_ESTADO_BADGE[f.estado] ?? { bg: "#F3F4F6", color: "#6B7280" }
+                            return (
+                              <tr key={f.id_orden_compra} className="border-b transition-colors" style={{ borderColor: border }}>
+                                <td className="px-4 py-3">
+                                  <p className="text-sm font-extrabold" style={{ color: G }}>{f.codigo_requisicion}</p>
+                                </td>
+                                <td className="px-4 py-3">
+                                  <p className="text-sm" style={{ color: text }}>{f.dependencia}</p>
+                                  <p className="text-[11px]" style={{ color: sub }}>{f.tipo_solicitud}</p>
+                                </td>
+                                <td className="px-4 py-3">
+                                  <p className="text-xs font-mono" style={{ color: text }}>{f.numero_orden}</p>
+                                </td>
+                                <td className="px-4 py-3 whitespace-nowrap">
+                                  <p className="text-sm font-bold font-mono" style={{ color: text }}>{fmtQ0(f.monto_orden)}</p>
+                                </td>
+                                <td className="px-4 py-3 whitespace-nowrap">
+                                  <p className="text-sm font-mono" style={{ color: text }}>{fmtQ0(f.recibido_valorizado)}</p>
+                                </td>
+                                <td className="px-4 py-3 whitespace-nowrap">
+                                  <p className="text-sm font-mono" style={{ color: text }}>{fmtQ0(f.facturado)}</p>
+                                </td>
+                                <td className="px-4 py-3 whitespace-nowrap">
+                                  <p className="text-sm font-mono" style={{ color: text }}>{fmtQ0(f.pagado)}</p>
+                                </td>
+                                <td className="px-4 py-3">
+                                  <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold whitespace-nowrap" style={{ backgroundColor: es.bg, color: es.color }}>{f.estado}</span>
+                                </td>
+                              </tr>
+                            )
+                          })
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               </div>
             )}
@@ -1007,11 +1054,16 @@ export default function SupplierPortal({ onLogout }: { onLogout: () => void }) {
       {showSubir && <SubirProformaModal dark={dark} onClose={() => setShowSubir(false)} onToast={fireToast} />}
       {showCargarFactura && (
         <CargarFacturaModal
-          onClose={() => setShowCargarFactura(false)}
+          initialIdOC={facturaTargetOC}
+          nit={nit}
+          onClose={() => { setShowCargarFactura(false); setFacturaTargetOC(null) }}
           onToast={fireToast}
           onSuccess={() => {
             cargarFacturas()
             cargarOrdenes()
+            cargarOrdenesFacturables()
+            cargarInforme()
+            setFacturaTargetOC(null)
           }}
         />
       )}
@@ -1029,6 +1081,14 @@ export default function SupplierPortal({ onLogout }: { onLogout: () => void }) {
         <PedidoDetalleModal
           pedido={pedidoDetalle}
           onClose={() => setPedidoDetalle(null)}
+          dark={dark}
+        />
+      )}
+
+      {detalleTarget && (
+        <OportunidadDetalleModal
+          detalle={detalleTarget}
+          onClose={cerrarDetalle}
           dark={dark}
         />
       )}

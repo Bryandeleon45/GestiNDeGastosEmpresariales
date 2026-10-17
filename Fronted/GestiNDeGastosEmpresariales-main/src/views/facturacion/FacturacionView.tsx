@@ -9,6 +9,7 @@ import RegistrarFacturaModal from "@/views/facturacion/RegistrarFacturaModal"
 
 const ESTADO_STYLE: Record<string, { bg: string; color: string }> = {
   Pagado: { bg: "#DCFCE7", color: "#16A34A" },
+  "Pagado con atraso": { bg: "#FDE68A", color: "#92400E" },
   Pendiente: { bg: "#FEF9C3", color: "#854D0E" },
   Vencido: { bg: "#FEE2E2", color: "#DC2626" },
   Rechazada: { bg: "#F1F5F9", color: "#64748B" },
@@ -234,7 +235,7 @@ export default function FacturacionView({
                     </button>
                     {showEstadoDD && (
                       <div className="absolute right-0 top-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg z-30 overflow-hidden min-w-[160px]">
-                        {(["Todos", "Pagado", "Pendiente", "Vencido", "Rechazada"] as const).map((opt) => (
+                        {(["Todos", "Pagado", "Pagado con atraso", "Pendiente", "Vencido", "Rechazada"] as const).map((opt) => (
                           <button
                             key={opt}
                             onClick={() => {
