@@ -182,6 +182,73 @@ router.get("/ordenes-compra/pendientes-recepcion", authorize("bodega"), async (r
   }
 });
 
+// ── Buscar OC por código de solicitud (SC) o número de orden (OC) ─────────────
+router.get("/ordenes-compra/buscar-por-solicitud", authorize("bodega"), async (req, res, next) => {
+  try {
+    const q = (req.query.q || "").toString().trim();
+    const { rows } = await pool.query(
+      `SELECT oc.id_orden_compra, oc.numero_orden, oc.monto_total, oc.fecha_emision, oc.estado,
+              r.codigo_requisicion, r.tipo_solicitud, r.lugar_entrega,
+              p.nit, p.razon_social
+         FROM orden_compra oc
+         JOIN requisicion r ON r.id_requisicion = oc.id_requisicion
+         LEFT JOIN proveedor p ON p.id_proveedor = oc.id_proveedor
+        WHERE oc.estado NOT IN ('Cancelada','Entregada')
+          AND (r.codigo_requisicion ILIKE $1 OR oc.numero_orden ILIKE $1)
+        ORDER BY oc.fecha_emision DESC LIMIT 20`,
+      [`%${q}%`],
+    );
+    res.json(rows);
+  } catch (e) {
+    next(e);
+  }
+});
+
+// ── Detalle de ítems de una OC para recepción ─────────────────────────────────
+router.get("/ordenes-compra/:id/items", authorize("bodega"), async (req, res, next) => {
+  try {
+    const { rows: ocRows } = await pool.query(
+      `SELECT oc.id_orden_compra, oc.numero_orden, oc.monto_total, oc.estado,
+              r.codigo_requisicion, r.tipo_solicitud, r.justificacion, r.lugar_entrega,
+              p.nit, p.razon_social
+         FROM orden_compra oc
+         JOIN requisicion r ON r.id_requisicion = oc.id_requisicion
+         LEFT JOIN proveedor p ON p.id_proveedor = oc.id_proveedor
+        WHERE oc.id_orden_compra = $1`,
+      [req.params.id],
+    );
+    if (!ocRows[0]) return res.status(404).json({ error: "Orden de compra no encontrada" });
+
+    const { rows: items } = await pool.query(
+      `SELECT doc.id_detalle_orden, doc.cantidad_comprada,
+              COALESCE(i.nombre, dr.descripcion_libre) AS descripcion,
+              um.simbolo AS unidad_simbolo,
+              COALESCE(SUM(drb.cantidad_aceptada), 0) AS cantidad_recibida
+         FROM detalle_orden_compra doc
+         JOIN detalle_requisicion dr ON dr.id_detalle = doc.id_detalle_requisicion
+         LEFT JOIN insumo i ON i.id_insumo = dr.id_insumo
+         JOIN unidad_medida um ON um.id_unidad_medida = dr.id_unidad_medida
+         LEFT JOIN detalle_recepcion_bodega drb ON drb.id_detalle_orden = doc.id_detalle_orden
+         LEFT JOIN recepcion_bodega rb ON rb.id_recepcion = drb.id_recepcion
+            AND rb.estado IN ('Completa','Parcial','Con Novedades')
+        WHERE doc.id_orden_compra = $1
+        GROUP BY doc.id_detalle_orden, doc.cantidad_comprada, i.nombre, dr.descripcion_libre, um.simbolo
+        ORDER BY doc.id_detalle_orden`,
+      [req.params.id],
+    );
+
+    const itemsFinal = items.map((it) => ({
+      ...it,
+      cantidad_recibida: Number(it.cantidad_recibida),
+      ya_recibido: Number(it.cantidad_recibida) >= Number(it.cantidad_comprada),
+    }));
+
+    res.json({ ...ocRows[0], items: itemsFinal });
+  } catch (e) {
+    next(e);
+  }
+});
+
 router.get("/ordenes-compra/:id/estado-recepcion", authorize("bodega"), async (req, res, next) => {
   try {
     const { rows: ocRows } = await pool.query(
@@ -263,9 +330,9 @@ router.post("/recepciones", authorize("bodega"), async (req, res, next) => {
       await client.query("ROLLBACK");
       return res.status(404).json({ error: "Orden de compra no encontrada" });
     }
-    if (!["Aprobada", "Enviada"].includes(oc.estado)) {
+    if (!["Pendiente", "Aprobada", "Enviada"].includes(oc.estado)) {
       await client.query("ROLLBACK");
-      return res.status(400).json({ error: "Solo se recibe contra una OC Aprobada o Enviada" });
+      return res.status(400).json({ error: "La orden de compra no está disponible para recepción" });
     }
     // RN-08: quien emitió la OC no puede recibirla (salvo administrador)
     if (oc.id_usuario_emite === req.user.id_usuario && !esAdmin(req.user)) {
@@ -324,6 +391,171 @@ router.post("/recepciones", authorize("bodega"), async (req, res, next) => {
     });
 
     res.status(201).json(recepcion);
+  } catch (e) {
+    await client.query("ROLLBACK");
+    next(e);
+  } finally {
+    client.release();
+  }
+});
+
+// ── Recibir pedido (permite entregas sucesivas) ───────────────────────────────
+router.post("/recepciones/recibir-todo", authorize("bodega"), async (req, res, next) => {
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+
+    const { id_orden_compra, id_bodega } = req.body;
+    if (!id_orden_compra) {
+      await client.query("ROLLBACK");
+      return res.status(400).json({ error: "La orden de compra es requerida" });
+    }
+
+    const ocRes = await client.query(
+      "SELECT * FROM orden_compra WHERE id_orden_compra = $1 FOR UPDATE",
+      [id_orden_compra],
+    );
+    const oc = ocRes.rows[0];
+    if (!oc) {
+      await client.query("ROLLBACK");
+      return res.status(404).json({ error: "Orden de compra no encontrada" });
+    }
+    if (!["Pendiente", "Aprobada", "Enviada"].includes(oc.estado)) {
+      await client.query("ROLLBACK");
+      return res.status(400).json({ error: "La orden de compra no está disponible para recepción" });
+    }
+
+    // Todos los ítems de la OC.
+    const ocItems = await client.query(
+      `SELECT doc.id_detalle_orden, doc.cantidad_comprada, dr.id_insumo, dr.descripcion_libre
+         FROM detalle_orden_compra doc
+         JOIN detalle_requisicion dr ON dr.id_detalle = doc.id_detalle_requisicion
+        WHERE doc.id_orden_compra = $1`,
+      [id_orden_compra],
+    );
+    if (!ocItems.rows.length) {
+      await client.query("ROLLBACK");
+      return res.status(400).json({ error: "La orden de compra no tiene ítems" });
+    }
+
+    // Ítems ya recibidos en recepciones previas no canceladas.
+    const yaRecibidosRes = await client.query(
+      `SELECT DISTINCT drb.id_detalle_orden
+         FROM detalle_recepcion_bodega drb
+         JOIN recepcion_bodega rb ON rb.id_recepcion = drb.id_recepcion
+        WHERE rb.id_orden_compra = $1
+          AND rb.estado IN ('Completa','Parcial','Con Novedades')
+          AND drb.cantidad_aceptada > 0`,
+      [id_orden_compra],
+    );
+    const yaRecibidos = new Set(yaRecibidosRes.rows.map((r) => r.id_detalle_orden));
+
+    // Ítems que se reciben en esta entrega.
+    const recibidos = Array.isArray(req.body.items_recibidos) ? req.body.items_recibidos.map(Number) : [];
+
+    const bodegaRes = await client.query("SELECT id_bodega FROM bodega WHERE activo = TRUE ORDER BY id_bodega LIMIT 1");
+    const idBodega = id_bodega || bodegaRes.rows[0]?.id_bodega;
+    if (!idBodega) {
+      await client.query("ROLLBACK");
+      return res.status(400).json({ error: "No hay bodega activa" });
+    }
+
+    // Crea una nueva recepción para esta entrega.
+    const numero = await nextNumero("RC", "recepcion_bodega", "numero_comprobante", client);
+    const { rows: recRows } = await client.query(
+      `INSERT INTO recepcion_bodega (id_orden_compra, id_bodega, id_usuario, numero_comprobante, estado)
+       VALUES ($1,$2,$3,$4,'En Proceso') RETURNING *`,
+      [id_orden_compra, idBodega, req.user.id_usuario, numero],
+    );
+    const recepcion = recRows[0];
+
+    // Crea detalle solo para los ítems que llegan ahora.
+    for (const it of ocItems.rows) {
+      if (!recibidos.includes(it.id_detalle_orden)) continue;
+      const idInsumo = await resolverInsumo(client, it.id_insumo, it.descripcion_libre);
+      if (!idInsumo) continue;
+      await client.query(
+        `INSERT INTO detalle_recepcion_bodega
+           (id_recepcion, id_detalle_orden, id_insumo, cantidad_esperada)
+         VALUES ($1,$2,$3,$4)`,
+        [recepcion.id_recepcion, it.id_detalle_orden, idInsumo, Math.round(Number(it.cantidad_comprada))],
+      );
+    }
+
+    // Marca los ítems recibidos ahora como Recibido.
+    if (recibidos.length) {
+      await client.query(
+        `UPDATE detalle_recepcion_bodega
+            SET estado_item = 'Recibido',
+                cantidad_recibida = cantidad_esperada,
+                cantidad_aceptada = cantidad_esperada
+          WHERE id_recepcion = $1`,
+        [recepcion.id_recepcion],
+      );
+    }
+
+    // Finaliza: actualiza stock y kardex para los ítems aceptados.
+    const { rows: itemsRec } = await client.query(
+      "SELECT * FROM detalle_recepcion_bodega WHERE id_recepcion = $1",
+      [recepcion.id_recepcion],
+    );
+
+    let totalAceptado = 0;
+    for (const it of itemsRec) {
+      if (it.cantidad_aceptada > 0) {
+        totalAceptado += it.cantidad_aceptada;
+        await client.query(
+          `INSERT INTO insumo_bodega (id_insumo, id_bodega, stock_actual, stock_minimo)
+           VALUES ($1,$2,0,0) ON CONFLICT (id_insumo, id_bodega) DO NOTHING`,
+          [it.id_insumo, recepcion.id_bodega],
+        );
+        const ibRes = await client.query(
+          "SELECT * FROM insumo_bodega WHERE id_insumo = $1 AND id_bodega = $2 FOR UPDATE",
+          [it.id_insumo, recepcion.id_bodega],
+        );
+        const ib = ibRes.rows[0];
+        const nuevo = ib.stock_actual + it.cantidad_aceptada;
+        await client.query(
+          "UPDATE insumo_bodega SET stock_actual = $1 WHERE id_insumo = $2 AND id_bodega = $3",
+          [nuevo, it.id_insumo, recepcion.id_bodega],
+        );
+        await client.query(
+          `INSERT INTO kardex (id_insumo, id_bodega, id_recepcion, id_usuario, tipo_movimiento, cantidad, stock_anterior, stock_actual)
+           VALUES ($1,$2,$3,$4,'Entrada',$5,$6,$7)`,
+          [it.id_insumo, recepcion.id_bodega, recepcion.id_recepcion, req.user.id_usuario, it.cantidad_aceptada, ib.stock_actual, nuevo],
+        );
+      }
+    }
+
+    // Determina si ya no quedan ítems pendientes en la OC.
+    const recibidosTotales = new Set(yaRecibidos);
+    recibidos.forEach((id) => recibidosTotales.add(id));
+    const completo = ocItems.rows.every((it) => recibidosTotales.has(it.id_detalle_orden));
+
+    const estado = completo ? "Completa" : "Parcial";
+    await client.query(
+      "UPDATE recepcion_bodega SET estado = $1 WHERE id_recepcion = $2",
+      [estado, recepcion.id_recepcion],
+    );
+
+    if (completo) {
+      await client.query(
+        "UPDATE orden_compra SET estado = 'Entregada' WHERE id_orden_compra = $1",
+        [id_orden_compra],
+      );
+    }
+
+    await client.query("COMMIT");
+
+    await registrarBitacora({
+      idUsuario: req.user.id_usuario,
+      accion: "recepcion_recibido",
+      ip: ipDe(req),
+      modulo: "Bodega",
+      detalle: `Pedido ${oc.numero_orden} recibido (${estado})`,
+    });
+
+    res.json({ estado, total_aceptado: totalAceptado, recepcion });
   } catch (e) {
     await client.query("ROLLBACK");
     next(e);
@@ -490,6 +722,113 @@ router.post("/recepciones/:id/finalizar", authorize("bodega"), async (req, res, 
       ip: ipDe(req),
       modulo: "Bodega",
       detalle: `Recepción ${recepcion.numero_comprobante} finalizada (${estado})`,
+    });
+
+    res.json({ estado, total_aceptado: totalAceptado });
+  } catch (e) {
+    await client.query("ROLLBACK");
+    next(e);
+  } finally {
+    client.release();
+  }
+});
+
+// ── Marcar ingreso (checkboxes) y finalizar recepción ─────────────────────────
+router.post("/recepciones/:id/ingresar", authorize("bodega"), async (req, res, next) => {
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+
+    const { rows: recRows } = await client.query(
+      "SELECT * FROM recepcion_bodega WHERE id_recepcion = $1 FOR UPDATE",
+      [req.params.id],
+    );
+    const recepcion = recRows[0];
+    if (!recepcion) {
+      await client.query("ROLLBACK");
+      return res.status(404).json({ error: "Recepción no encontrada" });
+    }
+    if (recepcion.estado !== "En Proceso") {
+      await client.query("ROLLBACK");
+      return res.status(400).json({ error: "Solo se ingresa en recepciones En Proceso" });
+    }
+
+    const recibidos = Array.isArray(req.body.items_recibidos) ? req.body.items_recibidos.map(Number) : [];
+
+    await client.query(
+      `UPDATE detalle_recepcion_bodega
+          SET estado_item = 'Recibido',
+              cantidad_recibida = cantidad_esperada,
+              cantidad_aceptada = cantidad_esperada
+        WHERE id_recepcion = $1
+          AND id_detalle_recepcion = ANY($2::int[])`,
+      [recepcion.id_recepcion, recibidos],
+    );
+    await client.query(
+      `UPDATE detalle_recepcion_bodega
+          SET estado_item = 'Faltante',
+              cantidad_recibida = 0,
+              cantidad_aceptada = 0
+        WHERE id_recepcion = $1
+          AND NOT (id_detalle_recepcion = ANY($2::int[]))`,
+      [recepcion.id_recepcion, recibidos],
+    );
+
+    const { rows: items } = await client.query(
+      "SELECT * FROM detalle_recepcion_bodega WHERE id_recepcion = $1",
+      [recepcion.id_recepcion],
+    );
+
+    let tieneFaltante = false;
+    let totalAceptado = 0;
+    for (const it of items) {
+      if (it.estado_item === "Faltante") tieneFaltante = true;
+      if (it.cantidad_aceptada > 0) {
+        totalAceptado += it.cantidad_aceptada;
+        await client.query(
+          `INSERT INTO insumo_bodega (id_insumo, id_bodega, stock_actual, stock_minimo)
+           VALUES ($1,$2,0,0) ON CONFLICT (id_insumo, id_bodega) DO NOTHING`,
+          [it.id_insumo, recepcion.id_bodega],
+        );
+        const ibRes = await client.query(
+          "SELECT * FROM insumo_bodega WHERE id_insumo = $1 AND id_bodega = $2 FOR UPDATE",
+          [it.id_insumo, recepcion.id_bodega],
+        );
+        const ib = ibRes.rows[0];
+        const nuevo = ib.stock_actual + it.cantidad_aceptada;
+        await client.query(
+          "UPDATE insumo_bodega SET stock_actual = $1 WHERE id_insumo = $2 AND id_bodega = $3",
+          [nuevo, it.id_insumo, recepcion.id_bodega],
+        );
+        await client.query(
+          `INSERT INTO kardex (id_insumo, id_bodega, id_recepcion, id_usuario, tipo_movimiento, cantidad, stock_anterior, stock_actual)
+           VALUES ($1,$2,$3,$4,'Entrada',$5,$6,$7)`,
+          [it.id_insumo, recepcion.id_bodega, recepcion.id_recepcion, req.user.id_usuario, it.cantidad_aceptada, ib.stock_actual, nuevo],
+        );
+      }
+    }
+
+    const estado = tieneFaltante ? "Parcial" : "Completa";
+    await client.query(
+      "UPDATE recepcion_bodega SET estado = $1 WHERE id_recepcion = $2",
+      [estado, recepcion.id_recepcion],
+    );
+
+    if (estado === "Completa") {
+      await client.query(
+        "UPDATE orden_compra SET estado = 'Entregada' WHERE id_orden_compra = $1",
+        [recepcion.id_orden_compra],
+      );
+    }
+
+    await client.query("COMMIT");
+
+    await registrarBitacora({
+      idUsuario: req.user.id_usuario,
+      accion: "recepcion_ingresada",
+      ip: ipDe(req),
+      modulo: "Bodega",
+      detalle: `Recepción ${recepcion.numero_comprobante} ingresada (${estado})`,
     });
 
     res.json({ estado, total_aceptado: totalAceptado });

@@ -24,10 +24,8 @@ export const ESTADOS_SOLICITUD_FILTRO = [
   { value: "", label: "Todas" },
   { value: "En Revisión", label: "En Revisión" },
   { value: "Aprobada", label: "Aprobada" },
-  { value: "Rechazada", label: "Rechazada" },
-  { value: "Pendiente", label: "Pendiente" },
   { value: "En Compra", label: "En Compra" },
-  { value: "Cancelada", label: "Cancelada" },
+  { value: "Rechazada", label: "Rechazada" },
 ] as const
 
 export function useBodegaController(onToast: (m: string, s: string) => void) {

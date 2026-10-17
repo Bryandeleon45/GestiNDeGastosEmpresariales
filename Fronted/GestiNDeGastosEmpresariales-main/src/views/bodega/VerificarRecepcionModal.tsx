@@ -3,19 +3,20 @@ import { G } from "@/constants/theme"
 import { Icons } from "@/components/common/Icons"
 import {
   obtenerRecepcion,
-  verificarItemRecepcion,
-  finalizarRecepcion,
+  obtenerItemsOrdenCompra,
+  ingresarRecepcion,
+  recibirTodo,
   cancelarRecepcion,
   type Recepcion,
-  type RecepcionItem,
+  type OrdenCompraItems,
 } from "@/api/bodega"
 import { ApiError } from "@/api/client"
 
-const ESTADO_ITEM_BG: Record<string, string> = {
-  Recibido: "#F0FDF4",
-  Rechazado: "#FFF5F5",
-  Faltante: "#FFFBEB",
-  Pendiente: "transparent",
+const ESTADO_ITEM_BADGE: Record<string, { bg: string; color: string }> = {
+  Recibido: { bg: "#DCFCE7", color: "#16A34A" },
+  Rechazado: { bg: "#FEE2E2", color: "#DC2626" },
+  Faltante: { bg: "#FEF3C7", color: "#B45309" },
+  Pendiente: { bg: "#F1F5F9", color: "#64748B" },
 }
 
 export default function VerificarRecepcionModal({
@@ -29,14 +30,26 @@ export default function VerificarRecepcionModal({
   onChanged: () => void
   onToast: (m: string, s: string) => void
 }) {
+  const esEnProceso = recepcion.estado === "En Proceso"
+  const esCompleta = recepcion.estado === "Completa"
+  const esParcial = recepcion.estado === "Parcial" || recepcion.estado === "Con Novedades"
+
   const [detalle, setDetalle] = useState<Recepcion | null>(null)
-  const [obs, setObs] = useState<Record<number, string>>({})
-  const [obsOpen, setObsOpen] = useState<number | null>(null)
+  const [ocDetalle, setOcDetalle] = useState<OrdenCompraItems | null>(null)
+  const [marcados, setMarcados] = useState<Set<number>>(new Set())
   const [working, setWorking] = useState(false)
 
   const cargar = async () => {
     try {
-      setDetalle(await obtenerRecepcion(recepcion.id_recepcion))
+      if (esParcial) {
+        const d = await obtenerItemsOrdenCompra(recepcion.id_orden_compra)
+        setOcDetalle(d)
+        setMarcados(new Set())
+      } else {
+        const d = await obtenerRecepcion(recepcion.id_recepcion)
+        setDetalle(d)
+        setMarcados(new Set((d.items ?? []).map((it) => it.id_detalle_recepcion)))
+      }
     } catch (e) {
       onToast("Error", e instanceof Error ? e.message : "No se pudo cargar la recepción")
     }
@@ -44,39 +57,67 @@ export default function VerificarRecepcionModal({
 
   useEffect(() => {
     cargar()
-  }, [recepcion.id_recepcion])
+  }, [recepcion.id_recepcion, recepcion.estado])
 
-  const verificar = async (item: RecepcionItem, estado: string) => {
+  const toggle = (id: number) => {
+    setMarcados((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  const ingresar = async () => {
+    if (!detalle) return
+    const total = detalle.items?.length ?? 0
+    const marcadosCount = marcados.size
+    const completo = marcadosCount === total
+    const msg = completo
+      ? "Todos los ítems ingresan. Se marcará como Completado."
+      : `Solo ${marcadosCount} de ${total} ítems ingresan. Se marcará como Pendiente.`
+    if (!window.confirm(`¿Confirmar ingreso? ${msg}`)) return
     setWorking(true)
     try {
-      await verificarItemRecepcion(recepcion.id_recepcion, item.id_detalle_recepcion, {
-        estado_item: estado,
-        cantidad_aceptada: estado === "Recibido" ? item.cantidad_esperada : 0,
-        observacion: obs[item.id_detalle_recepcion] || undefined,
-      })
-      setObsOpen(null)
-      await cargar()
+      const res = await ingresarRecepcion(recepcion.id_recepcion, Array.from(marcados))
+      if (res.estado === "Completa") {
+        onToast("Ingreso completado", "La recepción quedó completada y la orden pasó a Entregada.")
+      } else {
+        onToast("Ingreso parcial", "Quedaron ítems pendientes de ingreso.")
+      }
+      onChanged()
     } catch (e) {
-      onToast("Error", e instanceof ApiError ? e.message : "No se pudo verificar el ítem")
+      onToast("Error", e instanceof ApiError ? e.message : "No se pudo ingresar")
     } finally {
       setWorking(false)
     }
   }
 
-  const finalizar = async () => {
-    const pendientes = (detalle?.items ?? []).filter((i) => i.estado_item === "Pendiente")
-    if (pendientes.length > 0) {
-      onToast("Verifica todos los ítems", "Marca cada ítem como Recibido, Rechazado o Faltante.")
+  const completar = async () => {
+    if (!ocDetalle) return
+    if (marcados.size === 0) {
+      onToast("Marque los ítems", "Seleccione al menos un ítem que ingresó.")
       return
     }
-    if (!window.confirm("¿Finalizar y cargar a inventario? Solo las cantidades aceptadas generarán Entrada en el Kardex.")) return
+    const faltantes = ocDetalle.items.filter((it) => !it.ya_recibido)
+    const total = faltantes.length
+    const marcadosCount = faltantes.filter((it) => marcados.has(it.id_detalle_orden)).length
+    const completo = marcadosCount === total
+    const msg = completo
+      ? "Se completará el pedido. Se marcará como Completado en todos los módulos."
+      : `Solo ${marcadosCount} de ${total} ítems faltantes ingresan. Quedará Pendiente.`
+    if (!window.confirm(`¿Confirmar ingreso? ${msg}`)) return
     setWorking(true)
     try {
-      const res = await finalizarRecepcion(recepcion.id_recepcion)
-      onToast("Recepción finalizada", `Estado: ${res.estado}. ${res.total_aceptado} unidades cargadas.`)
+      await recibirTodo({ id_orden_compra: recepcion.id_orden_compra, items_recibidos: Array.from(marcados) })
+      if (completo) {
+        onToast("Pedido completado", "El pedido quedó Completado en Gestión y en el portal del proveedor.")
+      } else {
+        onToast("Ingreso parcial", "Quedaron ítems pendientes de ingreso.")
+      }
       onChanged()
     } catch (e) {
-      onToast("Error", e instanceof ApiError ? e.message : "No se pudo finalizar")
+      onToast("Error", e instanceof ApiError ? e.message : "No se pudo completar")
     } finally {
       setWorking(false)
     }
@@ -96,7 +137,7 @@ export default function VerificarRecepcionModal({
     }
   }
 
-  const items = detalle?.items ?? []
+  const titulo = esEnProceso ? "Ingreso de ítems" : esCompleta ? "Detalle de Recepción" : "Completar Recepción"
 
   return (
     <div
@@ -114,7 +155,7 @@ export default function VerificarRecepcionModal({
               <Icons.Boxes />
             </div>
             <div>
-              <h2 className="text-lg font-bold text-gray-900">Verificación de ítems</h2>
+              <h2 className="text-lg font-bold text-gray-900">{titulo}</h2>
               <p className="text-xs text-gray-500">
                 {recepcion.numero_comprobante} · {recepcion.razon_social}
               </p>
@@ -126,84 +167,169 @@ export default function VerificarRecepcionModal({
         </div>
 
         <div className="overflow-y-auto flex-1 px-6 py-5 space-y-3">
-          {items.map((item) => {
-            const estado = item.estado_item
-            return (
-              <div
-                key={item.id_detalle_recepcion}
-                className="border border-gray-200 rounded-lg p-4 transition-colors"
-                style={{ backgroundColor: ESTADO_ITEM_BG[estado] ?? "transparent" }}
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="text-sm font-bold text-gray-900 leading-snug">{item.insumo_nombre}</p>
-                    <p className="text-[11px] text-gray-400 mt-0.5">
-                      {item.codigo_insumo} · Esperado: {item.cantidad_esperada} {item.unidad_simbolo}
-                    </p>
+          {esParcial && ocDetalle ? (
+            ocDetalle.items.map((it) => {
+              if (it.ya_recibido) {
+                return (
+                  <div key={it.id_detalle_orden} className="border border-green-200 rounded-lg p-4 bg-green-50">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <span className="w-5 h-5 rounded border-2 bg-green-500 border-green-500 text-white flex items-center justify-center shrink-0">
+                          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                          </svg>
+                        </span>
+                        <div>
+                          <p className="text-sm font-bold text-green-800 leading-snug">{it.descripcion}</p>
+                          <p className="text-[11px] text-green-600 mt-0.5">
+                            {Number(it.cantidad_comprada).toLocaleString("es-GT")} {it.unidad_simbolo}
+                          </p>
+                        </div>
+                      </div>
+                      <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-green-100 text-green-700 shrink-0">Recibido</span>
+                    </div>
+                  </div>
+                )
+              }
+              const marcado = marcados.has(it.id_detalle_orden)
+              return (
+                <div
+                  key={it.id_detalle_orden}
+                  onClick={() => toggle(it.id_detalle_orden)}
+                  className={`border rounded-lg p-4 cursor-pointer transition-colors ${marcado ? "border-green-300 bg-green-50" : "border-gray-200 hover:bg-gray-50"}`}
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <span
+                        className={`w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 transition-colors ${marcado ? "bg-green-500 border-green-500 text-white" : "border-gray-300"}`}
+                      >
+                        {marcado && (
+                          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                          </svg>
+                        )}
+                      </span>
+                      <div>
+                        <p className={`text-sm font-bold leading-snug ${marcado ? "text-green-800" : "text-gray-400"}`}>
+                          {it.descripcion}
+                        </p>
+                        <p className={`text-[11px] mt-0.5 ${marcado ? "text-green-600" : "text-gray-400"}`}>
+                          {Number(it.cantidad_comprada).toLocaleString("es-GT")} {it.unidad_simbolo}
+                        </p>
+                      </div>
+                    </div>
                   </div>
                 </div>
-                <div className="flex items-center gap-2 flex-wrap mt-3">
-                  <button
-                    onClick={() => verificar(item, "Recibido")}
-                    disabled={working}
-                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg transition-all active:scale-95 disabled:opacity-50"
-                    style={estado === "Recibido" ? { backgroundColor: G, color: "white" } : { backgroundColor: "white", color: G, border: `1.5px solid ${G}` }}
-                  >
-                    <Icons.CheckMark /> Recibido
-                  </button>
-                  <button
-                    onClick={() => { setObsOpen(item.id_detalle_recepcion); setObs((p) => ({ ...p, [item.id_detalle_recepcion]: p[item.id_detalle_recepcion] ?? "" })) }}
-                    disabled={working}
-                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg transition-all active:scale-95 disabled:opacity-50"
-                    style={estado === "Rechazado" ? { backgroundColor: "#DC2626", color: "white" } : { backgroundColor: "white", color: "#DC2626", border: "1.5px solid #DC2626" }}
-                  >
-                    <Icons.X /> Rechazar
-                  </button>
-                  <button
-                    onClick={() => { setObsOpen(item.id_detalle_recepcion); setObs((p) => ({ ...p, [item.id_detalle_recepcion]: p[item.id_detalle_recepcion] ?? "" })) }}
-                    disabled={working}
-                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg transition-all active:scale-95 disabled:opacity-50"
-                    style={estado === "Faltante" ? { backgroundColor: "#D97706", color: "white" } : { backgroundColor: "white", color: "#6B7280", border: "1.5px solid #D1D5DB" }}
-                  >
-                    <Icons.Info /> Faltante
-                  </button>
-                </div>
-                {obsOpen === item.id_detalle_recepcion && (
-                  <div className="flex gap-2 mt-3">
-                    <input
-                      value={obs[item.id_detalle_recepcion] ?? ""}
-                      onChange={(e) => setObs((p) => ({ ...p, [item.id_detalle_recepcion]: e.target.value }))}
-                      placeholder="Observación (obligatoria para Rechazado/Faltante)…"
-                      className="flex-1 px-3 py-2 text-xs bg-gray-50 border border-gray-200 rounded-lg outline-none focus:border-red-400"
-                    />
-                    <button
-                      onClick={() => { const e = obs[item.id_detalle_recepcion]?.trim(); if (!e) { onToast("Revisar formulario", "La observación es obligatoria"); return } verificar(item, item.estado_item === "Faltante" ? "Faltante" : "Rechazado") }}
-                      disabled={working}
-                      className="px-3 py-2 text-xs font-bold text-white rounded-lg disabled:opacity-50"
-                      style={{ backgroundColor: "#DC2626" }}
-                    >
-                      Confirmar
-                    </button>
+              )
+            })
+          ) : esCompleta && detalle ? (
+            (detalle.items ?? []).map((item) => {
+              const badge = ESTADO_ITEM_BADGE[item.estado_item] ?? { bg: "#F1F5F9", color: "#64748B" }
+              return (
+                <div key={item.id_detalle_recepcion} className="border border-gray-200 rounded-lg p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-bold text-gray-900 leading-snug">{item.insumo_nombre}</p>
+                      <p className="text-[11px] text-gray-400 mt-0.5">
+                        {item.codigo_insumo} · Esperado: {item.cantidad_esperada} {item.unidad_simbolo}
+                      </p>
+                      <p className="text-[11px] text-gray-500 mt-0.5">
+                        Recibido: {item.cantidad_recibida} · Aceptado: {item.cantidad_aceptada}
+                      </p>
+                    </div>
+                    <span className="text-xs font-bold px-2.5 py-1 rounded-full shrink-0" style={{ backgroundColor: badge.bg, color: badge.color }}>
+                      {item.estado_item}
+                    </span>
                   </div>
-                )}
-              </div>
-            )
-          })}
+                </div>
+              )
+            })
+          ) : detalle ? (
+            (detalle.items ?? []).map((item) => {
+              const marcado = marcados.has(item.id_detalle_recepcion)
+              return (
+                <div
+                  key={item.id_detalle_recepcion}
+                  onClick={() => toggle(item.id_detalle_recepcion)}
+                  className="border border-gray-200 rounded-lg p-4 cursor-pointer transition-colors hover:bg-gray-50"
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <span
+                        className={`w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 transition-colors ${marcado ? "bg-green-500 border-green-500 text-white" : "border-gray-300"}`}
+                      >
+                        {marcado && (
+                          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                          </svg>
+                        )}
+                      </span>
+                      <div>
+                        <p className={`text-sm font-bold leading-snug ${marcado ? "text-gray-900" : "text-gray-400 line-through"}`}>
+                          {item.insumo_nombre}
+                        </p>
+                        <p className="text-[11px] text-gray-400 mt-0.5">
+                          {item.codigo_insumo} · Esperado: {item.cantidad_esperada} {item.unidad_simbolo}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )
+            })
+          ) : (
+            <p className="text-sm text-gray-400 text-center py-6">Cargando…</p>
+          )}
+
+          {esParcial && ocDetalle && (
+            <p className="text-xs text-gray-500">
+              {ocDetalle.items.filter((it) => !it.ya_recibido).filter((it) => marcados.has(it.id_detalle_orden)).length} de {ocDetalle.items.filter((it) => !it.ya_recibido).length} ítems faltantes por ingresar
+            </p>
+          )}
+          {esEnProceso && detalle && (
+            <p className="text-xs text-gray-500">
+              {marcados.size} de {detalle.items?.length ?? 0} ítems por ingresar
+            </p>
+          )}
         </div>
 
-        <div className="flex items-center justify-between px-6 py-4 border-t border-gray-100 shrink-0">
-          <button onClick={cancelar} disabled={working} className="text-sm font-semibold text-gray-500 hover:text-gray-700 transition-colors disabled:opacity-40">
-            Cancelar Recepción
-          </button>
-          <button
-            onClick={finalizar}
-            disabled={working}
-            className="flex items-center gap-2 px-5 py-2.5 text-sm font-bold text-white rounded-xl shadow-sm transition-all hover:opacity-90 active:scale-95 disabled:opacity-50"
-            style={{ backgroundColor: G }}
-          >
-            <Icons.CheckCircle /> Finalizar y Cargar a Inventario
-          </button>
-        </div>
+        {esEnProceso && (
+          <div className="flex items-center justify-between px-6 py-4 border-t border-gray-100 shrink-0">
+            <button onClick={cancelar} disabled={working} className="text-sm font-semibold text-gray-500 hover:text-gray-700 transition-colors disabled:opacity-40">
+              Cancelar Recepción
+            </button>
+            <button
+              onClick={ingresar}
+              disabled={working}
+              className="flex items-center gap-2 px-5 py-2.5 text-sm font-bold text-white rounded-xl shadow-sm transition-all hover:opacity-90 disabled:opacity-50"
+              style={{ backgroundColor: "#16A34A" }}
+            >
+              <Icons.CheckMark /> Ingresar
+            </button>
+          </div>
+        )}
+        {esParcial && (
+          <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-100 shrink-0">
+            <button onClick={onClose} className="px-5 py-2.5 text-sm font-semibold text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50 transition-all">
+              Cerrar
+            </button>
+            <button
+              onClick={completar}
+              disabled={working}
+              className="flex items-center gap-2 px-5 py-2.5 text-sm font-bold text-white rounded-xl shadow-sm transition-all hover:opacity-90 disabled:opacity-50"
+              style={{ backgroundColor: "#16A34A" }}
+            >
+              <Icons.CheckMark /> Completar
+            </button>
+          </div>
+        )}
+        {esCompleta && (
+          <div className="flex items-center justify-end px-6 py-4 border-t border-gray-100 shrink-0">
+            <button onClick={onClose} className="px-5 py-2.5 text-sm font-semibold text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50 transition-all">
+              Cerrar
+            </button>
+          </div>
+        )}
       </div>
     </div>
   )

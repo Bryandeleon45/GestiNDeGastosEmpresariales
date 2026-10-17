@@ -6,6 +6,7 @@ import CerrarSesionModal from "@/views/common/CerrarSesionModal"
 import Toast from "@/views/common/Toast"
 import SubirProformaModal from "@/views/portal/SubirProformaModal"
 import CotizarOportunidadModal from "@/views/portal/CotizarOportunidadModal"
+import CargarFacturaModal from "@/views/portal/CargarFacturaModal"
 import { useSupplierPortalController } from "@/controllers/useSupplierPortalController"
 import type { Oportunidad, PedidoAsignado } from "@/api/portal"
 
@@ -22,11 +23,18 @@ const ESTADO_BADGE: Record<string, { bg: string; color: string }> = {
 }
 
 const ORDEN_BADGE: Record<string, { bg: string; color: string }> = {
+  Pendiente: { bg: "#F3F4F6", color: "#6B7280" },
+  Aprobada: { bg: "#DBEAFE", color: "#2563EB" },
+  Enviada: { bg: "#FEF3C7", color: "#B45309" },
   Entregada: { bg: "#DCFCE7", color: "#16A34A" },
-  Enviada: { bg: "#E0F2FE", color: "#0284C7" },
-  Aprobada: { bg: "#DCFCE7", color: "#16A34A" },
-  Pendiente: { bg: "#FEF9C3", color: "#92400E" },
   Cancelada: { bg: "#FEE2E2", color: "#DC2626" },
+}
+
+const FACTURA_BADGE: Record<string, { bg: string; color: string }> = {
+  Recibida: { bg: "#DBEAFE", color: "#2563EB" },
+  "En Revision": { bg: "#FEF3C7", color: "#B45309" },
+  Aprobada: { bg: "#DCFCE7", color: "#16A34A" },
+  Rechazada: { bg: "#FEE2E2", color: "#DC2626" },
 }
 
 const ENTREGA_BADGE: Record<string, { bg: string; color: string }> = {
@@ -42,6 +50,9 @@ const fmtQ = (n: number | string) =>
 
 const fmtFecha = (iso?: string | null) =>
   iso ? new Date(iso).toLocaleDateString("es-GT") : "—"
+
+const fmtHora = (iso?: string | null) =>
+  iso ? new Date(iso).toLocaleTimeString("es-GT", { hour: "2-digit", minute: "2-digit" }) : "—"
 
 const esCotizable = (o: Oportunidad) =>
   o.fase === "Publicada" && (o.estado === "Nueva" || o.estado === "Abierta")
@@ -376,8 +387,6 @@ export default function SupplierPortal({ onLogout }: { onLogout: () => void }) {
     setQ,
     showSubir,
     setShowSubir,
-    isDraggingFEL,
-    setIsDraggingFEL,
     toast,
     fireToast,
     hideToast,
@@ -393,8 +402,13 @@ export default function SupplierPortal({ onLogout }: { onLogout: () => void }) {
     ordenes,
     entregas,
     pedidosAsignados,
+    facturas,
     noLeidas,
     loading,
+    showCargarFactura,
+    setShowCargarFactura,
+    cargarFacturas,
+    cargarOrdenes,
     recargar,
     abrirOportunidad,
     cotizarTarget,
@@ -738,38 +752,7 @@ export default function SupplierPortal({ onLogout }: { onLogout: () => void }) {
                     )}
                   </div>
 
-                  <div className="w-full xl:w-64 shrink-0 rounded-xl border overflow-hidden" style={{ backgroundColor: card, borderColor: border }}>
-                    <div className="px-5 pt-5 pb-4 border-b" style={{ borderColor: border }}>
-                      <p className="text-sm font-extrabold" style={{ color: text }}>Carga Rápida de Factura FEL</p>
-                      <p className="text-xs mt-0.5" style={{ color: sub }}>Envíe su factura electrónica directamente.</p>
-                    </div>
-                    <div className="p-5 space-y-4">
-                      <div
-                        onDragOver={(e) => { e.preventDefault(); setIsDraggingFEL(true) }}
-                        onDragLeave={() => setIsDraggingFEL(false)}
-                        onDrop={(e) => { e.preventDefault(); setIsDraggingFEL(false); fireToast("Factura recibida", "El documento FEL fue enviado a revisión de pago.") }}
-                        onClick={() => fireToast("Factura recibida", "El documento FEL fue enviado a revisión de pago.")}
-                        className="rounded-xl border-2 border-dashed flex flex-col items-center justify-center py-8 gap-2 cursor-pointer transition-all"
-                        style={{ borderColor: isDraggingFEL ? G : dark ? "#334155" : "#CBD5E1", backgroundColor: isDraggingFEL ? (dark ? "rgba(30,94,47,0.15)" : "#F0FDF4") : dark ? "#0F172A" : "#F9FAFB" }}
-                      >
-                        <svg className="w-9 h-9" fill="none" stroke={isDraggingFEL ? G : sub} viewBox="0 0 24 24" strokeWidth={1.5}>
-                          <polyline points="16 16 12 12 8 16" />
-                          <line x1="12" y1="12" x2="12" y2="21" />
-                          <path d="M20.39 18.39A5 5 0 0018 9h-1.26A8 8 0 103 16.3" />
-                        </svg>
-                        <p className="text-xs text-center leading-snug font-semibold" style={{ color: sub }}>
-                          Arrastre aquí su factura digital<br />(PDF / XML)
-                        </p>
-                      </div>
-                      <button
-                        onClick={() => fireToast("Factura enviada", "Tu factura FEL fue enviada a revisión de pago.")}
-                        className="w-full py-2.5 text-sm font-bold text-white rounded-xl transition-all hover:opacity-90 shadow-sm"
-                        style={{ backgroundColor: G }}
-                      >
-                        Enviar a Revisión de Pago
-                      </button>
-                    </div>
-                  </div>
+
                 </div>
               </>
             )}
@@ -788,9 +771,72 @@ export default function SupplierPortal({ onLogout }: { onLogout: () => void }) {
 
             {activeNav === "ordenes" && (
               <div className="space-y-4">
-                <h1 className="text-2xl font-extrabold" style={{ color: text }}>Órdenes y Facturas</h1>
-                <p className="text-sm" style={{ color: sub }}>Historial de órdenes de compra adjudicadas y estado de pago de sus facturas.</p>
-                <div className="rounded-xl border overflow-hidden" style={{ backgroundColor: card, borderColor: border }}>
+                <div className="flex items-start justify-between gap-4 flex-wrap">
+                  <div>
+                    <h1 className="text-2xl font-extrabold" style={{ color: text }}>Órdenes y Facturas</h1>
+                    <p className="text-sm" style={{ color: sub }}>Historial de órdenes de compra adjudicadas y estado de pago de sus facturas.</p>
+                  </div>
+                  <button
+                    onClick={() => setShowCargarFactura(true)}
+                    className="flex items-center gap-2 px-5 py-2.5 text-sm font-bold text-white rounded-xl shadow-sm transition-all hover:opacity-90"
+                    style={{ backgroundColor: G }}
+                  >
+                    <Icons.Plus /> Cargar Factura
+                  </button>
+                </div>
+
+                {facturas.length > 0 && (
+                  <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+                    <div className="px-5 py-4 border-b border-gray-100">
+                      <h2 className="text-base font-bold" style={{ color: G }}>Mis Facturas</h2>
+                    </div>
+                    <div className="overflow-x-auto">
+                      <table className="w-full">
+                        <thead>
+                          <tr className="border-b border-gray-100">
+                            {["FACTURA", "ORDEN", "MONTO", "ESTADO", "FECHA"].map((h) => (
+                              <th key={h} className="px-4 py-3 text-left text-[10px] font-bold text-gray-400 uppercase tracking-wider whitespace-nowrap bg-gray-50">
+                                {h}
+                              </th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {facturas.map((f) => {
+                            const es = FACTURA_BADGE[f.estado] ?? { bg: "#F3F4F6", color: "#6B7280" }
+                            return (
+                              <tr key={f.id_factura} className="border-b border-gray-50 last:border-0 hover:bg-gray-50/60 transition-colors">
+                                <td className="px-4 py-4">
+                                  <p className="text-xs font-bold font-mono text-gray-700">{f.numero_factura}</p>
+                                  {f.serie && <p className="text-[11px] text-gray-400 mt-0.5">Serie {f.serie}</p>}
+                                </td>
+                                <td className="px-4 py-4">
+                                  <p className="text-xs font-mono text-gray-600">{f.numero_orden}</p>
+                                </td>
+                                <td className="px-4 py-4 whitespace-nowrap">
+                                  <p className="text-sm font-bold font-mono text-gray-800">{fmtQ(f.monto_total)}</p>
+                                </td>
+                                <td className="px-4 py-4">
+                                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold whitespace-nowrap ${es.bg} ${es.color}`}>
+                                    {f.estado}
+                                  </span>
+                                </td>
+                                <td className="px-4 py-4 whitespace-nowrap">
+                                  <p className="text-sm text-gray-600 font-mono">{fmtFecha(f.fecha_emision)}</p>
+                                </td>
+                              </tr>
+                            )
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+
+                <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+                  <div className="px-5 py-4 border-b border-gray-100">
+                    <h2 className="text-base font-bold" style={{ color: G }}>Órdenes de Compra</h2>
+                  </div>
                   {ordenes.length === 0 ? (
                     <p className="px-5 py-12 text-center text-sm" style={{ color: sub }}>No hay órdenes de compra.</p>
                   ) : (
@@ -850,9 +896,30 @@ export default function SupplierPortal({ onLogout }: { onLogout: () => void }) {
                             </div>
                             <div className="flex-1 min-w-0">
                               <p className="text-sm font-bold" style={{ color: esCompleta ? "#15803d" : text }}>{r.numero_orden} · {r.numero_comprobante}</p>
-                              <p className="text-xs" style={{ color: esCompleta ? "#16a34a" : sub }}>{fmtFecha(r.fecha_recepcion)} · {r.total_items} ítem(s)</p>
+                              <p className="text-xs" style={{ color: esCompleta ? "#16a34a" : sub }}>{fmtFecha(r.fecha_recepcion)} · {fmtHora(r.fecha_recepcion)} · {r.total_items} ítem(s)</p>
                             </div>
                             <span className="text-xs font-bold px-2.5 py-1 rounded-full" style={{ backgroundColor: es.bg, color: es.color }}>{r.estado}</span>
+                          </div>
+
+                          <div className="border-t px-5 py-3 space-y-1.5" style={{ borderColor: esCompleta ? "#22c55e" : border }}>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                              <div className="rounded-lg border p-2" style={{ borderColor: border }}>
+                                <p className="font-bold uppercase tracking-widest" style={{ color: sub }}>Entregado a</p>
+                                <p className="font-semibold mt-0.5" style={{ color: text }}>{r.nombre_dependencia}</p>
+                              </div>
+                              <div className="rounded-lg border p-2" style={{ borderColor: border }}>
+                                <p className="font-bold uppercase tracking-widest" style={{ color: sub }}>Lugar</p>
+                                <p className="font-semibold mt-0.5" style={{ color: text }}>{r.nombre_bodega}{r.ubicacion ? ` · ${r.ubicacion}` : ""}</p>
+                              </div>
+                              <div className="rounded-lg border p-2" style={{ borderColor: border }}>
+                                <p className="font-bold uppercase tracking-widest" style={{ color: sub }}>Recibido por</p>
+                                <p className="font-semibold mt-0.5" style={{ color: text }}>{r.recibido_por ?? r.encargado ?? "—"}</p>
+                              </div>
+                              <div className="rounded-lg border p-2" style={{ borderColor: border }}>
+                                <p className="font-bold uppercase tracking-widest" style={{ color: sub }}>Fecha y Hora</p>
+                                <p className="font-semibold mt-0.5" style={{ color: text }}>{fmtFecha(r.fecha_recepcion)} · {fmtHora(r.fecha_recepcion)}</p>
+                              </div>
+                            </div>
                           </div>
                           {r.items && r.items.length > 0 && (
                             <div className="border-t px-5 py-3 space-y-2" style={{ borderColor: esCompleta ? "#22c55e" : border }}>
@@ -938,6 +1005,16 @@ export default function SupplierPortal({ onLogout }: { onLogout: () => void }) {
         />
       )}
       {showSubir && <SubirProformaModal dark={dark} onClose={() => setShowSubir(false)} onToast={fireToast} />}
+      {showCargarFactura && (
+        <CargarFacturaModal
+          onClose={() => setShowCargarFactura(false)}
+          onToast={fireToast}
+          onSuccess={() => {
+            cargarFacturas()
+            cargarOrdenes()
+          }}
+        />
+      )}
       {showLogout && (
         <CerrarSesionModal
           onClose={() => setShowLogout(false)}

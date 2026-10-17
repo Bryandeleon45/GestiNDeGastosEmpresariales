@@ -140,33 +140,7 @@ export default function FacturacionView({
                 Requiere acción inmediata
               </p>
             </div>
-            <div
-              className="rounded-xl text-white px-5 py-4 flex flex-col gap-3"
-              style={{ backgroundColor: G }}
-            >
-              <p className="text-sm font-extrabold leading-none">
-                Portal de Facturación
-              </p>
-              <p className="text-xs opacity-80 leading-relaxed">
-                Carga digital de facturas y documentos de soporte para agilizar
-                procesos.
-              </p>
-              <div
-                onClick={() => onToast("Información", "El proveedor carga facturas desde su portal.")}
-                className="flex-1 rounded-lg border-2 border-dashed flex flex-col items-center justify-center gap-1.5 py-3 cursor-pointer transition-all"
-                style={{
-                  borderColor: "rgba(255,255,255,0.45)",
-                  backgroundColor: "rgba(255,255,255,0.08)",
-                }}
-              >
-                <Icons.Download />
-                <p className="text-[10px] font-semibold text-center opacity-80 leading-tight">
-                  Los proveedores cargan
-                  <br />
-                  sus facturas PDF/XML
-                </p>
-              </div>
-            </div>
+
           </div>
 
           <div className="flex gap-5 items-start flex-wrap xl:flex-nowrap">

@@ -60,21 +60,42 @@ async function adjudicarInterno(client, proceso, cotizacion, motivo, idUsuario) 
   );
 
   const numeroOrden = await nextNumero("OC", "orden_compra", "numero_orden", client);
-  const { rows: ocRows } = await client.query(
-    `INSERT INTO orden_compra
-       (numero_orden, id_requisicion, id_cotizacion, id_proveedor, monto_total, id_usuario_emite)
-     VALUES ($1, $2, $3, $4, $5, $6)
-     RETURNING *`,
-    [
-      numeroOrden,
-      proceso.id_requisicion,
-      cotizacion.id_cotizacion,
-      cotizacion.id_proveedor,
-      cotizacion.monto_total,
-      idUsuario,
-    ],
+
+  // Reutiliza la orden de compra provisional creada al registrar la solicitud,
+  // conservando el mismo número durante todo el proceso.
+  const ocExistente = await client.query(
+    "SELECT * FROM orden_compra WHERE id_requisicion = $1 FOR UPDATE",
+    [proceso.id_requisicion],
   );
-  const orden = ocRows[0];
+  let orden;
+  if (ocExistente.rows[0]) {
+    const prev = ocExistente.rows[0];
+    const { rows: updRows } = await client.query(
+      `UPDATE orden_compra
+          SET id_cotizacion = $1, id_proveedor = $2, monto_total = $3
+        WHERE id_orden_compra = $4
+        RETURNING *`,
+      [cotizacion.id_cotizacion, cotizacion.id_proveedor, cotizacion.monto_total, prev.id_orden_compra],
+    );
+    orden = updRows[0];
+    await client.query("DELETE FROM detalle_orden_compra WHERE id_orden_compra = $1", [orden.id_orden_compra]);
+  } else {
+    const { rows: ocRows } = await client.query(
+      `INSERT INTO orden_compra
+         (numero_orden, id_requisicion, id_cotizacion, id_proveedor, monto_total, id_usuario_emite)
+       VALUES ($1, $2, $3, $4, $5, $6)
+       RETURNING *`,
+      [
+        numeroOrden,
+        proceso.id_requisicion,
+        cotizacion.id_cotizacion,
+        cotizacion.id_proveedor,
+        cotizacion.monto_total,
+        idUsuario,
+      ],
+    );
+    orden = ocRows[0];
+  }
 
   const detRes = await client.query(
     "SELECT * FROM detalle_cotizacion WHERE id_cotizacion = $1",

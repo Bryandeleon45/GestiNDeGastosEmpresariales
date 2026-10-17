@@ -75,6 +75,7 @@ export default function BodegaView({
   const [showNuevaRec, setShowNuevaRec] = useState(false)
   const [showNuevoVale, setShowNuevoVale] = useState(false)
   const [verifRecepcion, setVerifRecepcion] = useState<Recepcion | null>(null)
+  const [detalleRecepcion, setDetalleRecepcion] = useState<Recepcion | null>(null)
   const [rechazoRow, setRechazoRow] = useState<Requisicion | null>(null)
   const [motivo, setMotivo] = useState("")
   const [workingSol, setWorkingSol] = useState(false)
@@ -416,7 +417,7 @@ export default function BodegaView({
                                   Verificar
                                 </button>
                               ) : (
-                                <button onClick={() => onToast("Recepción", `Comprobante ${r.numero_comprobante} (${r.estado}).`)} className="text-sm font-semibold text-gray-500 hover:text-gray-800 transition-colors">
+                                <button onClick={() => setDetalleRecepcion(r)} className="text-sm font-semibold text-gray-500 hover:text-gray-800 transition-colors">
                                   Ver
                                 </button>
                               )}
@@ -589,10 +590,10 @@ export default function BodegaView({
       {showNuevaRec && (
         <NuevaRecepcionModal
           onClose={() => setShowNuevaRec(false)}
-          onSuccess={(recepcion) => {
+          onSuccess={() => {
             setShowNuevaRec(false)
             reload()
-            setVerifRecepcion(recepcion)
+            setTab("recepciones")
           }}
           onToast={onToast}
         />
@@ -614,6 +615,17 @@ export default function BodegaView({
           onClose={() => setVerifRecepcion(null)}
           onChanged={() => {
             setVerifRecepcion(null)
+            reload()
+          }}
+          onToast={onToast}
+        />
+      )}
+      {detalleRecepcion && (
+        <VerificarRecepcionModal
+          recepcion={detalleRecepcion}
+          onClose={() => setDetalleRecepcion(null)}
+          onChanged={() => {
+            setDetalleRecepcion(null)
             reload()
           }}
           onToast={onToast}

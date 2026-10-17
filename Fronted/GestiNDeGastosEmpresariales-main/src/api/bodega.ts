@@ -133,6 +133,42 @@ export function listarOrdenesCompraRecepcion(params: { numero?: string } = {}) {
   return api.get<OrdenCompraRecepcion[]>(`/ordenes-compra/pendientes-recepcion${sp.toString() ? `?${sp.toString()}` : ""}`)
 }
 
+export interface OrdenCompraBusqueda extends OrdenCompraRecepcion {
+  estado: string
+  codigo_requisicion: string
+  tipo_solicitud: string
+  lugar_entrega: string | null
+}
+
+export function buscarOrdenPorSolicitud(q: string) {
+  return api.get<OrdenCompraBusqueda[]>(`/ordenes-compra/buscar-por-solicitud?q=${encodeURIComponent(q)}`)
+}
+
+export interface OrdenCompraItems {
+  id_orden_compra: number
+  numero_orden: string
+  monto_total: string
+  estado: string
+  codigo_requisicion: string
+  tipo_solicitud: string
+  justificacion: string
+  lugar_entrega: string | null
+  nit: string
+  razon_social: string
+  items: Array<{
+    id_detalle_orden: number
+    cantidad_comprada: string
+    descripcion: string
+    unidad_simbolo: string
+    cantidad_recibida: number
+    ya_recibido: boolean
+  }>
+}
+
+export function obtenerItemsOrdenCompra(idOrden: number) {
+  return api.get<OrdenCompraItems>(`/ordenes-compra/${idOrden}/items`)
+}
+
 export interface OrdenEstadoRecepcionItem {
   id_detalle_orden: number
   descripcion: string
@@ -158,6 +194,10 @@ export function crearRecepcion(data: { id_orden_compra: number; id_bodega?: numb
   return api.post<Recepcion>("/recepciones", data)
 }
 
+export function recibirTodo(data: { id_orden_compra: number; id_bodega?: number; items_recibidos?: number[] }) {
+  return api.post<{ estado: string; total_aceptado: number; recepcion: Recepcion }>("/recepciones/recibir-todo", data)
+}
+
 export function listarRecepciones() {
   return api.get<Recepcion[]>("/recepciones")
 }
@@ -172,6 +212,10 @@ export function verificarItemRecepcion(idRecepcion: number | string, idDetalle: 
 
 export function finalizarRecepcion(id: number | string) {
   return api.post<{ estado: string; total_aceptado: number }>(`/recepciones/${id}/finalizar`)
+}
+
+export function ingresarRecepcion(id: number | string, itemsRecibidos: number[]) {
+  return api.post<{ estado: string; total_aceptado: number }>(`/recepciones/${id}/ingresar`, { items_recibidos: itemsRecibidos })
 }
 
 export function cancelarRecepcion(id: number | string) {

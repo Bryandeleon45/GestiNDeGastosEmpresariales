@@ -85,9 +85,10 @@ router.get("/resumen", resolveProveedor, async (req, res, next) => {
          FROM invitacion_proveedor ip
          JOIN proceso_cotizacion pc ON pc.id_proceso = ip.id_proceso
          LEFT JOIN cotizacion c ON c.id_requisicion = pc.id_requisicion
-                              AND c.id_proveedor = ip.id_proveedor
-                              AND c.estado_cotizacion <> 'Retirada'
-        WHERE ip.id_proveedor = $1`,
+                               AND c.id_proveedor = ip.id_proveedor
+                               AND c.estado_cotizacion <> 'Retirada'
+        WHERE ip.id_proveedor = $1
+          AND pc.min_ofertas > 1`,
       [idProv],
     );
 
@@ -167,9 +168,10 @@ router.get("/oportunidades", resolveProveedor, async (req, res, next) => {
          JOIN requisicion r ON r.id_requisicion = pc.id_requisicion
          JOIN dependencia_municipal d ON d.id_dependencia = r.id_dependencia
          LEFT JOIN cotizacion c ON c.id_requisicion = pc.id_requisicion
-                              AND c.id_proveedor = ip.id_proveedor
-                              AND c.estado_cotizacion <> 'Retirada'
+                               AND c.id_proveedor = ip.id_proveedor
+                               AND c.estado_cotizacion <> 'Retirada'
         WHERE ip.id_proveedor = $1
+          AND pc.min_ofertas > 1
         ORDER BY pc.fecha_publicacion DESC`,
       [idProv],
     );
@@ -728,9 +730,17 @@ router.get("/entregas", resolveProveedor, async (req, res, next) => {
     const idProv = req.proveedor.id_proveedor;
     const { rows: entregas } = await client.query(
       `SELECT rb.id_recepcion, rb.numero_comprobante, rb.fecha_recepcion, rb.estado, rb.observaciones,
-              oc.numero_orden, oc.id_orden_compra
+              oc.numero_orden, oc.id_orden_compra,
+              b.nombre_bodega, b.ubicacion, b.encargado,
+              e.nombre AS recibe_nombre, e.apellido AS recibe_apellido,
+              d.nombre_dependencia
          FROM recepcion_bodega rb
          JOIN orden_compra oc ON oc.id_orden_compra = rb.id_orden_compra
+         JOIN bodega b ON b.id_bodega = rb.id_bodega
+         LEFT JOIN usuario u ON u.id_usuario = rb.id_usuario
+         LEFT JOIN empleado e ON e.id_empleado = u.id_empleado
+         JOIN requisicion r ON r.id_requisicion = oc.id_requisicion
+         JOIN dependencia_municipal d ON d.id_dependencia = r.id_dependencia
         WHERE oc.id_proveedor = $1
         ORDER BY rb.fecha_recepcion DESC`,
       [idProv],
@@ -760,6 +770,11 @@ router.get("/entregas", resolveProveedor, async (req, res, next) => {
         observaciones: e.observaciones,
         numero_orden: e.numero_orden,
         id_orden_compra: e.id_orden_compra,
+        nombre_bodega: e.nombre_bodega,
+        ubicacion: e.ubicacion,
+        encargado: e.encargado,
+        recibido_por: e.recibe_nombre ? `${e.recibe_nombre} ${e.recibe_apellido ?? ""}`.trim() : null,
+        nombre_dependencia: e.nombre_dependencia,
         total_items: items.length,
         items: items.map((it) => ({
           id_detalle_recepcion: it.id_detalle_recepcion,
@@ -793,13 +808,15 @@ router.get("/pedidos-asignados", resolveProveedor, async (req, res, next) => {
               r.justificacion, r.lugar_entrega, r.fecha_solicitud, r.estado, r.monto_estimado,
               d.nombre_dependencia, pc.fecha_publicacion AS fecha_asignacion,
               oc.id_orden_compra, oc.numero_orden, oc.estado AS estado_orden,
-              rb.id_recepcion, rb.estado AS estado_recepcion, rb.fecha_recepcion
+              (SELECT COUNT(*)::int FROM recepcion_bodega
+                WHERE id_orden_compra = oc.id_orden_compra AND estado <> 'Cancelada') AS total_recepciones,
+              (SELECT COUNT(*)::int FROM recepcion_bodega
+                WHERE id_orden_compra = oc.id_orden_compra AND estado = 'Completa') AS recepciones_completas
          FROM proceso_cotizacion pc
          JOIN invitacion_proveedor ip ON ip.id_proceso = pc.id_proceso
          JOIN requisicion r ON r.id_requisicion = pc.id_requisicion
          JOIN dependencia_municipal d ON d.id_dependencia = r.id_dependencia
          LEFT JOIN orden_compra oc ON oc.id_requisicion = r.id_requisicion AND oc.id_proveedor = $1
-         LEFT JOIN recepcion_bodega rb ON rb.id_orden_compra = oc.id_orden_compra
         WHERE ip.id_proveedor = $1
         ORDER BY pc.fecha_publicacion DESC`,
       [idProv],
@@ -828,9 +845,8 @@ router.get("/pedidos-asignados", resolveProveedor, async (req, res, next) => {
       );
 
       let estadoEntrega = "Asignado";
-      if (p.estado_recepcion === "Completa") estadoEntrega = "Entregado";
-      else if (p.estado_recepcion === "Parcial" || p.estado_recepcion === "Con Novedades") estadoEntrega = "Entrega Parcial";
-      else if (p.estado_recepcion === "En Proceso") estadoEntrega = "En Camino";
+      if (p.recepciones_completas > 0 || p.estado_orden === "Entregada") estadoEntrega = "Entregado";
+      else if (p.total_recepciones > 0) estadoEntrega = "Entrega Parcial";
 
       resultado.push({
         id_requisicion: p.id_requisicion,
@@ -862,6 +878,199 @@ router.get("/pedidos-asignados", resolveProveedor, async (req, res, next) => {
 
     res.json(resultado);
   } catch (e) {
+    next(e);
+  } finally {
+    client.release();
+  }
+});
+
+// ── Órdenes de compra facturables del proveedor ────────────────────────────────
+router.get("/ordenes-facturables", resolveProveedor, async (req, res, next) => {
+  try {
+    const idProv = req.proveedor.id_proveedor;
+    const { rows } = await pool.query(
+      `SELECT oc.id_orden_compra, oc.numero_orden, oc.fecha_emision, oc.monto_total, oc.estado,
+              r.codigo_requisicion, r.tipo_solicitud,
+              COALESCE((SELECT SUM(f.monto_total) FROM factura f
+                         WHERE f.id_orden_compra = oc.id_orden_compra AND f.estado <> 'Rechazada'), 0)::numeric(12,2) AS total_facturado,
+              COALESCE((SELECT SUM(drb.cantidad_aceptada * doc.precio_unitario)
+                          FROM recepcion_bodega rb
+                          JOIN detalle_recepcion_bodega drb ON drb.id_recepcion = rb.id_recepcion
+                          JOIN detalle_orden_compra doc ON doc.id_detalle_orden = drb.id_detalle_orden
+                         WHERE rb.id_orden_compra = oc.id_orden_compra
+                           AND rb.estado IN ('Completa','Parcial','Con Novedades')), 0)::numeric(12,2) AS recibido_valorizado
+         FROM orden_compra oc
+         JOIN requisicion r ON r.id_requisicion = oc.id_requisicion
+        WHERE oc.id_proveedor = $1
+          AND oc.estado IN ('Aprobada','Enviada','Entregada')
+        ORDER BY oc.fecha_emision DESC`,
+      [idProv],
+    );
+    res.json(rows);
+  } catch (e) {
+    next(e);
+  }
+});
+
+// ── Facturas del proveedor ─────────────────────────────────────────────────────
+router.get("/facturas", resolveProveedor, async (req, res, next) => {
+  try {
+    const idProv = req.proveedor.id_proveedor;
+    const { rows } = await pool.query(
+      `SELECT f.id_factura, f.numero_factura, f.serie, f.fecha_emision, f.monto_total,
+              f.estado, f.fecha_registro, f.observaciones,
+              oc.numero_orden, oc.id_orden_compra,
+              r.codigo_requisicion
+         FROM factura f
+         JOIN orden_compra oc ON oc.id_orden_compra = f.id_orden_compra
+         JOIN requisicion r ON r.id_requisicion = oc.id_requisicion
+        WHERE f.id_proveedor = $1
+        ORDER BY f.fecha_registro DESC`,
+      [idProv],
+    );
+    res.json(rows);
+  } catch (e) {
+    next(e);
+  }
+});
+
+// ── Registrar factura desde el portal del proveedor ───────────────────────────
+router.post("/facturas", resolveProveedor, async (req, res, next) => {
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+
+    const {
+      id_orden_compra,
+      serie,
+      numero_factura,
+      numero_autorizacion,
+      npg,
+      fecha_emision,
+      monto_total,
+      plazo_credito_dias,
+      observaciones,
+      archivo_pdf_nombre,
+      archivo_pdf_base64,
+      archivo_xml_nombre,
+      archivo_xml_base64,
+    } = req.body;
+
+    if (!id_orden_compra) {
+      await client.query("ROLLBACK");
+      return res.status(400).json({ error: "La orden de compra es requerida" });
+    }
+    if (!numero_factura || !numero_factura.trim()) {
+      await client.query("ROLLBACK");
+      return res.status(400).json({ error: "El número de factura es requerido" });
+    }
+    if (!fecha_emision) {
+      await client.query("ROLLBACK");
+      return res.status(400).json({ error: "La fecha de emisión es requerida" });
+    }
+    if (!(parseFloat(monto_total) > 0)) {
+      await client.query("ROLLBACK");
+      return res.status(400).json({ error: "El monto debe ser mayor que 0" });
+    }
+
+    const idProv = req.proveedor.id_proveedor;
+
+    const ocRes = await client.query(
+      "SELECT * FROM orden_compra WHERE id_orden_compra = $1 AND id_proveedor = $2 FOR UPDATE",
+      [id_orden_compra, idProv],
+    );
+    const oc = ocRes.rows[0];
+    if (!oc) {
+      await client.query("ROLLBACK");
+      return res.status(404).json({ error: "Orden de compra no encontrada o no pertenece a su proveedor" });
+    }
+    if (!["Aprobada", "Enviada", "Entregada"].includes(oc.estado)) {
+      await client.query("ROLLBACK");
+      return res.status(400).json({ error: "La orden de compra debe estar Aprobada o posterior" });
+    }
+
+    const dup = await client.query(
+      `SELECT 1 FROM factura WHERE id_proveedor = $1 AND serie IS NOT DISTINCT FROM $2 AND numero_factura = $3`,
+      [idProv, serie || null, numero_factura.trim()],
+    );
+    if (dup.rows[0]) {
+      await client.query("ROLLBACK");
+      return res.status(409).json({ error: "Ya existe una factura con esa serie y número" });
+    }
+
+    const facturadoRes = await client.query(
+      "SELECT COALESCE(SUM(monto_total), 0) AS total FROM factura WHERE id_orden_compra = $1 AND estado <> 'Rechazada'",
+      [id_orden_compra],
+    );
+    const recibidoRes = await client.query(
+      `SELECT COALESCE(SUM(drb.cantidad_aceptada * doc.precio_unitario), 0) AS recibido
+         FROM recepcion_bodega rb
+         JOIN detalle_recepcion_bodega drb ON drb.id_recepcion = rb.id_recepcion
+         JOIN detalle_orden_compra doc ON doc.id_detalle_orden = drb.id_detalle_orden
+        WHERE rb.id_orden_compra = $1
+          AND rb.estado IN ('Completa','Parcial','Con Novedades')`,
+      [id_orden_compra],
+    );
+    const facturado = parseFloat(facturadoRes.rows[0].total);
+    const recibido = parseFloat(recibidoRes.rows[0].recibido);
+    const nuevo = parseFloat(monto_total);
+    if (recibido <= 0) {
+      await client.query("ROLLBACK");
+      return res.status(422).json({ error: "No hay recepción de bodega registrada para esta orden de compra" });
+    }
+    if (facturado + nuevo > recibido + 0.001) {
+      await client.query("ROLLBACK");
+      return res.status(422).json({
+        error: "El monto facturado supera lo recibido en bodega",
+        disponible: (recibido - facturado).toFixed(2),
+      });
+    }
+
+    const plazo = plazo_credito_dias != null ? parseInt(plazo_credito_dias, 10) : (oc.plazo_credito_dias ?? 0);
+    const fechaVenc = new Date(fecha_emision);
+    fechaVenc.setDate(fechaVenc.getDate() + plazo);
+
+    const { rows: factRows } = await client.query(
+      `INSERT INTO factura
+         (id_orden_compra, id_proveedor, serie, numero_factura, numero_autorizacion, npg,
+          fecha_emision, monto_total, plazo_credito_dias, fecha_vencimiento,
+          observaciones, origen, archivo_pdf_nombre, archivo_pdf_base64,
+          archivo_xml_nombre, archivo_xml_base64, id_usuario_registra)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,'PORTAL',$12,$13,$14,$15,$16)
+       RETURNING *`,
+      [
+        id_orden_compra,
+        idProv,
+        serie || null,
+        numero_factura.trim(),
+        numero_autorizacion || null,
+        npg || null,
+        fecha_emision,
+        nuevo.toFixed(2),
+        plazo,
+        fechaVenc.toISOString().slice(0, 10),
+        observaciones || null,
+        archivo_pdf_nombre || null,
+        archivo_pdf_base64 || null,
+        archivo_xml_nombre || null,
+        archivo_xml_base64 || null,
+        req.user.id_usuario,
+      ],
+    );
+
+    await client.query("COMMIT");
+
+    await registrarBitacora({
+      idUsuario: req.user.id_usuario,
+      accion: "factura_portal_registrada",
+      ip: ipDe(req),
+      modulo: "Facturación",
+      detalle: `Factura ${numero_factura} registrada desde portal para ${oc.numero_orden}`,
+    });
+
+    res.status(201).json(factRows[0]);
+  } catch (e) {
+    await client.query("ROLLBACK");
     next(e);
   } finally {
     client.release();

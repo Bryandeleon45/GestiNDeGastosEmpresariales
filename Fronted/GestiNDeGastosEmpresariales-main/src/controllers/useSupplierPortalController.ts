@@ -13,6 +13,7 @@ import {
   listarOrdenes,
   listarEntregas,
   listarPedidosAsignados,
+  listarFacturas,
   type PortalPerfil,
   type PortalResumen,
   type Oportunidad,
@@ -20,6 +21,7 @@ import {
   type OrdenPortal,
   type EntregaPortal,
   type PedidoAsignado,
+  type FacturaPortal,
 } from "@/api/portal"
 
 export type TabPortal = "abiertas" | "cotizadas" | "adjudicadas" | "historial"
@@ -34,7 +36,6 @@ export function useSupplierPortalController() {
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
   const [showLogout, setShowLogout] = useState(false)
   const [showSubir, setShowSubir] = useState(false)
-  const [isDraggingFEL, setIsDraggingFEL] = useState(false)
 
   // Toast
   const [toast, setToast] = useState({ show: false, message: "", sub: "" })
@@ -51,8 +52,10 @@ export function useSupplierPortalController() {
   const [ordenes, setOrdenes] = useState<OrdenPortal[]>([])
   const [entregas, setEntregas] = useState<EntregaPortal[]>([])
   const [pedidosAsignados, setPedidosAsignados] = useState<PedidoAsignado[]>([])
+  const [facturas, setFacturas] = useState<FacturaPortal[]>([])
   const [noLeidas, setNoLeidas] = useState(0)
   const [loading, setLoading] = useState(false)
+  const [showCargarFactura, setShowCargarFactura] = useState(false)
 
   // Cotización
   const [cotizarTarget, setCotizarTarget] = useState<OportunidadDetalle | null>(null)
@@ -99,6 +102,14 @@ export function useSupplierPortalController() {
     }
   }, [])
 
+  const cargarFacturas = useCallback(async () => {
+    try {
+      setFacturas(await listarFacturas())
+    } catch {
+      setFacturas([])
+    }
+  }, [])
+
   const cargarNotificaciones = useCallback(async () => {
     try {
       const n = await listarNotificaciones()
@@ -117,10 +128,11 @@ export function useSupplierPortalController() {
       cargarOrdenes(),
       cargarEntregas(),
       cargarPedidosAsignados(),
+      cargarFacturas(),
       cargarNotificaciones(),
     ])
     setLoading(false)
-  }, [cargarResumen, cargarOportunidades, cargarOrdenes, cargarEntregas, cargarPedidosAsignados, cargarNotificaciones, tab, q])
+  }, [cargarResumen, cargarOportunidades, cargarOrdenes, cargarEntregas, cargarPedidosAsignados, cargarFacturas, cargarNotificaciones, tab, q])
 
   useEffect(() => {
     recargar()
@@ -187,18 +199,21 @@ export function useSupplierPortalController() {
     setMobileSidebarOpen,
     showSubir,
     setShowSubir,
-    isDraggingFEL,
-    setIsDraggingFEL,
+    showCargarFactura,
+    setShowCargarFactura,
     perfil,
     resumen,
     oportunidades,
     ordenes,
     entregas,
     pedidosAsignados,
+    facturas,
     noLeidas,
     loading,
     recargar,
     cargarOportunidades,
+    cargarFacturas,
+    cargarOrdenes,
     abrirOportunidad,
     cotizarTarget,
     cerrarCotizar,

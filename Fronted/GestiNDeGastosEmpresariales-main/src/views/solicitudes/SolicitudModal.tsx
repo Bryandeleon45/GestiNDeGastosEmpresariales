@@ -552,7 +552,12 @@ export default function SolicitudModal({
           items: payloadItems,
         })
         idCreada = creada.id_requisicion
-        onToast("Solicitud creada exitosamente", "La requisición fue enviada para revisión.")
+        onToast(
+          "Solicitud creada exitosamente",
+          creada.numero_orden
+            ? `La requisición ${creada.codigo_requisicion} fue enviada para revisión. OC reservada: ${creada.numero_orden}.`
+            : "La requisición fue enviada para revisión.",
+        )
       }
       if (idCreada != null && imagenes.length > 0) {
         const subidas = await Promise.all(

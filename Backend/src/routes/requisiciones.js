@@ -50,6 +50,16 @@ async function nextCodigo(anio, client) {
   return `SC-${anio}-${String(rows[0].siguiente).padStart(3, "0")}`;
 }
 
+async function nextNumeroOrden(anio, client) {
+  const { rows } = await client.query(
+    `SELECT COALESCE(MAX(SPLIT_PART(numero_orden, '-', 3)::int), 0) + 1 AS siguiente
+       FROM orden_compra
+      WHERE numero_orden LIKE 'OC-' || $1 || '-%'`,
+    [anio],
+  );
+  return `OC-${anio}-${String(rows[0].siguiente).padStart(3, "0")}`;
+}
+
 function montoDeItems(items) {
   return items.reduce((acc, item) => {
     const cantidad = parseFloat(item.cantidad) || 0;
@@ -450,6 +460,17 @@ router.post("/", authorize("solicitudes"), async (req, res, next) => {
       );
     }
 
+    // Reserva el número de orden de compra desde la creación de la solicitud.
+    // El OC queda provisional (sin cotización ni proveedor) y se conserva el
+    // mismo número durante todo el proceso hasta el pago.
+    const numeroOrden = await nextNumeroOrden(periodo.anio, client);
+    await client.query(
+      `INSERT INTO orden_compra
+         (numero_orden, id_requisicion, id_cotizacion, id_proveedor, monto_total, id_usuario_emite)
+       VALUES ($1, $2, NULL, NULL, $3, $4)`,
+      [numeroOrden, requisicion.id_requisicion, monto, req.user.id_usuario],
+    );
+
     await client.query("COMMIT");
 
     await registrarBitacora({
@@ -457,10 +478,10 @@ router.post("/", authorize("solicitudes"), async (req, res, next) => {
       accion: "requisicion_creada",
       ip: ipDe(req),
       modulo: "Dependencias",
-      detalle: `Creada requisición ${codigo} por Q${monto.toFixed(2)}`,
+      detalle: `Creada requisición ${codigo} por Q${monto.toFixed(2)} (OC ${numeroOrden})`,
     });
 
-    res.status(201).json(requisicion);
+    res.status(201).json({ ...requisicion, numero_orden: numeroOrden });
   } catch (e) {
     await client.query("ROLLBACK");
     if (e.code === "23505") {
@@ -779,6 +800,32 @@ router.post("/:id/asignar-proveedor", authorize("solicitudes"), async (req, res,
        VALUES ($1, $2)`,
       [idProceso, id_proveedor],
     );
+
+    // Actualiza la OC provisional y crea su detalle desde la requisición.
+    const ocRes = await client.query(
+      "SELECT * FROM orden_compra WHERE id_requisicion = $1",
+      [req.params.id],
+    );
+    if (ocRes.rows[0]) {
+      const oc = ocRes.rows[0];
+      await client.query(
+        "UPDATE orden_compra SET id_proveedor = $1 WHERE id_orden_compra = $2",
+        [id_proveedor, oc.id_orden_compra],
+      );
+      const detReq = await client.query(
+        "SELECT * FROM detalle_requisicion WHERE id_requisicion = $1 ORDER BY id_detalle",
+        [req.params.id],
+      );
+      for (const d of detReq.rows) {
+        const precio = parseFloat(d.precio_estimado) || 0;
+        await client.query(
+          `INSERT INTO detalle_orden_compra
+             (id_orden_compra, id_detalle_requisicion, cantidad_comprada, precio_unitario)
+           VALUES ($1, $2, $3, $4)`,
+          [oc.id_orden_compra, d.id_detalle, d.cantidad, precio],
+        );
+      }
+    }
 
     const { rows: usrRows } = await client.query(
       `SELECT pu.id_usuario FROM proveedor_usuario pu

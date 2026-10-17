@@ -136,6 +136,11 @@ export interface EntregaPortal {
   observaciones: string | null
   numero_orden: string
   id_orden_compra: number
+  nombre_bodega: string
+  ubicacion: string | null
+  encargado: string | null
+  recibido_por: string | null
+  nombre_dependencia: string
   total_items: number
   items: EntregaItemDetalle[]
 }
@@ -232,4 +237,56 @@ export interface PedidoAsignado {
 
 export function listarPedidosAsignados() {
   return api.get<PedidoAsignado[]>("/portal/pedidos-asignados")
+}
+
+export interface OrdenFacturable {
+  id_orden_compra: number
+  numero_orden: string
+  fecha_emision: string
+  monto_total: string
+  estado: string
+  codigo_requisicion: string
+  tipo_solicitud: string
+  total_facturado: string
+  recibido_valorizado: string
+}
+
+export interface FacturaPortal {
+  id_factura: number
+  numero_factura: string
+  serie: string | null
+  fecha_emision: string
+  monto_total: string
+  estado: string
+  fecha_registro: string
+  observaciones: string | null
+  numero_orden: string
+  id_orden_compra: number
+  codigo_requisicion: string
+}
+
+export function listarOrdenesFacturables() {
+  return api.get<OrdenFacturable[]>("/portal/ordenes-facturables")
+}
+
+export function listarFacturas() {
+  return api.get<FacturaPortal[]>("/portal/facturas")
+}
+
+export function registrarFacturaPortal(data: {
+  id_orden_compra: number
+  serie?: string
+  numero_factura: string
+  numero_autorizacion?: string
+  npg?: string
+  fecha_emision: string
+  monto_total: number
+  plazo_credito_dias?: number
+  observaciones?: string
+  archivo_pdf_nombre?: string
+  archivo_pdf_base64?: string
+  archivo_xml_nombre?: string
+  archivo_xml_base64?: string
+}) {
+  return api.post<FacturaPortal>("/portal/facturas", data)
 }
