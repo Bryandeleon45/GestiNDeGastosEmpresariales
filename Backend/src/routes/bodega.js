@@ -172,6 +172,7 @@ router.get("/ordenes-compra/pendientes-recepcion", authorize("bodega"), async (r
          FROM orden_compra oc
          JOIN proveedor p ON p.id_proveedor = oc.id_proveedor
         WHERE oc.estado IN ('Aprobada','Enviada')
+           OR (oc.estado = 'Pendiente' AND oc.id_cotizacion IS NOT NULL)
           ${q ? "AND oc.numero_orden ILIKE $1" : ""}
         ORDER BY oc.fecha_emision DESC LIMIT 30`,
       q ? [`%${q}%`] : [],
@@ -540,7 +541,7 @@ router.post("/recepciones/recibir-todo", authorize("bodega"), async (req, res, n
 
     if (completo) {
       await client.query(
-        "UPDATE orden_compra SET estado = 'Entregada' WHERE id_orden_compra = $1",
+        "UPDATE orden_compra SET estado = CASE WHEN id_cotizacion IS NOT NULL THEN 'Aprobada' ELSE 'Entregada' END WHERE id_orden_compra = $1",
         [id_orden_compra],
       );
     }
@@ -709,7 +710,7 @@ router.post("/recepciones/:id/finalizar", authorize("bodega"), async (req, res, 
     // RN-06: si todo fue aceptado, la OC pasa a Entregada
     if (estado === "Completa") {
       await client.query(
-        "UPDATE orden_compra SET estado = 'Entregada' WHERE id_orden_compra = $1",
+        "UPDATE orden_compra SET estado = CASE WHEN id_cotizacion IS NOT NULL THEN 'Aprobada' ELSE 'Entregada' END WHERE id_orden_compra = $1",
         [recepcion.id_orden_compra],
       );
     }
@@ -816,7 +817,7 @@ router.post("/recepciones/:id/ingresar", authorize("bodega"), async (req, res, n
 
     if (estado === "Completa") {
       await client.query(
-        "UPDATE orden_compra SET estado = 'Entregada' WHERE id_orden_compra = $1",
+        "UPDATE orden_compra SET estado = CASE WHEN id_cotizacion IS NOT NULL THEN 'Aprobada' ELSE 'Entregada' END WHERE id_orden_compra = $1",
         [recepcion.id_orden_compra],
       );
     }

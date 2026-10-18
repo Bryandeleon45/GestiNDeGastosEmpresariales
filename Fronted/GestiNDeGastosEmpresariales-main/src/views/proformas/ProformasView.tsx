@@ -2,7 +2,7 @@ import { useEffect, useState } from "react"
 import { G } from "@/constants/theme"
 import { Icons } from "@/components/common/Icons"
 import { useProformasController } from "@/controllers/useProformasController"
-import { cambiarEstadoOrden, obtenerOrdenCompra, type OrdenCompraLista, type OrdenCompraDetalle } from "@/api/proformas"
+import { obtenerOrdenCompra, type OrdenCompraLista, type OrdenCompraDetalle } from "@/api/proformas"
 import ComparativaProformasView from "@/views/proformas/ComparativaProformasView"
 import PublicarProcesoModal from "@/views/proformas/PublicarProcesoModal"
 import ProformasRecibidasView from "@/views/proformas/ProformasRecibidasView"
@@ -36,12 +36,11 @@ export default function ProformasView({
   initialProcesoId?: number | null
   onClearProcesoId?: () => void
 }) {
-  const { tab, setTab, ordenes, loadingOrdenes, reload, loadOrdenes } =
+  const { tab, setTab, ordenes, loadingOrdenes, reload } =
     useProformasController(onToast)
 
   const [procesoId, setProcesoId] = useState<number | null>(initialProcesoId ?? null)
   const [showPublicar, setShowPublicar] = useState(false)
-  const [working, setWorking] = useState(false)
   const [docOrden, setDocOrden] = useState<OrdenCompraDetalle | null>(null)
   const [cargandoDoc, setCargandoDoc] = useState(false)
 
@@ -61,21 +60,6 @@ export default function ProformasView({
   useEffect(() => {
     if (initialProcesoId != null) setProcesoId(initialProcesoId)
   }, [initialProcesoId])
-
-  const cambiarEstadoOC = async (oc: OrdenCompraLista, estado: string) => {
-    if (oc.id_orden_compra == null || oc.numero_orden == null) return
-    if (!window.confirm(`¿Cambiar la orden ${oc.numero_orden} a ${estado}?`)) return
-    setWorking(true)
-    try {
-      await cambiarEstadoOrden(oc.id_orden_compra, estado)
-      onToast("Orden actualizada", `${oc.numero_orden} pasó a ${estado}.`)
-      loadOrdenes()
-    } catch (e) {
-      onToast("Error", e instanceof Error ? e.message : "No se pudo actualizar la orden")
-    } finally {
-      setWorking(false)
-    }
-  }
 
   if (procesoId != null) {
     return (
@@ -244,35 +228,6 @@ export default function ProformasView({
                             >
                               <Icons.PDF /> Imprimir
                             </button>
-                            {oc.estado === "Pendiente" && (
-                              <button
-                                disabled={working}
-                                onClick={() => cambiarEstadoOC(oc, "Aprobada")}
-                                className="px-3.5 py-2 text-xs font-bold rounded-lg text-white transition-all hover:opacity-80 disabled:opacity-40"
-                                style={{ backgroundColor: "#16A34A" }}
-                              >
-                                Aprobar
-                              </button>
-                            )}
-                            {oc.estado === "Aprobada" && (
-                              <button
-                                disabled={working}
-                                onClick={() => cambiarEstadoOC(oc, "Enviada")}
-                                className="px-3.5 py-2 text-xs font-bold rounded-lg text-white transition-all hover:opacity-80 disabled:opacity-40"
-                                style={{ backgroundColor: G }}
-                              >
-                                Enviar
-                              </button>
-                            )}
-                            {["Pendiente", "Aprobada"].includes(oc.estado ?? "") && (
-                              <button
-                                disabled={working}
-                                onClick={() => cambiarEstadoOC(oc, "Cancelada")}
-                                className="px-3.5 py-2 text-xs font-semibold rounded-lg border border-red-200 text-red-600 transition-all hover:bg-red-50 disabled:opacity-40"
-                              >
-                                Cancelar
-                              </button>
-                            )}
                           </div>
                         </div>
                       </div>
