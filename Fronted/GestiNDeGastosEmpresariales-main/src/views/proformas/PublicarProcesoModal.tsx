@@ -1,6 +1,24 @@
 import { useEffect, useRef, useState } from "react"
 import { G, GL } from "@/constants/theme"
 import { Icons } from "@/components/common/Icons"
+
+const fmtQ = (n: number | string) =>
+  `Q ${Number(n).toLocaleString("es-GT", { minimumFractionDigits: 2 })}`
+
+function hoyISO() {
+  const d = new Date()
+  const mm = String(d.getMonth() + 1).padStart(2, "0")
+  const dd = String(d.getDate()).padStart(2, "0")
+  return `${d.getFullYear()}-${mm}-${dd}`
+}
+
+function diasRestantes(fecha: string) {
+  if (!fecha) return null
+  const hoy = new Date(hoyISO() + "T00:00:00")
+  const destino = new Date(fecha + "T00:00:00")
+  const diff = Math.ceil((destino.getTime() - hoy.getTime()) / (1000 * 60 * 60 * 24))
+  return diff
+}
 import {
   listarRequisicionesAprobadas,
   listarProveedoresActivos,
@@ -68,7 +86,7 @@ export default function PublicarProcesoModal({
     try {
       await publicarProceso({
         id_requisicion: idRequisicion,
-        fecha_limite: new Date(fechaLimite).toISOString(),
+        fecha_limite: fechaLimite,
         min_ofertas: minOfertas,
         proveedores: selProveedores,
       })
@@ -161,17 +179,76 @@ export default function PublicarProcesoModal({
             </div>
           </div>
 
+          {reqSel && (
+            <div className="mt-3 rounded-xl border border-gray-200 bg-gray-50/60 p-4 space-y-3">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div>
+                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Monto est.</p>
+                  <p className="text-sm font-bold font-mono mt-0.5">{fmtQ(reqSel.monto_estimado)}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Prioridad</p>
+                  <p className="text-sm font-bold mt-0.5">{reqSel.prioridad ?? "—"}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Fecha sol.</p>
+                  <p className="text-sm font-bold mt-0.5">{new Date(reqSel.fecha_solicitud).toLocaleDateString("es-GT")}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Ítems</p>
+                  <p className="text-sm font-bold mt-0.5">{reqSel.items.length}</p>
+                </div>
+              </div>
+              {reqSel.justificacion && (
+                <div>
+                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-0.5">Justificación</p>
+                  <p className="text-xs text-gray-600 leading-relaxed">{reqSel.justificacion}</p>
+                </div>
+              )}
+              {reqSel.items.length > 0 && (
+                <div>
+                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">
+                    Ítems solicitados
+                  </p>
+                  <div className="rounded-lg border border-gray-200 bg-white divide-y divide-gray-100 max-h-36 overflow-y-auto">
+                    {reqSel.items.map((it) => (
+                      <div key={it.id_detalle} className="px-3 py-2 flex items-center justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="text-xs font-semibold text-gray-800 truncate">
+                            {it.insumo_nombre ?? it.descripcion_libre}
+                          </p>
+                          {it.observaciones && <p className="text-[11px] text-gray-400">{it.observaciones}</p>}
+                        </div>
+                        <span className="text-xs font-mono text-gray-600 whitespace-nowrap">
+                          {Number(it.cantidad).toLocaleString("es-GT")} {it.unidad_simbolo}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
           <div className="grid grid-cols-2 gap-4">
             <div className="flex flex-col gap-1.5">
               <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">
                 Fecha Límite
               </label>
               <input
-                type="datetime-local"
+                type="date"
                 value={fechaLimite}
+                min={hoyISO()}
                 onChange={(e) => setFechaLimite(e.target.value)}
                 className="w-full px-3 py-2.5 text-sm bg-gray-50 border border-gray-200 rounded-lg outline-none focus:border-green-600"
               />
+              {(() => {
+                const d = diasRestantes(fechaLimite)
+                if (d == null) return null
+                if (d < 0) return <p className="text-xs text-red-500 font-semibold">La fecha ya pasó</p>
+                if (d === 0) return <p className="text-xs text-amber-600 font-semibold">Vence hoy</p>
+                return <p className="text-xs text-gray-500 font-semibold">{d} {d === 1 ? "día" : "días"} a partir de hoy</p>
+              })()}
             </div>
             <div className="flex flex-col gap-1.5">
               <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">

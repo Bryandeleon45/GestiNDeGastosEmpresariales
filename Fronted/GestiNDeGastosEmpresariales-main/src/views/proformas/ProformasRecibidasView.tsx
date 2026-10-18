@@ -9,6 +9,7 @@ import {
   type ProformaRecibidaDetalle,
 } from "@/api/proformas"
 import { ApiError } from "@/api/client"
+import ProformaDocumento from "@/views/proformas/ProformaDocumento"
 
 const fmtQ = (n: number | string) =>
   `Q ${Number(n).toLocaleString("es-GT", { minimumFractionDigits: 2 })}`
@@ -41,6 +42,7 @@ export default function ProformasRecibidasView({
   const [detalle, setDetalle] = useState<ProformaRecibidaDetalle | null>(null)
   const [cargandoDetalle, setCargandoDetalle] = useState(false)
   const [working, setWorking] = useState(false)
+  const [docProforma, setDocProforma] = useState(false)
 
   const cargar = async (p = 1, q = "", estado = "") => {
     setLoading(true)
@@ -203,6 +205,12 @@ export default function ProformasRecibidasView({
                           style={{ color: G }}
                         >
                           Ver
+                        </button>
+                        <button
+                          onClick={() => { verDetalle(c.id_cotizacion); setDocProforma(true) }}
+                          className="text-sm font-semibold text-gray-500 hover:text-gray-800 transition-colors"
+                        >
+                          Imprimir
                         </button>
                         <button
                           onClick={() => onVerComparativa(c.id_proceso)}
@@ -404,6 +412,9 @@ export default function ProformasRecibidasView({
             </div>
           </div>
         </div>
+      )}
+      {docProforma && detalle && (
+        <ProformaDocumento detalle={detalle} onClose={() => setDocProforma(false)} />
       )}
     </>
   )

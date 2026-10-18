@@ -3,6 +3,7 @@ import { pool } from "../db.js";
 import { authenticate } from "../middlewares/authenticate.js";
 import { authorize } from "../middlewares/authorize.js";
 import { registrarBitacora, ipDe } from "../services/bitacora.service.js";
+import { enviar } from "../services/notificaciones.service.js";
 
 const router = Router();
 
@@ -641,6 +642,51 @@ router.patch("/cotizaciones/:id/seleccionar", authorize("proformas"), async (req
   }
 });
 
+// ── Notificaciones tras adjudicar ──────────────────────────────────────────────
+async function notificarAdjudicacion(proceso, cotizacion, codigo) {
+  const ganadorUsr = await pool.query(
+    `SELECT pu.id_usuario FROM proveedor_usuario pu
+      JOIN usuario u ON u.id_usuario = pu.id_usuario
+     WHERE pu.id_proveedor = $1 AND u.activo = TRUE
+     ORDER BY pu.es_principal DESC LIMIT 1`,
+    [cotizacion.id_proveedor],
+  );
+  if (ganadorUsr.rows[0]) {
+    await enviar({
+      idUsuario: ganadorUsr.rows[0].id_usuario,
+      tipo: "NUEVA_ORDEN",
+      titulo: "Nueva orden de compra",
+      mensaje: `Su cotización ${cotizacion.numero_cotizacion} fue adjudicada. Tiene una nueva orden de compra para la solicitud ${codigo}.`,
+      referencia: codigo,
+    });
+  }
+
+  const rechazados = await pool.query(
+    `SELECT c.id_proveedor, c.numero_cotizacion
+       FROM cotizacion c
+      WHERE c.id_requisicion = $1 AND c.id_cotizacion <> $2`,
+    [proceso.id_requisicion, cotizacion.id_cotizacion],
+  );
+  for (const r of rechazados.rows) {
+    const usr = await pool.query(
+      `SELECT pu.id_usuario FROM proveedor_usuario pu
+        JOIN usuario u ON u.id_usuario = pu.id_usuario
+       WHERE pu.id_proveedor = $1 AND u.activo = TRUE
+       ORDER BY pu.es_principal DESC LIMIT 1`,
+      [r.id_proveedor],
+    );
+    if (usr.rows[0]) {
+      await enviar({
+        idUsuario: usr.rows[0].id_usuario,
+        tipo: "PROFORMA_RECHAZADA",
+        titulo: "Proforma rechazada",
+        mensaje: `Su proforma ${r.numero_cotizacion} fue rechazada en la solicitud ${codigo}.`,
+        referencia: codigo,
+      });
+    }
+  }
+}
+
 // ── Adjudicar (genera orden de compra) ─────────────────────────────────────────
 router.post("/procesos/:id/adjudicar", authorize("proformas"), async (req, res, next) => {
   const client = await pool.connect();
@@ -702,6 +748,8 @@ router.post("/procesos/:id/adjudicar", authorize("proformas"), async (req, res, 
     const orden = await adjudicarInterno(client, proceso, cotizacion, motivo_adjudicacion.trim(), req.user.id_usuario);
 
     await client.query("COMMIT");
+
+    await notificarAdjudicacion(proceso, cotizacion, requisicion.codigo_requisicion);
 
     await registrarBitacora({
       idUsuario: req.user.id_usuario,
@@ -836,19 +884,19 @@ router.post("/procesos/:id/desierto", authorize("proformas"), async (req, res, n
   }
 });
 
-// ── Órdenes de compra ──────────────────────────────────────────────────────────
+// ── Órdenes de compra (adjudicadas) + procesos pendientes (2+ proveedores) ────
 router.get("/ordenes-compra", authorize("proformas"), async (req, res, next) => {
   try {
     const { estado } = req.query;
-    // Solo órdenes generadas a partir de una proforma (adjudicación).
-    // Las órdenes directas/provisionales (id_cotizacion NULL) no se listan aquí.
+
+    // Órdenes adjudicadas (a partir de una proforma; id_cotizacion NOT NULL).
     const where = ["oc.id_cotizacion IS NOT NULL"];
     const params = [];
     if (estado) {
       where.push(`oc.estado = $${params.length + 1}`);
       params.push(estado);
     }
-    const { rows } = await pool.query(
+    const { rows: ordenesRows } = await pool.query(
       `SELECT oc.*, r.codigo_requisicion, r.tipo_solicitud, r.justificacion,
               r.monto_estimado, p.nit, p.razon_social, d.nombre_dependencia,
               pc.id_proceso, pc.fase AS fase_proceso, pc.motivo_adjudicacion
@@ -862,13 +910,37 @@ router.get("/ordenes-compra", authorize("proformas"), async (req, res, next) => 
       params,
     );
 
-    // A quién se le envió la solicitud (proveedores invitados) y su estado de cotización.
-    const idsProceso = [...new Set(rows.map((r) => r.id_proceso).filter(Boolean))];
+    // Procesos pendientes de adjudicar: 2+ invitados, fase Publicada/Comparación,
+    // sin orden de compra adjudicada todavía.
+    const { rows: procRows } = await pool.query(
+      `SELECT pc.id_proceso, pc.id_requisicion, pc.fase, pc.fecha_publicacion,
+              r.codigo_requisicion, r.tipo_solicitud, r.monto_estimado,
+              d.nombre_dependencia
+         FROM proceso_cotizacion pc
+         JOIN requisicion r ON r.id_requisicion = pc.id_requisicion
+         JOIN dependencia_municipal d ON d.id_dependencia = r.id_dependencia
+        WHERE pc.fase IN ('Publicada', 'Comparación')
+          AND (SELECT COUNT(*)::int FROM invitacion_proveedor ip WHERE ip.id_proceso = pc.id_proceso) >= 2
+          AND NOT EXISTS (
+                SELECT 1 FROM orden_compra oc
+                 WHERE oc.id_requisicion = pc.id_requisicion AND oc.id_cotizacion IS NOT NULL
+              )
+        ORDER BY pc.fecha_publicacion DESC`,
+    );
+
+    // Invitados (con detalle de cotización) para todos los procesos involucrados.
+    const idsProceso = [
+      ...new Set(
+        [...ordenesRows.map((r) => r.id_proceso), ...procRows.map((r) => r.id_proceso)].filter(Boolean),
+      ),
+    ];
     const invitadosPorProceso = new Map();
     if (idsProceso.length) {
       const { rows: inv } = await pool.query(
-        `SELECT ip.id_proceso, p.nit, p.razon_social,
-                c.estado_cotizacion, c.monto_total, c.seleccionada
+        `SELECT ip.id_proceso, ip.id_proveedor, p.nit, p.razon_social, p.correo, p.telefono,
+                c.id_cotizacion, c.numero_cotizacion, c.fecha_cotizacion, c.condiciones_pago,
+                c.tiempo_entrega_dias, c.tiempo_entrega_texto, c.estado_cotizacion,
+                c.cumple_tecnico, c.seleccionada, c.monto_total
            FROM invitacion_proveedor ip
            JOIN proveedor p ON p.id_proveedor = ip.id_proveedor
            LEFT JOIN cotizacion c
@@ -878,18 +950,61 @@ router.get("/ordenes-compra", authorize("proformas"), async (req, res, next) => 
           ORDER BY p.razon_social`,
         [idsProceso],
       );
+
+      const idsCot = inv.map((i) => i.id_cotizacion).filter(Boolean);
+      const itemsPorCot = new Map();
+      if (idsCot.length) {
+        const { rows: dets } = await pool.query(
+          `SELECT dc.id_cotizacion, dc.id_detalle_cotizacion, dc.id_detalle_requisicion,
+                  dc.cantidad_cotizada, dc.precio_unitario, dc.subtotal, dc.descripcion_oferta,
+                  dr.cantidad AS cantidad_solicitada, um.simbolo AS unidad_simbolo,
+                  COALESCE(i.nombre, dr.descripcion_libre) AS descripcion
+             FROM detalle_cotizacion dc
+             JOIN detalle_requisicion dr ON dr.id_detalle = dc.id_detalle_requisicion
+             JOIN unidad_medida um ON um.id_unidad_medida = dr.id_unidad_medida
+             LEFT JOIN insumo i ON i.id_insumo = dr.id_insumo
+            WHERE dc.id_cotizacion = ANY($1::int[])
+            ORDER BY dc.id_cotizacion, dc.id_detalle_cotizacion`,
+          [idsCot],
+        );
+        for (const d of dets) {
+          if (!itemsPorCot.has(d.id_cotizacion)) itemsPorCot.set(d.id_cotizacion, []);
+          itemsPorCot.get(d.id_cotizacion).push(d);
+        }
+      }
+
       for (const i of inv) {
         if (!invitadosPorProceso.has(i.id_proceso)) invitadosPorProceso.set(i.id_proceso, []);
-        invitadosPorProceso.get(i.id_proceso).push(i);
+        invitadosPorProceso.get(i.id_proceso).push({
+          ...i,
+          items: i.id_cotizacion ? itemsPorCot.get(i.id_cotizacion) ?? [] : [],
+        });
       }
     }
 
-    // Solo órdenes de procesos competitivos (2 o más proveedores invitados).
-    const resultado = rows
-      .map((r) => ({ ...r, invitados: invitadosPorProceso.get(r.id_proceso) ?? [] }))
+    const ordenes = ordenesRows
+      .map((r) => ({ tipo: "orden", ...r, invitados: invitadosPorProceso.get(r.id_proceso) ?? [] }))
       .filter((r) => r.invitados.length >= 2);
 
-    res.json(resultado);
+    const procesos = procRows
+      .map((r) => ({
+        tipo: "proceso",
+        id_orden_compra: null,
+        numero_orden: null,
+        ...r,
+        fase_proceso: r.fase,
+        justificacion: null,
+        monto_total: null,
+        estado: null,
+        fecha_emision: null,
+        razon_social: null,
+        nit: null,
+        motivo_adjudicacion: null,
+        invitados: invitadosPorProceso.get(r.id_proceso) ?? [],
+      }))
+      .filter((r) => r.invitados.length >= 2);
+
+    res.json([...procesos, ...ordenes]);
   } catch (e) {
     next(e);
   }
@@ -929,7 +1044,10 @@ router.get("/ordenes-compra/:id", authorize("proformas"), async (req, res, next)
     let invitados = [];
     if (orden.id_proceso) {
       const { rows: inv } = await pool.query(
-        `SELECT p.nit, p.razon_social, c.estado_cotizacion, c.monto_total, c.seleccionada
+        `SELECT ip.id_proveedor, p.nit, p.razon_social, p.correo, p.telefono,
+                c.id_cotizacion, c.numero_cotizacion, c.fecha_cotizacion, c.condiciones_pago,
+                c.tiempo_entrega_dias, c.tiempo_entrega_texto, c.estado_cotizacion,
+                c.cumple_tecnico, c.seleccionada, c.monto_total
            FROM invitacion_proveedor ip
            JOIN proveedor p ON p.id_proveedor = ip.id_proveedor
            LEFT JOIN cotizacion c ON c.id_requisicion = $2 AND c.id_proveedor = ip.id_proveedor
@@ -937,7 +1055,33 @@ router.get("/ordenes-compra/:id", authorize("proformas"), async (req, res, next)
           ORDER BY p.razon_social`,
         [orden.id_proceso, orden.id_requisicion],
       );
-      invitados = inv;
+
+      const idsCot = inv.map((i) => i.id_cotizacion).filter(Boolean);
+      const itemsPorCot = new Map();
+      if (idsCot.length) {
+        const { rows: dets } = await pool.query(
+          `SELECT dc.id_cotizacion, dc.id_detalle_requisicion, dc.cantidad_cotizada,
+                  dc.precio_unitario, dc.subtotal, dc.descripcion_oferta,
+                  dr.cantidad AS cantidad_solicitada, um.simbolo AS unidad_simbolo,
+                  COALESCE(i.nombre, dr.descripcion_libre) AS descripcion
+             FROM detalle_cotizacion dc
+             JOIN detalle_requisicion dr ON dr.id_detalle = dc.id_detalle_requisicion
+             JOIN unidad_medida um ON um.id_unidad_medida = dr.id_unidad_medida
+             LEFT JOIN insumo i ON i.id_insumo = dr.id_insumo
+            WHERE dc.id_cotizacion = ANY($1::int[])
+            ORDER BY dc.id_cotizacion, dc.id_detalle_cotizacion`,
+          [idsCot],
+        );
+        for (const d of dets) {
+          if (!itemsPorCot.has(d.id_cotizacion)) itemsPorCot.set(d.id_cotizacion, []);
+          itemsPorCot.get(d.id_cotizacion).push(d);
+        }
+      }
+
+      invitados = inv.map((i) => ({
+        ...i,
+        items: i.id_cotizacion ? itemsPorCot.get(i.id_cotizacion) ?? [] : [],
+      }));
     }
 
     res.json({ ...orden, items, invitados });

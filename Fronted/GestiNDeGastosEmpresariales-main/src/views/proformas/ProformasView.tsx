@@ -2,10 +2,12 @@ import { useEffect, useState } from "react"
 import { G } from "@/constants/theme"
 import { Icons } from "@/components/common/Icons"
 import { useProformasController } from "@/controllers/useProformasController"
-import { cambiarEstadoOrden, type OrdenCompra } from "@/api/proformas"
+import { cambiarEstadoOrden, obtenerOrdenCompra, type OrdenCompraLista, type OrdenCompraDetalle } from "@/api/proformas"
 import ComparativaProformasView from "@/views/proformas/ComparativaProformasView"
 import PublicarProcesoModal from "@/views/proformas/PublicarProcesoModal"
 import ProformasRecibidasView from "@/views/proformas/ProformasRecibidasView"
+import OrdenCompraDocumento from "@/views/proformas/OrdenCompraDocumento"
+import ProcesoAdjudicacionCard from "@/views/proformas/ProcesoAdjudicacionCard"
 
 const OC_STYLE: Record<string, string> = {
   Pendiente: "bg-gray-100 text-gray-600 border border-gray-200",
@@ -18,7 +20,7 @@ const OC_STYLE: Record<string, string> = {
 const fmtQ = (n: number | string) =>
   `Q ${Number(n).toLocaleString("es-GT", { minimumFractionDigits: 2 })}`
 
-function fmtFecha(iso: string) {
+function fmtFecha(iso: string | null) {
   if (!iso) return "—"
   return new Date(iso).toLocaleDateString("es-GT")
 }
@@ -40,12 +42,28 @@ export default function ProformasView({
   const [procesoId, setProcesoId] = useState<number | null>(initialProcesoId ?? null)
   const [showPublicar, setShowPublicar] = useState(false)
   const [working, setWorking] = useState(false)
+  const [docOrden, setDocOrden] = useState<OrdenCompraDetalle | null>(null)
+  const [cargandoDoc, setCargandoDoc] = useState(false)
+
+  const verDocumentoOrden = async (oc: OrdenCompraLista) => {
+    if (oc.id_orden_compra == null) return
+    setCargandoDoc(true)
+    try {
+      const d = await obtenerOrdenCompra(oc.id_orden_compra)
+      setDocOrden(d)
+    } catch (e) {
+      onToast("Error", e instanceof Error ? e.message : "No se pudo cargar la orden")
+    } finally {
+      setCargandoDoc(false)
+    }
+  }
 
   useEffect(() => {
     if (initialProcesoId != null) setProcesoId(initialProcesoId)
   }, [initialProcesoId])
 
-  const cambiarEstadoOC = async (oc: OrdenCompra, estado: string) => {
+  const cambiarEstadoOC = async (oc: OrdenCompraLista, estado: string) => {
+    if (oc.id_orden_compra == null || oc.numero_orden == null) return
     if (!window.confirm(`¿Cambiar la orden ${oc.numero_orden} a ${estado}?`)) return
     setWorking(true)
     try {
@@ -71,6 +89,9 @@ export default function ProformasView({
       />
     )
   }
+
+  const procesos = ordenes.filter((o) => o.tipo === "proceso")
+  const ordenesList = ordenes.filter((o) => o.tipo === "orden")
 
   return (
     <>
@@ -124,103 +145,140 @@ export default function ProformasView({
               onVerComparativa={(idProceso) => setProcesoId(idProceso)}
             />
           ) : (
-            <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
-              <div className="px-5 py-4 border-b border-gray-100">
-                <h2 className="text-base font-bold" style={{ color: G }}>
+            <div className="space-y-5">
+              <div>
+                <h2 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-3">
+                  Procesos por Adjudicar
+                </h2>
+                {loadingOrdenes ? (
+                  <div className="bg-white rounded-xl border border-gray-100 shadow-sm px-5 py-12 text-center text-sm text-gray-400">
+                    Cargando procesos…
+                  </div>
+                ) : procesos.length === 0 ? (
+                  <div className="bg-white rounded-xl border border-gray-100 shadow-sm px-5 py-12 text-center text-sm text-gray-400">
+                    Sin procesos pendientes de adjudicar.
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {procesos.map((p) => (
+                      <ProcesoAdjudicacionCard
+                        key={`proc-${p.id_proceso}`}
+                        proceso={{
+                          id_proceso: p.id_proceso!,
+                          codigo_requisicion: p.codigo_requisicion,
+                          nombre_dependencia: p.nombre_dependencia,
+                          tipo_solicitud: p.tipo_solicitud,
+                          fase_proceso: p.fase_proceso,
+                          fecha_publicacion: p.fecha_publicacion,
+                          monto_estimado: p.monto_estimado,
+                          invitados: p.invitados,
+                        }}
+                        onToast={onToast}
+                        onAdjudicada={reload}
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <h2 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-3">
                   Órdenes de Compra
                 </h2>
-              </div>
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="border-b border-gray-100">
-                      {["N. ORDEN", "SOLICITUD", "PROVEEDOR", "MONTO", "ESTADO", "FECHA", "ACCIONES"].map((h) => (
-                        <th
-                          key={h}
-                          className="px-4 py-3 text-left text-[10px] font-bold text-gray-400 uppercase tracking-wider whitespace-nowrap bg-gray-50"
-                        >
-                          {h}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {loadingOrdenes ? (
-                      <tr>
-                        <td colSpan={7} className="px-4 py-12 text-center text-sm text-gray-400">
-                          Cargando órdenes…
-                        </td>
-                      </tr>
-                    ) : ordenes.length === 0 ? (
-                      <tr>
-                        <td colSpan={7} className="px-4 py-12 text-center text-sm text-gray-400">
-                          Sin órdenes de compra.
-                        </td>
-                      </tr>
-                    ) : (
-                      ordenes.map((oc) => (
-                        <tr key={oc.id_orden_compra} className="border-b border-gray-50 last:border-0 hover:bg-gray-50/60 transition-colors">
-                          <td className="px-4 py-4">
-                            <p className="text-xs font-bold font-mono text-gray-700">{oc.numero_orden}</p>
-                          </td>
-                          <td className="px-4 py-4">
-                            <p className="text-xs font-mono text-gray-600">{oc.codigo_requisicion}</p>
-                          </td>
-                          <td className="px-4 py-4">
-                            <p className="text-sm font-medium text-gray-800">{oc.razon_social}</p>
-                            <p className="text-[11px] text-gray-400">{oc.nit}</p>
-                          </td>
-                          <td className="px-4 py-4 whitespace-nowrap">
-                            <p className="text-sm font-bold font-mono text-gray-800">{fmtQ(oc.monto_total)}</p>
-                          </td>
-                          <td className="px-4 py-4">
-                            <span
-                              className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold whitespace-nowrap ${OC_STYLE[oc.estado]}`}
-                            >
-                              {oc.estado}
-                            </span>
-                          </td>
-                          <td className="px-4 py-4 whitespace-nowrap">
-                            <p className="text-sm text-gray-600 font-mono">{fmtFecha(oc.fecha_emision)}</p>
-                          </td>
-                          <td className="px-4 py-4">
+                {loadingOrdenes ? (
+                  <div className="bg-white rounded-xl border border-gray-100 shadow-sm px-5 py-12 text-center text-sm text-gray-400">
+                    Cargando órdenes…
+                  </div>
+                ) : ordenesList.length === 0 ? (
+                  <div className="bg-white rounded-xl border border-gray-100 shadow-sm px-5 py-12 text-center text-sm text-gray-400">
+                    Sin órdenes de compra.
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {ordenesList.map((oc) => (
+                      <div
+                        key={`oc-${oc.id_orden_compra}`}
+                        className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden"
+                      >
+                        <div className="px-5 py-4 flex items-start justify-between gap-3 border-b border-gray-100 bg-gray-50/60">
+                          <div className="min-w-0">
                             <div className="flex items-center gap-2 flex-wrap">
-                              {oc.estado === "Pendiente" && (
-                                <button
-                                  disabled={working}
-                                  onClick={() => cambiarEstadoOC(oc, "Aprobada")}
-                                  className="text-sm font-bold transition-colors hover:opacity-70 disabled:opacity-40"
-                                  style={{ color: "#16A34A" }}
-                                >
-                                  Aprobar
-                                </button>
-                              )}
-                              {oc.estado === "Aprobada" && (
-                                <button
-                                  disabled={working}
-                                  onClick={() => cambiarEstadoOC(oc, "Enviada")}
-                                  className="text-sm font-bold transition-colors hover:opacity-70 disabled:opacity-40"
-                                  style={{ color: G }}
-                                >
-                                  Enviar
-                                </button>
-                              )}
-                              {["Pendiente", "Aprobada"].includes(oc.estado) && (
-                                <button
-                                  disabled={working}
-                                  onClick={() => cambiarEstadoOC(oc, "Cancelada")}
-                                  className="text-sm font-semibold text-red-500 hover:text-red-700 transition-colors disabled:opacity-40"
-                                >
-                                  Cancelar
-                                </button>
-                              )}
+                              <span className="font-mono text-sm font-extrabold" style={{ color: G }}>
+                                {oc.numero_orden}
+                              </span>
+                              <span className="text-gray-300">·</span>
+                              <span className="font-mono text-xs font-semibold text-gray-500">
+                                {oc.codigo_requisicion}
+                              </span>
                             </div>
-                          </td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
+                            <p className="text-xs text-gray-500 mt-1">
+                              {oc.razon_social} · {oc.nombre_dependencia}
+                            </p>
+                          </div>
+                          <span
+                            className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold whitespace-nowrap ${OC_STYLE[oc.estado ?? ""]}`}
+                          >
+                            {oc.estado}
+                          </span>
+                        </div>
+
+                        <div className="px-5 py-4 flex items-center justify-between gap-3 flex-wrap">
+                          <div className="flex items-center gap-4">
+                            <div>
+                              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Monto</p>
+                              <p className="text-sm font-bold font-mono text-gray-800">
+                                {fmtQ(oc.monto_total ?? 0)}
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Fecha</p>
+                              <p className="text-sm font-mono text-gray-600">{fmtFecha(oc.fecha_emision)}</p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <button
+                              disabled={cargandoDoc}
+                              onClick={() => verDocumentoOrden(oc)}
+                              className="flex items-center gap-2 px-3.5 py-2 text-xs font-bold rounded-lg text-white transition-all hover:opacity-80 disabled:opacity-40"
+                              style={{ backgroundColor: G }}
+                            >
+                              <Icons.PDF /> Imprimir
+                            </button>
+                            {oc.estado === "Pendiente" && (
+                              <button
+                                disabled={working}
+                                onClick={() => cambiarEstadoOC(oc, "Aprobada")}
+                                className="px-3.5 py-2 text-xs font-bold rounded-lg text-white transition-all hover:opacity-80 disabled:opacity-40"
+                                style={{ backgroundColor: "#16A34A" }}
+                              >
+                                Aprobar
+                              </button>
+                            )}
+                            {oc.estado === "Aprobada" && (
+                              <button
+                                disabled={working}
+                                onClick={() => cambiarEstadoOC(oc, "Enviada")}
+                                className="px-3.5 py-2 text-xs font-bold rounded-lg text-white transition-all hover:opacity-80 disabled:opacity-40"
+                                style={{ backgroundColor: G }}
+                              >
+                                Enviar
+                              </button>
+                            )}
+                            {["Pendiente", "Aprobada"].includes(oc.estado ?? "") && (
+                              <button
+                                disabled={working}
+                                onClick={() => cambiarEstadoOC(oc, "Cancelada")}
+                                className="px-3.5 py-2 text-xs font-semibold rounded-lg border border-red-200 text-red-600 transition-all hover:bg-red-50 disabled:opacity-40"
+                              >
+                                Cancelar
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -236,6 +294,10 @@ export default function ProformasView({
           }}
           onToast={onToast}
         />
+      )}
+
+      {docOrden && (
+        <OrdenCompraDocumento orden={docOrden} onClose={() => setDocOrden(null)} />
       )}
     </>
   )

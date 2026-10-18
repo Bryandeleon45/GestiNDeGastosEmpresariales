@@ -1,11 +1,11 @@
 import { useState, useCallback, useEffect } from "react"
-import { listarOrdenesCompra, type OrdenCompra } from "@/api/proformas"
+import { listarOrdenesCompra, type OrdenCompraLista } from "@/api/proformas"
 
 export type ProformasTab = "recibidas" | "ordenes"
 
 export function useProformasController(onToast: (m: string, s: string) => void) {
   const [tab, setTab] = useState<ProformasTab>("recibidas")
-  const [ordenes, setOrdenes] = useState<OrdenCompra[]>([])
+  const [ordenes, setOrdenes] = useState<OrdenCompraLista[]>([])
   const [loadingOrdenes, setLoadingOrdenes] = useState(true)
 
   const loadOrdenes = useCallback(async () => {

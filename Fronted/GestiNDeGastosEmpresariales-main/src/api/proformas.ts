@@ -123,6 +123,35 @@ export interface Comparativa {
   mejorPrecio: Array<number | null>
 }
 
+export interface OrdenInvitado {
+  id_proveedor: number
+  nit: string
+  razon_social: string
+  correo: string | null
+  telefono: string | null
+  id_cotizacion: number | null
+  numero_cotizacion: string | null
+  fecha_cotizacion: string | null
+  condiciones_pago: string | null
+  tiempo_entrega_dias: number | null
+  tiempo_entrega_texto: string | null
+  estado_cotizacion: string | null
+  cumple_tecnico: boolean | null
+  seleccionada: boolean | null
+  monto_total: string | null
+  items: Array<{
+    id_detalle_cotizacion: number
+    id_detalle_requisicion: number
+    cantidad_cotizada: string
+    cantidad_solicitada: string
+    precio_unitario: string
+    subtotal: string
+    descripcion_oferta: string | null
+    descripcion: string
+    unidad_simbolo: string
+  }>
+}
+
 export interface OrdenCompra {
   id_orden_compra: number
   numero_orden: string
@@ -146,13 +175,28 @@ export interface OrdenCompra {
   id_proceso: number | null
   fase_proceso: string | null
   motivo_adjudicacion: string | null
-  invitados: Array<{
-    nit: string
-    razon_social: string
-    estado_cotizacion: string | null
-    monto_total: string | null
-    seleccionada: boolean | null
-  }>
+  invitados: OrdenInvitado[]
+}
+
+export interface OrdenCompraLista {
+  tipo: "orden" | "proceso"
+  id_orden_compra: number | null
+  numero_orden: string | null
+  id_requisicion: number
+  id_proceso: number | null
+  fase_proceso: string | null
+  fecha_publicacion: string | null
+  codigo_requisicion: string
+  tipo_solicitud: string
+  monto_estimado: string
+  nombre_dependencia: string
+  razon_social: string | null
+  nit: string | null
+  monto_total: string | null
+  estado: string | null
+  fecha_emision: string | null
+  motivo_adjudicacion: string | null
+  invitados: OrdenInvitado[]
 }
 
 export function listarProcesos(params: { fase?: string; q?: string } = {}) {
@@ -250,7 +294,7 @@ export function listarOrdenesCompra(params: { estado?: string } = {}) {
   Object.entries(params).forEach(([k, v]) => {
     if (v) sp.set(k, String(v))
   })
-  return api.get<OrdenCompra[]>(`/proformas/ordenes-compra${sp.toString() ? `?${sp.toString()}` : ""}`)
+  return api.get<OrdenCompraLista[]>(`/proformas/ordenes-compra${sp.toString() ? `?${sp.toString()}` : ""}`)
 }
 
 export function cambiarEstadoOrden(id: number | string, estado: string) {
