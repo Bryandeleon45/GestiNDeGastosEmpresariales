@@ -255,6 +255,21 @@ export default function FacturaDrawer({
                 </div>
               )}
 
+              <div className="rounded-xl border border-gray-100 bg-gray-50 px-4 py-3">
+                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Documento de la Factura</p>
+                {factura.archivo_pdf_base64 ? (
+                  <button
+                    onClick={() => setPdfViewer({ src: factura.archivo_pdf_base64!, nombre: factura.archivo_pdf_nombre ?? "Factura.pdf" })}
+                    className="mt-2 flex items-center gap-2 px-3 py-2 text-xs font-bold text-white rounded-lg transition-all hover:opacity-90"
+                    style={{ backgroundColor: G }}
+                  >
+                    <Icons.PDF /> Ver PDF
+                  </button>
+                ) : (
+                  <p className="text-sm text-gray-500 mt-1">El proveedor no adjuntó PDF.</p>
+                )}
+              </div>
+
               {factura.motivo_rechazo && (
                 <div className="rounded-xl px-4 py-3 border" style={{ backgroundColor: "#FEF2F2", borderColor: "#FECACA" }}>
                   <p className="text-[10px] font-bold text-red-400 uppercase tracking-wider">Motivo de Rechazo</p>

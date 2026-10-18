@@ -73,18 +73,18 @@ async function adjudicarInterno(client, proceso, cotizacion, motivo, idUsuario) 
     const prev = ocExistente.rows[0];
     const { rows: updRows } = await client.query(
       `UPDATE orden_compra
-          SET id_cotizacion = $1, id_proveedor = $2
-        WHERE id_orden_compra = $3
+          SET id_cotizacion = $1, id_proveedor = $2, plazo_credito_dias = $3
+        WHERE id_orden_compra = $4
         RETURNING *`,
-      [cotizacion.id_cotizacion, cotizacion.id_proveedor, prev.id_orden_compra],
+      [cotizacion.id_cotizacion, cotizacion.id_proveedor, cotizacion.plazo_credito_dias ?? null, prev.id_orden_compra],
     );
     orden = updRows[0];
     await client.query("DELETE FROM detalle_orden_compra WHERE id_orden_compra = $1", [orden.id_orden_compra]);
   } else {
     const { rows: ocRows } = await client.query(
       `INSERT INTO orden_compra
-         (numero_orden, id_requisicion, id_cotizacion, id_proveedor, monto_total, id_usuario_emite)
-       VALUES ($1, $2, $3, $4, 0, $5)
+         (numero_orden, id_requisicion, id_cotizacion, id_proveedor, monto_total, id_usuario_emite, plazo_credito_dias)
+       VALUES ($1, $2, $3, $4, 0, $5, $6)
        RETURNING *`,
       [
         numeroOrden,
@@ -92,6 +92,7 @@ async function adjudicarInterno(client, proceso, cotizacion, motivo, idUsuario) 
         cotizacion.id_cotizacion,
         cotizacion.id_proveedor,
         idUsuario,
+        cotizacion.plazo_credito_dias ?? null,
       ],
     );
     orden = ocRows[0];
@@ -116,6 +117,12 @@ async function adjudicarInterno(client, proceso, cotizacion, motivo, idUsuario) 
             id_usuario_adjudica = $2, fecha_adjudicacion = now()
       WHERE id_proceso = $3`,
     [motivo, idUsuario, proceso.id_proceso],
+  );
+
+  // La solicitud pasa a revisión de bodega (caso especial de proformas adjudicadas).
+  await client.query(
+    "UPDATE requisicion SET estado = 'En Revisión', adjudicada = TRUE WHERE id_requisicion = $1",
+    [proceso.id_requisicion],
   );
 
   return orden;
@@ -287,7 +294,7 @@ router.post("/procesos", authorize("proformas"), async (req, res, next) => {
 
     // La solicitud pasa a En Compra al publicar.
     await client.query(
-      "UPDATE requisicion SET estado = 'En Compra' WHERE id_requisicion = $1",
+      "UPDATE requisicion SET estado = 'En Compra', adjudicada = FALSE WHERE id_requisicion = $1",
       [id_requisicion],
     );
 

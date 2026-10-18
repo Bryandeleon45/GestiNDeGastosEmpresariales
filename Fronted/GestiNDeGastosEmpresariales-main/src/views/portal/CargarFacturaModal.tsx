@@ -20,6 +20,13 @@ function fmtFecha(iso: string) {
   return new Date(iso).toLocaleDateString("es-GT")
 }
 
+function hoyISO() {
+  const d = new Date()
+  const mm = String(d.getMonth() + 1).padStart(2, "0")
+  const dd = String(d.getDate()).padStart(2, "0")
+  return `${d.getFullYear()}-${mm}-${dd}`
+}
+
 function fileToBase64(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader()
@@ -59,7 +66,14 @@ export default function CargarFacturaModal({
 
   useEffect(() => {
     listarOrdenesFacturables()
-      .then(setOrdenes)
+      .then((ords) => {
+        setOrdenes(ords)
+        // Si no hay orden preseleccionada y hay exactamente una proforma pendiente, auto-seleccionarla.
+        if (initialIdOC == null) {
+          const proformas = ords.filter((o) => o.es_proforma)
+          if (proformas.length === 1) setIdOC(proformas[0].id_orden_compra)
+        }
+      })
       .catch((e) => onToast("Error", e instanceof ApiError ? e.message : "No se pudieron cargar las órdenes"))
       .finally(() => setLoadingOrdenes(false))
   }, [onToast])
@@ -75,7 +89,15 @@ export default function CargarFacturaModal({
     }
     setLoadingDetalle(true)
     obtenerOrdenFacturable(idOC)
-      .then(setDetalle)
+      .then((d) => {
+        setDetalle(d)
+        // Si viene de proforma, prellenar monto adjudicado, fecha de hoy y plazo de crédito.
+        if (d.es_proforma) {
+          setMontoTotal(d.monto_adjudicado)
+          setFechaEmision(hoyISO())
+          if (d.plazo_credito_dias != null) setPlazoCredito(String(d.plazo_credito_dias))
+        }
+      })
       .catch(() => setDetalle(null))
       .finally(() => setLoadingDetalle(false))
   }, [idOC])
@@ -178,6 +200,15 @@ export default function CargarFacturaModal({
             )}
             {detalle && (
               <div className="mt-3 rounded-xl border border-gray-200 bg-gray-50 p-3 space-y-3">
+                {detalle.es_proforma && (
+                  <div className="flex items-center gap-2">
+                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-green-100 text-green-700 border border-green-200">
+                      <Icons.CheckBadge /> Proforma
+                    </span>
+                    <span className="text-xs font-mono text-gray-600">{detalle.numero_cotizacion}</span>
+                    <span className="text-xs text-gray-400">· monto adjudicado {fmtMonto(detalle.monto_adjudicado)}</span>
+                  </div>
+                )}
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
                   <div>
                     <p className="text-gray-400">Solicitud</p>

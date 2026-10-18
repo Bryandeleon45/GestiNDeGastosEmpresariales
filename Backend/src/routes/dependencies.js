@@ -113,14 +113,14 @@ router.get("/:id/presupuesto", async (req, res, next) => {
                 FROM requisicion r
                 WHERE r.id_dependencia = pd.id_dependencia
                   AND r.id_periodo = pd.id_periodo
-                  AND r.estado IN ('Aprobada', 'En Compra')
+                  AND (r.estado IN ('Aprobada', 'En Compra') OR r.adjudicada)
               ), 0) AS monto_ejecutado,
               (pd.monto_asignado - COALESCE((
                 SELECT SUM(COALESCE(r.monto_adjudicado, r.monto_estimado))::numeric(12,2)
                 FROM requisicion r
                 WHERE r.id_dependencia = pd.id_dependencia
                   AND r.id_periodo = pd.id_periodo
-                  AND r.estado IN ('Aprobada', 'En Compra')
+                  AND (r.estado IN ('Aprobada', 'En Compra') OR r.adjudicada)
               ), 0)) AS monto_disponible
          FROM presupuesto_dependencia pd
          JOIN periodo_fiscal pf ON pf.id_periodo = pd.id_periodo

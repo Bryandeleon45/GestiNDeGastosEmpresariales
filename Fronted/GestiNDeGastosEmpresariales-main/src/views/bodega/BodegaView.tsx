@@ -6,6 +6,7 @@ import {
   autorizarValeSalida,
   entregarValeSalida,
   cancelarValeSalida,
+  aprobarOrdenAdjudicada,
   type Recepcion,
   type ValeSalida,
 } from "@/api/bodega"
@@ -135,6 +136,22 @@ export default function BodegaView({
     setMostrarModalProveedor(true)
     setProveedorSeleccionado(null)
     setBusquedaProveedor("")
+  }
+
+  const aprobarAdjudicada = async (r: Requisicion) => {
+    if (!r.id_orden_compra) return
+    if (!window.confirm(`¿Aprobar la orden ${r.numero_orden ?? ""}? Se registrará la recepción completa y quedará disponible en facturación.`)) return
+    setWorkingSol(true)
+    try {
+      await aprobarOrdenAdjudicada(r.id_orden_compra)
+      onToast("Orden aprobada", "La orden quedó Aprobada y disponible en facturación.")
+      setDetalleSol(null)
+      reload()
+    } catch (e) {
+      onToast("Error", e instanceof ApiError ? e.message : "No se pudo aprobar la orden")
+    } finally {
+      setWorkingSol(false)
+    }
   }
 
   const confirmarAsignacion = async () => {
@@ -807,7 +824,16 @@ export default function BodegaView({
                 Cerrar
               </button>
               <div className="flex-1" />
-              {detalleSol.estado === "En Revisión" && (
+              {detalleSol.estado === "En Revisión" && detalleSol.adjudicada ? (
+                <button
+                  disabled={workingSol}
+                  onClick={() => aprobarAdjudicada(detalleSol)}
+                  className="flex items-center gap-2 px-4 py-2.5 text-sm font-bold text-white rounded-xl transition-all hover:opacity-90 shadow-sm disabled:opacity-50"
+                  style={{ backgroundColor: "#16A34A" }}
+                >
+                  <Icons.CheckMark /> Aprobar
+                </button>
+              ) : detalleSol.estado === "En Revisión" ? (
                 <>
                   <button
                     disabled={workingSol}
@@ -825,8 +851,12 @@ export default function BodegaView({
                     <Icons.X /> Rechazar
                   </button>
                 </>
-              )}
-              {detalleSol.estado === "Aprobada" && (
+              ) : null}
+              {detalleSol.estado === "Aprobada" && detalleSol.adjudicada ? (
+                <span className="text-xs font-semibold text-gray-500">
+                  Disponible en facturación
+                </span>
+              ) : detalleSol.estado === "Aprobada" ? (
                 <button
                   onClick={() => abrirModalProveedor(detalleSol)}
                   className="flex items-center gap-2 px-4 py-2.5 text-sm font-bold text-white rounded-xl transition-all hover:opacity-90 shadow-sm"
@@ -834,7 +864,7 @@ export default function BodegaView({
                 >
                   <Icons.ArrowRight /> Asignar Proveedor
                 </button>
-              )}
+              ) : null}
             </div>
            </aside>
         </div>

@@ -863,6 +863,9 @@ export default function SupplierPortal({ onLogout }: { onLogout: () => void }) {
                             <p className="text-xs" style={{ color: sub }}>{o.codigo_requisicion} · {o.tipo_solicitud}</p>
                           </div>
                           <p className="text-sm font-extrabold font-mono" style={{ color: sub }}>{fmtQ0(disponible)}</p>
+                          {o.es_proforma && (
+                            <span className="text-xs font-bold px-2.5 py-1 rounded-full shrink-0" style={{ backgroundColor: "#DCFCE7", color: "#16A34A" }}>Proforma</span>
+                          )}
                           <span className="text-xs font-bold px-2.5 py-1 rounded-full shrink-0" style={{ backgroundColor: "#F3F4F6", color: "#6B7280" }}>Pendiente</span>
                           <p className="text-xs" style={{ color: sub }}>{fmtFecha(o.fecha_emision)}</p>
                         </button>

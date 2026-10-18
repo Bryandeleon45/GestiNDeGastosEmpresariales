@@ -33,6 +33,8 @@ export interface Requisicion {
   id_proceso?: number | null
   fase_proceso?: string | null
   numero_orden?: string | null
+  id_orden_compra?: number | null
+  adjudicada?: boolean
   nombre_dependencia: string
   siglas: string | null
   nombre_usuario: string

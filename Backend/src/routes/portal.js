@@ -339,7 +339,7 @@ router.put("/oportunidades/:id/cotizacion", resolveProveedor, async (req, res, n
     const idProv = req.proveedor.id_proveedor;
     const idProceso = req.params.id;
 
-    const { condiciones_pago, tiempo_entrega_dias, tiempo_entrega_texto, referencia_proveedor, items } = req.body;
+    const { condiciones_pago, tiempo_entrega_dias, tiempo_entrega_texto, referencia_proveedor, plazo_credito_dias, items } = req.body;
     if (!Array.isArray(items) || !items.length) {
       return res.status(400).json({ error: "Debe incluir al menos un ítem" });
     }
@@ -374,13 +374,16 @@ router.put("/oportunidades/:id/cotizacion", resolveProveedor, async (req, res, n
       const insert = await client.query(
         `INSERT INTO cotizacion
            (id_requisicion, id_proveedor, numero_cotizacion, referencia_proveedor,
-            condiciones_pago, tiempo_entrega_dias, tiempo_entrega_texto, origen, id_usuario_registra, estado_cotizacion)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, 'PORTAL', $8, 'Borrador')
+            condiciones_pago, tiempo_entrega_dias, tiempo_entrega_texto, plazo_credito_dias,
+            origen, id_usuario_registra, estado_cotizacion)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'PORTAL', $9, 'Borrador')
          RETURNING *`,
         [
           inv.id_requisicion, idProv, numero,
           referencia_proveedor ?? null, condiciones_pago ?? null,
-          tiempo_entrega_dias ?? null, tiempo_entrega_texto ?? null, req.user.id_usuario,
+          tiempo_entrega_dias ?? null, tiempo_entrega_texto ?? null,
+          plazo_credito_dias != null ? parseInt(plazo_credito_dias, 10) : null,
+          req.user.id_usuario,
         ],
       );
       cotizacion = insert.rows[0];
@@ -388,11 +391,14 @@ router.put("/oportunidades/:id/cotizacion", resolveProveedor, async (req, res, n
       await client.query(
         `UPDATE cotizacion
             SET referencia_proveedor = $1, condiciones_pago = $2,
-                tiempo_entrega_dias = $3, tiempo_entrega_texto = $4
-          WHERE id_cotizacion = $5`,
+                tiempo_entrega_dias = $3, tiempo_entrega_texto = $4,
+                plazo_credito_dias = $5
+          WHERE id_cotizacion = $6`,
         [
           referencia_proveedor ?? null, condiciones_pago ?? null,
-          tiempo_entrega_dias ?? null, tiempo_entrega_texto ?? null, cotizacion.id_cotizacion,
+          tiempo_entrega_dias ?? null, tiempo_entrega_texto ?? null,
+          plazo_credito_dias != null ? parseInt(plazo_credito_dias, 10) : null,
+          cotizacion.id_cotizacion,
         ],
       );
     }
@@ -892,12 +898,18 @@ router.get("/ordenes-facturables", resolveProveedor, async (req, res, next) => {
     const { rows } = await pool.query(
       `SELECT oc.id_orden_compra, oc.numero_orden, oc.fecha_emision, oc.monto_total, oc.estado,
               r.codigo_requisicion, r.tipo_solicitud,
+              oc.id_cotizacion,
+              (oc.id_cotizacion IS NOT NULL) AS es_proforma,
+              c.numero_cotizacion,
+              COALESCE(c.monto_total, 0)::numeric(12,2) AS monto_adjudicado,
+              oc.plazo_credito_dias,
               COALESCE((SELECT SUM(f.monto_total) FROM factura f
                          WHERE f.id_orden_compra = oc.id_orden_compra AND f.estado <> 'Rechazada'), 0)::numeric(12,2) AS total_facturado,
               COALESCE((SELECT monto_recibido FROM v_recibido_oc
                          WHERE id_orden_compra = oc.id_orden_compra), 0)::numeric(12,2) AS recibido_valorizado
          FROM orden_compra oc
          JOIN requisicion r ON r.id_requisicion = oc.id_requisicion
+         LEFT JOIN cotizacion c ON c.id_cotizacion = oc.id_cotizacion
         WHERE oc.id_proveedor = $1
           AND oc.estado IN ('Aprobada','Enviada','Entregada')
         ORDER BY oc.fecha_emision DESC`,
@@ -917,6 +929,11 @@ router.get("/ordenes-facturables/:id", resolveProveedor, async (req, res, next) 
       `SELECT oc.id_orden_compra, oc.numero_orden, oc.fecha_emision, oc.monto_total, oc.estado,
               r.codigo_requisicion, r.tipo_solicitud, r.justificacion, r.lugar_entrega,
               d.nombre_dependencia,
+              oc.id_cotizacion,
+              (oc.id_cotizacion IS NOT NULL) AS es_proforma,
+              c.numero_cotizacion,
+              COALESCE(c.monto_total, 0)::numeric(12,2) AS monto_adjudicado,
+              oc.plazo_credito_dias,
               COALESCE((SELECT SUM(f.monto_total) FROM factura f
                          WHERE f.id_orden_compra = oc.id_orden_compra AND f.estado <> 'Rechazada'), 0)::numeric(12,2) AS total_facturado,
               COALESCE((SELECT monto_recibido FROM v_recibido_oc
@@ -924,6 +941,7 @@ router.get("/ordenes-facturables/:id", resolveProveedor, async (req, res, next) 
          FROM orden_compra oc
          JOIN requisicion r ON r.id_requisicion = oc.id_requisicion
          JOIN dependencia_municipal d ON d.id_dependencia = r.id_dependencia
+         LEFT JOIN cotizacion c ON c.id_cotizacion = oc.id_cotizacion
         WHERE oc.id_orden_compra = $1 AND oc.id_proveedor = $2`,
       [req.params.id, idProv],
     );

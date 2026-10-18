@@ -289,7 +289,9 @@ router.get("/:id", authorize("solicitudes"), async (req, res, next) => {
       `SELECT r.*, d.nombre_dependencia, d.siglas,
               u.nombre_usuario, e.nombre, e.apellido, e.correo,
               pf.anio AS periodo_anio,
-              er.nombre AS revisor_nombre, er.apellido AS revisor_apellido
+              er.nombre AS revisor_nombre, er.apellido AS revisor_apellido,
+              (SELECT oc.id_orden_compra FROM orden_compra oc WHERE oc.id_requisicion = r.id_requisicion LIMIT 1) AS id_orden_compra,
+              (SELECT oc.numero_orden FROM orden_compra oc WHERE oc.id_requisicion = r.id_requisicion LIMIT 1) AS numero_orden
          FROM requisicion r
          JOIN dependencia_municipal d ON d.id_dependencia = r.id_dependencia
          JOIN usuario u ON u.id_usuario = r.id_usuario

@@ -174,6 +174,7 @@ export function guardarBorradorCotizacion(
     tiempo_entrega_dias?: number
     tiempo_entrega_texto?: string
     referencia_proveedor?: string
+    plazo_credito_dias?: number
     items: { id_detalle_requisicion: number; precio_unitario: string; descripcion_oferta?: string }[]
   },
 ) {
@@ -253,6 +254,11 @@ export interface OrdenFacturable {
   tipo_solicitud: string
   total_facturado: string
   recibido_valorizado: string
+  id_cotizacion: number | null
+  es_proforma: boolean
+  numero_cotizacion: string | null
+  monto_adjudicado: string
+  plazo_credito_dias: number | null
 }
 
 export interface OrdenFacturableItem {

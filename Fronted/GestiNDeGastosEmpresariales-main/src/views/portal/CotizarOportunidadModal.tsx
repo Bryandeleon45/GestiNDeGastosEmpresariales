@@ -55,6 +55,11 @@ export default function CotizarOportunidadModal({
         : ""),
   )
   const [referencia, setReferencia] = useState(detalle.cotizacion?.referencia_proveedor ?? "")
+  const [plazoCredito, setPlazoCredito] = useState(
+    (detalle.cotizacion as { plazo_credito_dias?: number | null } | null)?.plazo_credito_dias != null
+      ? String((detalle.cotizacion as { plazo_credito_dias?: number | null }).plazo_credito_dias)
+      : "",
+  )
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState("")
   const [declinando, setDeclinando] = useState(false)
@@ -99,6 +104,7 @@ export default function CotizarOportunidadModal({
         condiciones_pago: condiciones,
         tiempo_entrega_texto: tiempo,
         referencia_proveedor: referencia,
+        plazo_credito_dias: plazoCredito ? parseInt(plazoCredito, 10) : undefined,
         items: buildItems(),
       })
       onToast("Borrador guardado", "Su cotización quedó guardada como borrador.")
@@ -129,6 +135,7 @@ export default function CotizarOportunidadModal({
         condiciones_pago: condiciones,
         tiempo_entrega_texto: tiempo,
         referencia_proveedor: referencia,
+        plazo_credito_dias: plazoCredito ? parseInt(plazoCredito, 10) : undefined,
         items: buildItems(),
       })
       const res = await onEnviar(detalle.id_proceso)
@@ -285,6 +292,18 @@ export default function CotizarOportunidadModal({
                   placeholder="Ej. 5 días hábiles"
                   className="w-full px-3 py-2.5 text-sm border-2 rounded-xl focus:outline-none transition-colors"
                   style={{ backgroundColor: inputBg, borderColor: tiempo ? G : border, color: text }}
+                />
+              </div>
+              <div>
+                <label className="text-xs font-bold block mb-1.5" style={{ color: sub }}>Plazo de Crédito (días)</label>
+                <input
+                  value={plazoCredito}
+                  onChange={(e) => setPlazoCredito(e.target.value)}
+                  placeholder="Ej. 30"
+                  type="number"
+                  min="0"
+                  className="w-full px-3 py-2.5 text-sm border-2 rounded-xl focus:outline-none transition-colors"
+                  style={{ backgroundColor: inputBg, borderColor: plazoCredito ? G : border, color: text }}
                 />
               </div>
               <div>

@@ -17,13 +17,15 @@ export default function NuevaRecepcionModal({
   onClose,
   onSuccess,
   onToast,
+  idOCInicial,
 }: {
   onClose: () => void
   onSuccess: () => void
   onToast: (m: string, s: string) => void
+  idOCInicial?: number | null
 }) {
   const [resultados, setResultados] = useState<OrdenCompraBusqueda[]>([])
-  const [idOC, setIdOC] = useState<number | null>(null)
+  const [idOC, setIdOC] = useState<number | null>(idOCInicial ?? null)
   const [busqueda, setBusqueda] = useState("")
   const [submitting, setSubmitting] = useState(false)
   const [detalle, setDetalle] = useState<OrdenCompraItems | null>(null)

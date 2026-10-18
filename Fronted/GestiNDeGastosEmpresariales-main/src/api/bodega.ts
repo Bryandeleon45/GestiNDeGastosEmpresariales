@@ -198,6 +198,10 @@ export function recibirTodo(data: { id_orden_compra: number; id_bodega?: number;
   return api.post<{ estado: string; total_aceptado: number; recepcion: Recepcion }>("/recepciones/recibir-todo", data)
 }
 
+export function aprobarOrdenAdjudicada(idOrdenCompra: number | string) {
+  return api.post<{ ok: boolean }>(`/ordenes-compra/${idOrdenCompra}/aprobar-adjudicada`)
+}
+
 export function listarRecepciones() {
   return api.get<Recepcion[]>("/recepciones")
 }
