@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { G, GL } from "@/constants/theme"
+import { G, GL, BRAND_HEX } from "@/constants/theme"
 import { Icons } from "@/components/common/Icons"
 import { STOCK, type StockItem } from "@/models/dashboard"
 import StockDetailPopover from "./StockDetailPopover"
@@ -71,7 +71,7 @@ export default function StockAlertsCard({
                 className="relative -mx-2 px-2 py-3 rounded-xl cursor-pointer transition-all duration-150 group"
                 style={{
                   backgroundColor:
-                    hoveredItem === s.id ? "#F9FAFB" : "transparent",
+                    hoveredItem === s.id ? "var(--gray-50)" : "transparent",
                 }}
               >
                 {hoveredItem === s.id && (
@@ -105,7 +105,7 @@ export default function StockAlertsCard({
                     {s.level}
                   </span>
                 </div>
-                <div className="w-full h-2 bg-[#F3F4F6] rounded-full overflow-hidden mb-1.5">
+                <div className="w-full h-2 bg-[var(--gray-100)] rounded-full overflow-hidden mb-1.5">
                   <div
                     className="h-full rounded-full transition-all duration-500"
                     style={{ width: `${s.pct}%`, backgroundColor: barColor(s) }}
@@ -138,7 +138,7 @@ export default function StockAlertsCard({
               color: btnTextColor,
               borderColor: G,
               transform: btnState === "pressed" ? "scale(0.98)" : "scale(1)",
-              boxShadow: btnState === "hover" ? `0 4px 16px ${G}35` : "none",
+              boxShadow: btnState === "hover" ? `0 4px 16px ${BRAND_HEX}35` : "none",
             }}
           >
             Generar Orden de

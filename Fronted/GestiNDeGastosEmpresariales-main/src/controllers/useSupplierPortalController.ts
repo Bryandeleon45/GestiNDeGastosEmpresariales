@@ -8,8 +8,6 @@ import {
   enviarCotizacion,
   retirarCotizacion,
   declinarOportunidad,
-  listarNotificaciones,
-  marcarNotificacionLeida,
   listarOrdenes,
   listarEntregas,
   listarPedidosAsignados,
@@ -65,7 +63,6 @@ export function useSupplierPortalController() {
   const [informe, setInforme] = useState<InformeFila[]>([])
   const [informeTotales, setInformeTotales] = useState<InformeTotales | null>(null)
   const [informeFiltros, setInformeFiltros] = useState<InformeFiltros>({})
-  const [noLeidas, setNoLeidas] = useState(0)
   const [loading, setLoading] = useState(false)
   const [showCargarFactura, setShowCargarFactura] = useState(false)
 
@@ -162,15 +159,6 @@ export function useSupplierPortalController() {
     [informeFiltros, fireToast],
   )
 
-  const cargarNotificaciones = useCallback(async () => {
-    try {
-      const n = await listarNotificaciones()
-      setNoLeidas(n.no_leidas)
-    } catch {
-      setNoLeidas(0)
-    }
-  }, [])
-
   const recargar = useCallback(async () => {
     setLoading(true)
     await Promise.allSettled([
@@ -183,10 +171,9 @@ export function useSupplierPortalController() {
       cargarFacturas(),
       cargarOrdenesFacturables(),
       cargarInforme(informeFiltros),
-      cargarNotificaciones(),
     ])
     setLoading(false)
-  }, [cargarResumen, cargarOportunidades, cargarOrdenes, cargarEntregas, cargarPedidosAsignados, cargarFacturas, cargarOrdenesFacturables, cargarInforme, cargarNotificaciones, informeFiltros, tab, q])
+  }, [cargarResumen, cargarOportunidades, cargarOrdenes, cargarEntregas, cargarPedidosAsignados, cargarFacturas, cargarOrdenesFacturables, cargarInforme, informeFiltros, tab, q])
 
   useEffect(() => {
     recargar()
@@ -235,15 +222,6 @@ export function useSupplierPortalController() {
     return declinarOportunidad(idProceso, motivo)
   }, [])
 
-  const marcarLeida = useCallback(async (id: number) => {
-    try {
-      await marcarNotificacionLeida(id)
-      setNoLeidas((n) => Math.max(0, n - 1))
-    } catch {
-      /* silencioso */
-    }
-  }, [])
-
   return {
     activeNav,
     setActiveNav,
@@ -283,7 +261,6 @@ export function useSupplierPortalController() {
     setInformeFiltros,
     cargarInforme,
     exportarInforme,
-    noLeidas,
     loading,
     recargar,
     cargarOportunidades,
@@ -299,6 +276,5 @@ export function useSupplierPortalController() {
     enviar,
     retirar,
     declinar,
-    marcarLeida,
   }
 }

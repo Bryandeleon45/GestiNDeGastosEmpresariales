@@ -9,7 +9,7 @@ export interface Rol {
   total_usuarios: number
 }
 
-export interface SubmenuPermiso {
+export interface PermisoSubmenu {
   id_menu: number
   menu: string
   id_submenu: number
@@ -22,21 +22,21 @@ export function listarRoles() {
   return api.get<Rol[]>("/roles")
 }
 
-export function crearRol(body: { descripcion: string; nombre_rol?: string }) {
-  return api.post<Rol>("/roles", body)
+export function crearRol(data: { descripcion: string; nombre_rol?: string }) {
+  return api.post<Rol>("/roles", data)
 }
 
 export function editarRol(
   id: number,
-  body: { descripcion?: string; nombre_rol?: string; activo?: boolean },
+  data: { descripcion?: string; nombre_rol?: string; activo?: boolean },
 ) {
-  return api.put<Rol>(`/roles/${id}`, body)
+  return api.put<Rol>(`/roles/${id}`, data)
 }
 
 export function permisosDeRol(id: number) {
-  return api.get<SubmenuPermiso[]>(`/roles/${id}/permisos`)
+  return api.get<PermisoSubmenu[]>(`/roles/${id}/permisos`)
 }
 
 export function guardarPermisosRol(id: number, submenus: number[]) {
-  return api.put(`/roles/${id}/permisos`, { submenus })
+  return api.put<{ ok: boolean }>(`/roles/${id}/permisos`, { submenus })
 }

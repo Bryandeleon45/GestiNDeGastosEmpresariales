@@ -49,7 +49,7 @@ export default function NuevaProformaModal({
         >
           <div
             className="flex items-center gap-3 px-6 pt-6 pb-4 border-b"
-            style={{ borderColor: dark ? "#334155" : "#F3F4F6" }}
+            style={{ borderColor: dark ? "#334155" : "var(--gray-100)" }}
           >
             <div
               className="w-10 h-10 rounded-xl flex items-center justify-center text-white shrink-0"
@@ -91,7 +91,7 @@ export default function NuevaProformaModal({
                 type="number"
                 className="w-full px-3 py-2.5 text-sm border-2 rounded-xl focus:outline-none transition-colors"
                 style={{
-                  backgroundColor: dark ? "#0F172A" : "#F9FAFB",
+                  backgroundColor: dark ? "#0F172A" : "var(--gray-50)",
                   borderColor: precio ? G : "#334155",
                   color: text,
                 }}
@@ -110,7 +110,7 @@ export default function NuevaProformaModal({
                 placeholder="Ej. 3 días hábiles"
                 className="w-full px-3 py-2.5 text-sm border-2 rounded-xl focus:outline-none transition-colors"
                 style={{
-                  backgroundColor: dark ? "#0F172A" : "#F9FAFB",
+                  backgroundColor: dark ? "#0F172A" : "var(--gray-50)",
                   borderColor: entrega ? G : "#334155",
                   color: text,
                 }}

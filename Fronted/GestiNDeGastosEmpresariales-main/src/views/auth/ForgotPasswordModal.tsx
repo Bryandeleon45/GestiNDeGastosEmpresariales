@@ -43,7 +43,7 @@ export default function ForgotPasswordModal({
                   <svg
                     className="w-7 h-7"
                     fill="none"
-                    stroke={G}
+                    style={{ stroke: G }}
                     viewBox="0 0 24 24"
                     strokeWidth={1.8}
                   >

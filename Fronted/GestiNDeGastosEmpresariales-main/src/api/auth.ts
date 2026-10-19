@@ -7,6 +7,7 @@ export interface SessionUser {
   id_rol: number
   nombre_completo: string
   rol: string
+  foto?: string | null
 }
 
 export interface MenuSubmenu {
@@ -42,6 +43,14 @@ export function getStoredUser(): SessionUser | null {
   } catch {
     return null
   }
+}
+
+export function updateStoredUser(patch: Partial<SessionUser>): SessionUser | null {
+  const current = getStoredUser()
+  if (!current) return null
+  const next = { ...current, ...patch }
+  localStorage.setItem(USER_KEY, JSON.stringify(next))
+  return next
 }
 
 export function getStoredMenu(): MenuItem[] {

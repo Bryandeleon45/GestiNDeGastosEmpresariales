@@ -3,6 +3,7 @@ import PDFDocument from "pdfkit";
 import { pool } from "../db.js";
 import { authenticate } from "../middlewares/authenticate.js";
 import { registrarBitacora, ipDe } from "../services/bitacora.service.js";
+import { enviarA, usuariosPorModulo } from "../services/notificaciones.service.js";
 
 const router = Router();
 
@@ -535,6 +536,15 @@ router.post("/oportunidades/:id/cotizacion/enviar", resolveProveedor, async (req
       detalle: `Cotización ${cotizacion.numero_cotizacion} enviada`,
     });
 
+    // Avisa al módulo de proformas que hay una cotización por evaluar.
+    await enviarA({
+      ids: await usuariosPorModulo(["proformas"]),
+      tipo: "NUEVA_COTIZACION",
+      titulo: "Cotización recibida",
+      mensaje: `${req.proveedor.razon_social} envió la cotización ${cotizacion.numero_cotizacion} para el proceso ${idProceso}.`,
+      referencia: String(idProceso),
+    }).catch(() => 0);
+
     res.json({
       constancia: `Su cotización ${cotizacion.numero_cotizacion} fue enviada correctamente.`,
       numero_cotizacion: cotizacion.numero_cotizacion,
@@ -617,6 +627,15 @@ router.post("/oportunidades/:id/declinar", resolveProveedor, async (req, res, ne
     );
 
     await client.query("COMMIT");
+
+    // Avisa al módulo de Proformas que el proveedor declinó la oportunidad.
+    await enviarA({
+      ids: await usuariosPorModulo(["proformas"]),
+      tipo: "OPORTUNIDAD_DECLINADA",
+      titulo: "Oportunidad declinada",
+      mensaje: `${req.proveedor.razon_social} declinó la oportunidad del proceso ${req.params.id}.${motivo?.trim() ? ` Motivo: ${motivo.trim()}` : ""}`,
+      referencia: String(req.params.id),
+    }).catch(() => 0);
 
     res.json({ ok: true });
   } catch (e) {
@@ -703,6 +722,18 @@ router.patch("/notificaciones/:id/leida", resolveProveedor, async (req, res, nex
       [req.params.id, req.user.id_usuario],
     );
     res.json({ ok: true });
+  } catch (e) {
+    next(e);
+  }
+});
+
+router.post("/notificaciones/leer-todas", resolveProveedor, async (req, res, next) => {
+  try {
+    const r = await pool.query(
+      "UPDATE notificacion SET leida = TRUE WHERE id_usuario = $1 AND NOT leida",
+      [req.user.id_usuario],
+    );
+    res.json({ ok: true, actualizadas: r.rowCount });
   } catch (e) {
     next(e);
   }
@@ -1143,6 +1174,15 @@ router.post("/facturas", resolveProveedor, async (req, res, next) => {
       modulo: "Facturación",
       detalle: `Factura ${numero_factura} registrada desde portal para ${oc.numero_orden}`,
     });
+
+    // Avisa a facturación que una factura del proveedor espera revisión.
+    await enviarA({
+      ids: await usuariosPorModulo(["facturacion"]),
+      tipo: "FACTURA_RECIBIDA",
+      titulo: `Nueva factura ${numero_factura}`,
+      mensaje: `${req.proveedor.razon_social} registró la factura ${numero_factura} por Q ${nuevo.toFixed(2)} (orden ${oc.numero_orden}).`,
+      referencia: `F-${factRows[0].id_factura}`,
+    }).catch(() => 0);
 
     res.status(201).json(factRows[0]);
   } catch (e) {

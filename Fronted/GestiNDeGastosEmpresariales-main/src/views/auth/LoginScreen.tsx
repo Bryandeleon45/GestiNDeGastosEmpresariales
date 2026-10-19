@@ -42,7 +42,7 @@ export default function LoginScreen({
   })
 
   return (
-    <div className="min-h-screen flex" style={{ background: "#F8F9FA" }}>
+    <div className="min-h-screen flex" style={{ background: "var(--gray-50)" }}>
       <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden flex-col">
         <img
           src={LAKE_IMG}
@@ -243,7 +243,7 @@ export default function LoginScreen({
                     width: 18,
                     height: 18,
                     borderColor: remember ? G : "#CBD5E1",
-                    backgroundColor: remember ? G : "white",
+                    backgroundColor: remember ? G : "var(--gray-50)",
                   }}
                 >
                   {remember && (

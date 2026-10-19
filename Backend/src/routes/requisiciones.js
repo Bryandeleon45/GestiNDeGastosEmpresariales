@@ -3,7 +3,7 @@ import { pool } from "../db.js";
 import { authenticate } from "../middlewares/authenticate.js";
 import { authorize } from "../middlewares/authorize.js";
 import { registrarBitacora, ipDe } from "../services/bitacora.service.js";
-import { enviar } from "../services/notificaciones.service.js";
+import { enviar, enviarA, usuariosPorModulo } from "../services/notificaciones.service.js";
 
 const router = Router();
 
@@ -392,7 +392,7 @@ router.post("/", authorize("solicitudes"), async (req, res, next) => {
     }
 
     const depCheck = await client.query(
-      "SELECT activo FROM dependencia_municipal WHERE id_dependencia = $1",
+      "SELECT activo, nombre_dependencia FROM dependencia_municipal WHERE id_dependencia = $1",
       [depId],
     );
     if (!depCheck.rows[0] || !depCheck.rows[0].activo) {
@@ -457,6 +457,16 @@ router.post("/", authorize("solicitudes"), async (req, res, next) => {
       modulo: "Dependencias",
       detalle: `Creada requisición ${codigo} (OC ${numeroOrden})`,
     });
+
+    // Avisa a compras y facturación que hay una solicitud nueva por revisar.
+    await enviarA({
+      ids: await usuariosPorModulo(["proformas", "facturacion"]),
+      excluir: [req.user.id_usuario],
+      tipo: "NUEVA_SOLICITUD",
+      titulo: `Nueva solicitud ${codigo}`,
+      mensaje: `${depCheck.rows[0].nombre_dependencia} registró la solicitud ${codigo} (${tipo_solicitud}, prioridad ${prioridad}).`,
+      referencia: codigo,
+    }).catch(() => 0);
 
     res.status(201).json({ ...requisicion, numero_orden: numeroOrden });
   } catch (e) {
@@ -679,6 +689,20 @@ router.patch("/:id/estado", authorize("solicitudes"), async (req, res, next) => 
       modulo: "Dependencias",
       detalle: `Requisición ${current[0].codigo_requisicion}: ${actual} → ${estado}`,
     });
+
+    // Avisa al creador de la solicitud cómo quedó su pedido.
+    const detalleEstado =
+      estado === "Rechazada"
+        ? `Motivo: ${notas_aprobacion}`
+        : `La solicitud ${current[0].codigo_requisicion} pasó de "${actual}" a "${estado}".`;
+    await enviarA({
+      ids: [current[0].id_usuario],
+      excluir: [req.user.id_usuario],
+      tipo: "ESTADO_SOLICITUD",
+      titulo: `Solicitud ${estado.toLowerCase()}`,
+      mensaje: detalleEstado,
+      referencia: current[0].codigo_requisicion,
+    }).catch(() => 0);
 
     res.json(rows[0]);
   } catch (e) {

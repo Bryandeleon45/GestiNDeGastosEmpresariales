@@ -1,5 +1,6 @@
 import { Router } from "express";
 import crypto from "node:crypto";
+import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
 import { pool } from "../db.js";
 import { firmarToken } from "../utils/jwt.js";
@@ -12,6 +13,12 @@ const router = Router();
 const MAX_INTENTOS = 5;
 const BLOQUEO_MINUTOS = 15;
 
+function toDataUrl(buf, mime) {
+  if (!buf) return null;
+  const b64 = Buffer.isBuffer(buf) ? buf.toString("base64") : Buffer.from(buf).toString("base64");
+  return `data:${mime || "application/octet-stream"};base64,${b64}`;
+}
+
 router.post("/login", async (req, res, next) => {
   try {
     const { usuario, password } = req.body;
@@ -20,10 +27,12 @@ router.post("/login", async (req, res, next) => {
     }
 
     const { rows } = await pool.query(
-      `SELECT u.*, e.nombre, e.apellido, r.nombre_rol, r.descripcion AS rol_descripcion
+      `SELECT u.*, e.nombre, e.apellido, r.nombre_rol, r.descripcion AS rol_descripcion,
+              up.foto, up.foto_mime
          FROM usuario u
          LEFT JOIN empleado e ON e.id_empleado = u.id_empleado
          JOIN rol r ON r.id_rol = u.id_rol
+         LEFT JOIN usuario_preferencia up ON up.id_usuario = u.id_usuario
         WHERE u.nombre_usuario = $1 OR u.correo = $1`,
       [usuario],
     );
@@ -90,6 +99,22 @@ router.post("/login", async (req, res, next) => {
       rol: user.id_rol,
     });
 
+    // Registra la sesión para poder listarla y cerrarla de forma remota.
+    const decoded = jwt.decode(token);
+    const expira = decoded?.exp ? new Date(decoded.exp * 1000) : null;
+    const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
+    await pool.query(
+      `INSERT INTO sesion_usuario (id_usuario, token_hash, ip_acceso, navegador, expira)
+       VALUES ($1, $2, $3, $4, COALESCE($5, now() + interval '8 hours'))`,
+      [
+        user.id_usuario,
+        tokenHash,
+        ip,
+        (req.headers["user-agent"] || "").slice(0, 200) || null,
+        expira,
+      ],
+    );
+
     res.json({
       token,
       menu,
@@ -101,6 +126,7 @@ router.post("/login", async (req, res, next) => {
         id_rol: user.id_rol,
         nombre_completo: user.nombre ? `${user.nombre} ${user.apellido}`.trim() : user.nombre_usuario,
         rol: user.nombre_rol || user.rol_descripcion,
+        foto: toDataUrl(user.foto, user.foto_mime),
       },
     });
   } catch (e) {
@@ -110,6 +136,11 @@ router.post("/login", async (req, res, next) => {
 
 router.post("/logout", authenticate, async (req, res, next) => {
   try {
+    await pool.query(
+      `UPDATE sesion_usuario SET revocada = TRUE, motivo_cierre = 'LOGOUT'
+        WHERE token_hash = $1`,
+      [req.token_hash],
+    );
     await registrarBitacora({
       idUsuario: req.user.id_usuario,
       accion: "logout",
@@ -148,6 +179,12 @@ router.post("/cambiar-clave", authenticate, async (req, res, next) => {
     await pool.query(
       "UPDATE usuario SET clave = $1, debe_cambiar_clave = FALSE WHERE id_usuario = $2",
       [hashed, req.user.id_usuario],
+    );
+    // Cerrar las demás sesiones del usuario (regla 10 del plan).
+    await pool.query(
+      `UPDATE sesion_usuario SET revocada = TRUE, motivo_cierre = 'CLAVE_CAMBIADA'
+        WHERE id_usuario = $1 AND token_hash <> $2`,
+      [req.user.id_usuario, req.token_hash],
     );
     await registrarBitacora({
       idUsuario: req.user.id_usuario,

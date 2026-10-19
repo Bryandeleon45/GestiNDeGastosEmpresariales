@@ -18,6 +18,16 @@
   --color-accent-foreground: var(--accent-foreground);
   --color-border: var(--border);
   --color-ring: var(--ring);
+  --color-gray-50: var(--gray-50);
+  --color-gray-100: var(--gray-100);
+  --color-gray-200: var(--gray-200);
+  --color-gray-300: var(--gray-300);
+  --color-gray-400: var(--gray-400);
+  --color-gray-500: var(--gray-500);
+  --color-gray-600: var(--gray-600);
+  --color-gray-700: var(--gray-700);
+  --color-gray-800: var(--gray-800);
+  --color-gray-900: var(--gray-900);
   --radius-sm: calc(var(--radius) - 2px);
   --radius-md: var(--radius);
   --radius-lg: calc(var(--radius) + 4px);
@@ -40,6 +50,19 @@
   --accent-foreground: #ffffff;
   --border: #e5e7eb;
   --ring: #1a6b35;
+  --gray-50: #f9fafb;
+  --gray-100: #f3f4f6;
+  --gray-200: #e5e7eb;
+  --gray-300: #d1d5db;
+  --gray-400: #9ca3af;
+  --gray-500: #6b7280;
+  --gray-600: #4b5563;
+  --gray-700: #374151;
+  --gray-800: #1f2937;
+  --gray-900: #111827;
+  --brand: #1E5E2F;
+  --brand-light: #E8F5ED;
+  --brand-border: #C6E0CC;
   --radius: 8px;
   --sidebar-width: 210px;
 }
@@ -61,6 +84,29 @@
 }
 
 [data-theme="dark"] {
+  --background: #0F172A;
+  --foreground: #F8FAFC;
+  --card: #1E293B;
+  --card-foreground: #F8FAFC;
+  --secondary: #1E293B;
+  --secondary-foreground: #E2E8F0;
+  --muted: #1E293B;
+  --muted-foreground: #94A3B8;
+  --border: #334155;
+  --gray-50:  #0F172A;
+  --gray-100: #1E293B;
+  --gray-200: #334155;
+  --gray-300: #475569;
+  --gray-400: #94A3B8;
+  --gray-500: #94A3B8;
+  --gray-600: #CBD5E1;
+  --gray-700: #E2E8F0;
+  --gray-800: #F1F5F9;
+  --gray-900: #F8FAFC;
+  --brand: #16A34A;
+  --brand-light: rgba(34, 197, 94, 0.14);
+  --brand-border: rgba(34, 197, 94, 0.32);
+
   --muni-bg:       #0F172A;
   --muni-surface:  #1E293B;
   --muni-surface2: #0F172A;
@@ -70,9 +116,10 @@
   --muni-nav:      #0B1120;
 }
 
-/* Compact UI mode */
-[data-compact="true"] .compact-row { padding-top: 0.5rem !important; padding-bottom: 0.5rem !important; }
-[data-compact="true"] .compact-card { padding: 0.75rem !important; }
+/* En modo oscuro, las tarjetas blancas pasan a ser superficies oscuras. */
+[data-theme="dark"] .bg-white {
+  background-color: #1E293B;
+}
 
 /* Mobile sidebar overlay */
 .sidebar-overlay {

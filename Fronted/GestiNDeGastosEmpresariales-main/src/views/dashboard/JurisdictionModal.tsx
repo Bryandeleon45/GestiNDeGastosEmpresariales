@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react"
 import { G } from "@/constants/theme"
 import { Icons } from "@/components/common/Icons"
-import { BARRIOS, STATS } from "@/models/jurisdiccion"
+import { STATS } from "@/models/jurisdiccion"
 
 export default function JurisdictionModal({
   onClose,
@@ -145,7 +145,7 @@ export default function JurisdictionModal({
                   cx="200"
                   cy="78"
                   r="7"
-                  fill={G}
+                  style={{ fill: G }}
                   stroke="white"
                   strokeWidth="2"
                 />
@@ -187,63 +187,6 @@ export default function JurisdictionModal({
               </div>
             </div>
           </div>
-
-          <div className="px-5 pb-5">
-            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">
-              Barrios y Aldeas
-            </p>
-            <div className="border border-gray-100 rounded-xl overflow-hidden">
-              <table className="w-full">
-                <thead>
-                  <tr className="bg-gray-50 border-b border-gray-100">
-                    {["Sector", "Población", "Área", "Tipo"].map((h) => (
-                      <th
-                        key={h}
-                        className="px-3.5 py-2.5 text-left text-[10px] font-bold text-gray-400 uppercase tracking-wider"
-                      >
-                        {h}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {BARRIOS.map((b, i) => (
-                    <tr
-                      key={b.name}
-                      className={`border-b border-gray-50 last:border-0 hover:bg-gray-50/50 transition-colors ${
-                        i % 2 === 1 ? "bg-gray-50/30" : ""
-                      }`}
-                    >
-                      <td className="px-3.5 py-2.5 text-xs font-semibold text-gray-800">
-                        {b.name}
-                      </td>
-                      <td className="px-3.5 py-2.5 text-xs font-mono text-gray-600">
-                        {b.pop}
-                      </td>
-                      <td className="px-3.5 py-2.5 text-xs font-mono text-gray-600">
-                        {b.area}
-                      </td>
-                      <td className="px-3.5 py-2.5">
-                        <span
-                          className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                            b.type === "Rural"
-                              ? "bg-amber-50 text-amber-700"
-                              : b.type === "Comercial"
-                                ? "bg-blue-50 text-blue-700"
-                                : b.type === "Mixto"
-                                  ? "bg-purple-50 text-purple-700"
-                                  : "bg-emerald-50 text-emerald-700"
-                          }`}
-                        >
-                          {b.type}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
         </div>
 
         <div className="flex items-center gap-3 px-5 py-4 border-t border-gray-100 shrink-0">
@@ -253,7 +196,10 @@ export default function JurisdictionModal({
           >
             Cerrar
           </button>
-          <button
+          <a
+            href="https://www.google.com/maps/search/?api=1&query=Municipalidad%20de%20Panajachel%2C%20Solol%C3%A1%2C%20Guatemala"
+            target="_blank"
+            rel="noopener noreferrer"
             className="flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-bold text-white rounded-xl transition-all hover:opacity-90 shadow-sm"
             style={{ backgroundColor: G }}
           >
@@ -268,7 +214,7 @@ export default function JurisdictionModal({
               <circle cx="12" cy="10" r="3" />
             </svg>
             Ver en Google Maps
-          </button>
+          </a>
         </div>
       </div>
     </div>

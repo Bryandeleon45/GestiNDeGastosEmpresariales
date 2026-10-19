@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react"
-import { G, GL } from "@/constants/theme"
+import { G, GL, BRAND_HEX } from "@/constants/theme"
 import { Icons } from "@/components/common/Icons"
 import type { RolPortal } from "@/api/proveedores"
 
@@ -31,7 +31,7 @@ export default function RolCell({
         style={{
           borderColor: open ? G : "#D1D5DB",
           color: "#374151",
-          boxShadow: open ? `0 0 0 2px ${G}22` : "none",
+          boxShadow: open ? `0 0 0 2px ${BRAND_HEX}22` : "none",
         }}
       >
         <span>{rolLabel}</span>

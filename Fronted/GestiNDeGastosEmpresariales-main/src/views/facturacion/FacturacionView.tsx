@@ -12,7 +12,7 @@ const ESTADO_STYLE: Record<string, { bg: string; color: string }> = {
   "Pagado con atraso": { bg: "#FDE68A", color: "#92400E" },
   Pendiente: { bg: "#FEF9C3", color: "#854D0E" },
   Vencido: { bg: "#FEE2E2", color: "#DC2626" },
-  Rechazada: { bg: "#F1F5F9", color: "#64748B" },
+  Rechazada: { bg: "var(--gray-100)", color: "#64748B" },
 }
 
 const fmt = (n: number | string) =>
@@ -46,7 +46,7 @@ export default function FacturacionView({
 
   return (
     <>
-      <div className="flex-1 overflow-auto" style={{ background: "#F8F9FA" }}>
+      <div className="flex-1 overflow-auto" style={{ background: "var(--gray-50)" }}>
         <div className="px-6 py-5 space-y-5">
           <div className="flex items-start justify-between gap-4 flex-wrap">
             <div>
@@ -174,7 +174,7 @@ export default function FacturacionView({
                         <svg
                           className="w-3.5 h-3.5 shrink-0"
                           fill="none"
-                          stroke={danger ? "#EF4444" : G}
+                          style={{ stroke: danger ? "#EF4444" : G }}
                           viewBox="0 0 24 24"
                           strokeWidth={2}
                         >
@@ -259,7 +259,7 @@ export default function FacturacionView({
               <div className="overflow-x-auto">
                 <table className="w-full min-w-[540px]">
                   <thead>
-                    <tr className="border-b border-gray-100" style={{ backgroundColor: "#F9FAFB" }}>
+                    <tr className="border-b border-gray-100" style={{ backgroundColor: "var(--gray-50)" }}>
                       {["NO. FACTURA", "PROVEEDOR", "FECHA EMISIÓN", "MONTO", "ESTADO"].map((h) => (
                         <th key={h} className="px-5 py-3 text-left text-[10px] font-extrabold text-gray-400 uppercase tracking-widest">
                           {h}

@@ -23,11 +23,11 @@ const ESTADO_REC_STYLE: Record<string, { bg: string; color: string }> = {
   Completa: { bg: "#DCFCE7", color: "#16A34A" },
   Parcial: { bg: "#FEF9C3", color: "#854D0E" },
   "Con Novedades": { bg: "#FEE2E2", color: "#DC2626" },
-  Cancelada: { bg: "#F1F5F9", color: "#64748B" },
+  Cancelada: { bg: "var(--gray-100)", color: "#64748B" },
 }
 
 const ESTADO_VALE_STYLE: Record<string, { bg: string; color: string }> = {
-  Pendiente: { bg: "#F1F5F9", color: "#64748B" },
+  Pendiente: { bg: "var(--gray-100)", color: "#64748B" },
   Autorizado: { bg: "#FEF9C3", color: "#854D0E" },
   Entregado: { bg: "#DCFCE7", color: "#16A34A" },
   Cancelado: { bg: "#FEE2E2", color: "#DC2626" },
@@ -226,7 +226,7 @@ export default function BodegaView({
 
   return (
     <>
-      <div className="flex-1 overflow-auto" style={{ background: "#F8F9FA" }}>
+      <div className="flex-1 overflow-auto" style={{ background: "var(--gray-50)" }}>
         <div className="px-6 py-5 space-y-5">
           <div className="flex items-start justify-between gap-4 flex-wrap">
             <div>
@@ -316,7 +316,7 @@ export default function BodegaView({
                 key={t}
                 onClick={() => setTab(t)}
                 className="px-4 py-2 text-sm font-bold rounded-xl transition-all"
-                style={tab === t ? { backgroundColor: G, color: "white" } : { color: "#6B7280", border: "1px solid #E5E7EB", backgroundColor: "white" }}
+                style={tab === t ? { backgroundColor: G, color: "white" } : { color: "#6B7280", border: "1px solid #E5E7EB", backgroundColor: "var(--gray-50)" }}
               >
                 {t === "solicitudes" ? "Solicitudes" : t === "recepciones" ? "Recepciones" : t === "inventario" ? "Inventario" : t === "kardex" ? "Kardex" : "Vales de Salida"}
               </button>
@@ -416,7 +416,7 @@ export default function BodegaView({
                       <tr><td colSpan={6} className="px-4 py-12 text-center text-sm text-gray-400">Sin recepciones registradas.</td></tr>
                     ) : (
                       recepciones.map((r) => {
-                        const est = ESTADO_REC_STYLE[r.estado] ?? { bg: "#F1F5F9", color: "#64748B" }
+                        const est = ESTADO_REC_STYLE[r.estado] ?? { bg: "var(--gray-100)", color: "#64748B" }
                         return (
                           <tr key={r.id_recepcion} className="border-b border-gray-50 last:border-0 hover:bg-gray-50/60 transition-colors">
                             <td className="px-4 py-4"><p className="text-xs font-bold font-mono text-gray-700">{r.numero_comprobante}</p></td>
@@ -558,7 +558,7 @@ export default function BodegaView({
                       <tr><td colSpan={6} className="px-4 py-12 text-center text-sm text-gray-400">Sin vales de salida registrados.</td></tr>
                     ) : (
                       vales.map((v) => {
-                        const est = ESTADO_VALE_STYLE[v.estado] ?? { bg: "#F1F5F9", color: "#64748B" }
+                        const est = ESTADO_VALE_STYLE[v.estado] ?? { bg: "var(--gray-100)", color: "#64748B" }
                         return (
                           <tr key={v.id_vale_salida} className="border-b border-gray-50 last:border-0 hover:bg-gray-50/60 transition-colors">
                             <td className="px-4 py-4"><p className="text-sm font-medium text-gray-800">{v.nombre_dependencia}</p></td>

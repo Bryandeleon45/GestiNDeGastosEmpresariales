@@ -96,7 +96,7 @@ export default function ComparativaProformasView({
 
   if (loading || !data) {
     return (
-      <div className="flex-1 overflow-auto" style={{ background: "#F8F9FA" }}>
+      <div className="flex-1 overflow-auto" style={{ background: "var(--gray-50)" }}>
         <div className="px-6 py-20 text-center text-sm text-gray-400">Cargando comparativa…</div>
       </div>
     )
@@ -123,7 +123,7 @@ export default function ComparativaProformasView({
   const noCumplen = proveedores.filter((p) => p.cumple_tecnico === false)
 
   return (
-    <div className="flex-1 overflow-auto" style={{ background: "#F8F9FA" }}>
+    <div className="flex-1 overflow-auto" style={{ background: "var(--gray-50)" }}>
       <div className="px-6 py-5 space-y-5">
         <div className="flex items-center gap-1.5 text-xs font-semibold text-gray-400 flex-wrap">
           <button onClick={onBack} className="hover:text-gray-600 transition-colors">
@@ -339,7 +339,7 @@ export default function ComparativaProformasView({
                   </tr>
                 ))}
 
-                <tr className="border-b border-gray-100" style={{ backgroundColor: "#F9FAFB" }}>
+                <tr className="border-b border-gray-100" style={{ backgroundColor: "var(--gray-50)" }}>
                   <td className="px-4 py-3.5 bg-gray-50 border-r border-gray-100 sticky left-0 z-10">
                     <p className="text-sm font-bold text-gray-700">Tiempo de Entrega</p>
                   </td>
@@ -350,7 +350,7 @@ export default function ComparativaProformasView({
                         key={prov.id_cotizacion}
                         className="px-4 py-3.5 border-r border-gray-100 last:border-r-0 transition-colors"
                         style={{
-                          backgroundColor: isWinner ? GL : hoveredCol === prov.id_cotizacion ? "#FAFFFE" : "#F9FAFB",
+                          backgroundColor: isWinner ? GL : hoveredCol === prov.id_cotizacion ? "#FAFFFE" : "var(--gray-50)",
                         }}
                       >
                         <p className="text-sm font-semibold text-gray-700">

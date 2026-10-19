@@ -1,3 +1,4 @@
+import crypto from "node:crypto";
 import { verificarToken } from "../utils/jwt.js";
 import { pool } from "../db.js";
 
@@ -14,6 +15,17 @@ export async function authenticate(req, res, next) {
       payload = verificarToken(token);
     } catch {
       return res.status(401).json({ error: "Sesión inválida o expirada" });
+    }
+
+    // Identifica la sesión para poder revocarla (cierre remoto / logout).
+    req.token_hash = crypto.createHash("sha256").update(token).digest("hex");
+
+    const { rows: sesion } = await pool.query(
+      `SELECT revocada, expira FROM sesion_usuario WHERE token_hash = $1`,
+      [req.token_hash],
+    );
+    if (sesion[0] && (sesion[0].revocada || new Date(sesion[0].expira) < new Date())) {
+      return res.status(401).json({ error: "Sesión cerrada o expirada" });
     }
 
     const { rows } = await pool.query(

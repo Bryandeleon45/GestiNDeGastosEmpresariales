@@ -1,4 +1,4 @@
-import { G } from "@/constants/theme"
+import { G, BRAND_HEX } from "@/constants/theme"
 import { Icons } from "@/components/common/Icons"
 import MunicipalSeal from "@/components/common/MunicipalSeal"
 import type { ProformaRecibidaDetalle } from "@/api/proformas"
@@ -90,7 +90,7 @@ export default function ProformaDocumento({
             {/* Ítems */}
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-y" style={{ borderColor: `${G}40` }}>
+                <tr className="border-y" style={{ borderColor: `${BRAND_HEX}40` }}>
                   <th className="py-2 px-2 text-left text-[10px] font-bold text-gray-500 uppercase tracking-wider">#</th>
                   <th className="py-2 px-2 text-left text-[10px] font-bold text-gray-500 uppercase tracking-wider">Descripción</th>
                   <th className="py-2 px-2 text-right text-[10px] font-bold text-gray-500 uppercase tracking-wider">Cantidad</th>

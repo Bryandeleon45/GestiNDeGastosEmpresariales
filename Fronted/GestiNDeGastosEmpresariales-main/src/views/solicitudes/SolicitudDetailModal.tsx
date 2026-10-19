@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react"
-import { G, GB } from "@/constants/theme"
+import { G, GB, BRAND_HEX } from "@/constants/theme"
 import { Icons } from "@/components/common/Icons"
 import {
   PRIORIDAD_STYLE,
@@ -263,7 +263,7 @@ export default function SolicitudDetailModal({
                         {i < arr.length - 1 && (
                           <div
                             className="w-px flex-1 my-1"
-                            style={{ minHeight: 20, backgroundColor: `${G}60` }}
+                            style={{ minHeight: 20, backgroundColor: `${BRAND_HEX}60` }}
                           />
                         )}
                       </div>

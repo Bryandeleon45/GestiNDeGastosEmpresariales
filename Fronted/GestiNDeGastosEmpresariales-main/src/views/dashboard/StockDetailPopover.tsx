@@ -65,7 +65,7 @@ export default function StockDetailPopover({
                   cy="32"
                   r="26"
                   fill="none"
-                  stroke="#F3F4F6"
+                  style={{ stroke: "var(--gray-100)" }}
                   strokeWidth="6"
                 />
                 <circle

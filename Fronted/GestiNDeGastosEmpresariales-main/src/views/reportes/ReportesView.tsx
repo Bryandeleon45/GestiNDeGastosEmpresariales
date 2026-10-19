@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { G, GL } from "@/constants/theme"
+import { G, GL, BRAND_HEX } from "@/constants/theme"
 import { Icons } from "@/components/common/Icons"
 import {
   BarChart,
@@ -102,7 +102,7 @@ export default function ReportesView({
   const solEstado = resumen?.extra?.solicitudes_por_estado ?? []
 
   return (
-    <div className="flex-1 overflow-auto" style={{ background: "#F8F9FA" }}>
+    <div className="flex-1 overflow-auto" style={{ background: "var(--gray-50)" }}>
       <div className="px-6 py-5 space-y-5">
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div>
@@ -166,7 +166,7 @@ export default function ReportesView({
                         </div>
                       )
                     }} />
-                    <Bar dataKey="value" radius={[5, 5, 0, 0]} fill={G} />
+                    <Bar dataKey="value" radius={[5, 5, 0, 0]} fill={BRAND_HEX} />
                   </BarChart>
                 </div>
               ) : (
@@ -286,7 +286,7 @@ export default function ReportesView({
               <div className="overflow-x-auto rounded-lg border border-gray-100">
                 <table className="w-full min-w-[560px]">
                   <thead>
-                    <tr className="border-b border-gray-100" style={{ backgroundColor: "#F9FAFB" }}>
+                    <tr className="border-b border-gray-100" style={{ backgroundColor: "var(--gray-50)" }}>
                       {(data?.columnas ?? []).map((c) => (
                         <th key={c.campo} className="px-4 py-3 text-left text-[10px] font-extrabold text-gray-400 uppercase tracking-widest whitespace-nowrap">
                           {c.titulo}

@@ -1,8 +1,7 @@
-import { G, GL } from "@/constants/theme"
+import { G, GL, BRAND_HEX } from "@/constants/theme"
 import { Icons } from "@/components/common/Icons"
 import KpiCard from "@/views/common/KpiCard"
 import BrandingCard from "@/views/dashboard/BrandingCard"
-import SupportCard from "@/views/dashboard/SupportCard"
 import {
   BarChart,
   Bar,
@@ -44,20 +43,18 @@ export default function DashboardView({
   onToast,
   onNav,
   onOpenMap,
-  onOpenTicket,
 }: {
   onToast: (m: string, s: string) => void
   onNav: (key: string) => void
   onOpenMap: () => void
-  onOpenTicket: () => void
 }) {
-  const { kpis, comprasDep, solicitudesEstado, alertas, actividad, cargar } =
+  const { kpis, comprasDep, solicitudesEstado, alertas, actividad } =
     useDashboardController()
 
   const comprasDepConMonto = comprasDep.filter((c) => Number(c.value) > 0)
 
   return (
-    <div className="flex-1 overflow-auto p-5" style={{ background: "#F8F9FA" }}>
+    <div className="flex-1 overflow-auto p-5" style={{ background: "var(--gray-50)" }}>
       <div className="flex items-start justify-between gap-4 flex-wrap mb-5">
         <div>
           <h1 className="text-2xl font-extrabold text-gray-900 leading-tight">
@@ -67,13 +64,6 @@ export default function DashboardView({
             Centro de monitoreo de la cadena de suministro municipal.
           </p>
         </div>
-        <button
-          onClick={() => cargar()}
-          className="flex items-center gap-2 px-4 py-2.5 text-sm font-semibold rounded-xl border transition-all hover:bg-gray-50"
-          style={{ color: G, borderColor: "#D1D5DB" }}
-        >
-          <Icons.Refresh /> Actualizar
-        </button>
       </div>
 
       <div className="flex gap-5 min-h-full">
@@ -150,7 +140,7 @@ export default function DashboardView({
                         </div>
                       )
                     }} />
-                    <Bar dataKey="value" radius={[5, 5, 0, 0]} fill={G} />
+                    <Bar dataKey="value" radius={[5, 5, 0, 0]} fill={BRAND_HEX} />
                   </BarChart>
                 </div>
               ) : (
@@ -284,7 +274,6 @@ export default function DashboardView({
             </div>
           </div>
           <BrandingCard onOpenMap={onOpenMap} />
-          <SupportCard onOpenTicket={onOpenTicket} />
         </div>
       </div>
     </div>

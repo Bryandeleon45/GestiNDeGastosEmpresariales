@@ -9,7 +9,7 @@ import {
   ResponsiveContainer,
   Cell,
 } from "recharts"
-import { G, GL } from "@/constants/theme"
+import { BRAND_HEX } from "@/constants/theme"
 import { Icons } from "@/components/common/Icons"
 import { CHART_DATA } from "@/models/charts"
 
@@ -61,7 +61,7 @@ export function DashboardBarChart({ onBarClick }: { onBarClick?: () => void }) {
               `Q ${Number(v).toLocaleString("es-GT")}`,
               "Gasto",
             ]}
-            cursor={{ fill: GL }}
+            cursor={{ fill: "#E8F5ED" }}
           />
           <Bar
             dataKey="gasto"
@@ -73,7 +73,7 @@ export function DashboardBarChart({ onBarClick }: { onBarClick?: () => void }) {
             onMouseLeave={() => setHoveredBar(null)}
           >
             {CHART_DATA.map((e) => (
-              <Cell key={e.dept} fill={hoveredBar === e.dept ? "#155228" : G} />
+              <Cell key={e.dept} fill={hoveredBar === e.dept ? "#155228" : BRAND_HEX} />
             ))}
           </Bar>
         </BarChart>

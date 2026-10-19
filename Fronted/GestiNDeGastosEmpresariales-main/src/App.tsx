@@ -1,22 +1,17 @@
-import { useEffect, useState } from "react"
+import { useState } from "react"
 import { G, GL } from "@/constants/theme"
 import { Icons } from "@/components/common/Icons"
 import MunicipalSeal from "@/components/common/MunicipalSeal"
 import { DashboardBarChart } from "@/components/charts/DashboardCharts"
 import { useAppController } from "@/controllers/useAppController"
-import { obtenerResumenDashboard, type DashboardKpis } from "@/api/dashboard"
-
 import SearchBar from "@/views/dashboard/SearchBar"
 import NotificationBell from "@/views/dashboard/NotificationBell"
 import HelpButton from "@/views/dashboard/HelpButton"
 import StockAlertsCard from "@/views/dashboard/StockAlertsCard"
 import BrandingCard from "@/views/dashboard/BrandingCard"
-import SupportCard from "@/views/dashboard/SupportCard"
 import SupportTicketDrawer from "@/views/dashboard/SupportTicketDrawer"
 import DashboardView from "@/views/dashboard/DashboardView"
 import JurisdictionModal from "@/views/dashboard/JurisdictionModal"
-import AuditModal from "@/views/auditoria/AuditModal"
-
 import GastosModal from "@/views/solicitudes/GastosModal"
 import DependenciasView from "@/views/solicitudes/DependenciasView"
 
@@ -33,9 +28,19 @@ import BitacoraView from "@/views/auditoria/BitacoraView"
 import SupplierPortal from "@/views/portal/SupplierPortal"
 import LoginScreen from "@/views/auth/LoginScreen"
 import CerrarSesionModal from "@/views/common/CerrarSesionModal"
+import PdfViewerModal from "@/views/common/PdfViewerModal"
 import Toast from "@/views/common/Toast"
 import KpiCard from "@/views/common/KpiCard"
-import { login as apiLogin, logout as apiLogout, getStoredUser, getStoredMenu, esProveedor } from "@/api/auth"
+import { generarGuiaPdf } from "@/lib/guiasPdf"
+import { GUIAS } from "@/models/ayuda"
+import {
+  login as apiLogin,
+  logout as apiLogout,
+  getStoredUser,
+  updateStoredUser,
+  getStoredMenu,
+  esProveedor,
+} from "@/api/auth"
 import { flattenMenu } from "@/utils/menu"
 import CambiarClaveModal from "@/views/auth/CambiarClaveModal"
 
@@ -69,18 +74,12 @@ export default function App() {
     setDarkAdmin,
     accentColor,
     setAccentColor,
-    compactUI,
-    setCompactUI,
-    animEnabled,
-    setAnimEnabled,
     sidebarCollapsed,
     setSidebarCollapsed,
     mobileSidebar,
     setMobileSidebar,
     showGasModal,
     setShowGasModal,
-    showAuditModal,
-    setShowAuditModal,
     showTicketDrawer,
     setShowTicketDrawer,
     showLogoutModal,
@@ -103,14 +102,34 @@ export default function App() {
 
   const [currentUser, setCurrentUser] = useState(getStoredUser())
   const [mustChangePassword, setMustChangePassword] = useState(false)
-  const [proformasProcesoId, setProformasProcesoId] = useState<number | null>(null)
-  const [headerKpis, setHeaderKpis] = useState<DashboardKpis | null>(null)
+  const [proformasProcesoId, setProformasProcesoId] = useState<number | null>(
+    null,
+  )
+  const [guiaPdfId, setGuiaPdfId] = useState<string | null>(null)
+  const [guiaPdfSrc, setGuiaPdfSrc] = useState<string | null>(null)
 
-  useEffect(() => {
-    obtenerResumenDashboard()
-      .then((res) => setHeaderKpis(res.kpis))
-      .catch(() => {})
-  }, [])
+  const abrirGuiaPdf = async (id: string) => {
+    setGuiaPdfId(id)
+    setGuiaPdfSrc(null)
+    try {
+      const blob = await generarGuiaPdf(id)
+      setGuiaPdfSrc((prev) => {
+        if (prev) URL.revokeObjectURL(prev)
+        return URL.createObjectURL(blob)
+      })
+    } catch {
+      fireToast("No se pudo generar la guía", "Intente nuevamente.")
+      setGuiaPdfId(null)
+    }
+  }
+
+  const cerrarGuiaPdf = () => {
+    setGuiaPdfId(null)
+    setGuiaPdfSrc((prev) => {
+      if (prev) URL.revokeObjectURL(prev)
+      return null
+    })
+  }
 
   if (screen === "login")
     return (
@@ -326,10 +345,23 @@ export default function App() {
                 <line x1="3" y1="18" x2="21" y2="18" />
               </svg>
             </button>
-            <SearchBar />
+            <SearchBar
+              onResultado={(r) =>
+                setActiveNav(
+                  r.type === "solicitud"
+                    ? "dependencias"
+                    : r.type === "proveedor"
+                      ? "proveedores"
+                      : "bodega",
+                )
+              }
+            />
             <div className="flex items-center gap-1 ml-auto">
-              <NotificationBell onOpenAudit={() => setShowAuditModal(true)} />
-              <HelpButton onOpenTicket={() => setShowTicketDrawer(true)} />
+              <NotificationBell onNavegar={(nav) => setActiveNav(nav)} />
+              <HelpButton
+                onOpenTicket={() => setShowTicketDrawer(true)}
+                onAbrirGuia={abrirGuiaPdf}
+              />
               <div
                 className="h-8 w-px mx-2"
                 style={{ backgroundColor: thBorder }}
@@ -350,14 +382,29 @@ export default function App() {
                   </p>
                 </div>
                 <div
-                  className="w-8 h-8 rounded-full overflow-hidden border-2 shrink-0"
-                  style={{ borderColor: thBorder }}
+                  className="w-8 h-8 rounded-full overflow-hidden border-2 shrink-0 flex items-center justify-center"
+                  style={{
+                    borderColor: thBorder,
+                    backgroundColor: GL,
+                    color: G,
+                  }}
                 >
-                  <img
-                    src="https://images.unsplash.com/photo-1560250097-0b93528c311a?w=64&h=64&fit=crop&auto=format"
-                    alt={currentUser?.nombre_completo || "Usuario"}
-                    className="w-full h-full object-cover"
-                  />
+                  {currentUser?.foto ? (
+                    <img
+                      src={currentUser.foto}
+                      alt={currentUser?.nombre_completo || "Usuario"}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <span className="text-[10px] font-extrabold">
+                      {(currentUser?.nombre_completo || "US")
+                        .split(" ")
+                        .slice(0, 2)
+                        .map((w) => w[0] ?? "")
+                        .join("")
+                        .toUpperCase() || "US"}
+                    </span>
+                  )}
                 </div>
               </div>
             </div>
@@ -368,36 +415,7 @@ export default function App() {
               className="shrink-0 border-b px-6 py-4 flex items-center gap-8 flex-wrap"
               style={{ backgroundColor: thSurface, borderColor: thBorder }}
             >
-              <div>
-                <p
-                  className="text-[10px] font-bold uppercase tracking-wider"
-                  style={{ color: thSub }}
-                >
-                  Total Solicitudes
-                </p>
-                <div className="flex items-baseline gap-2 mt-0.5">
-                  <span
-                    className="text-2xl font-extrabold"
-                    style={{ color: thText }}
-                  >
-                    {headerKpis?.total_solicitudes?.toLocaleString("es-GT") ?? "—"}
-                  </span>
-                  <span className="text-xs font-semibold text-emerald-500">
-                    {headerKpis?.solicitudes_variacion == null
-                      ? "sin variación"
-                      : `${headerKpis.solicitudes_variacion >= 0 ? "+" : ""}${headerKpis.solicitudes_variacion}% este mes`}
-                  </span>
-                </div>
-              </div>
               <div className="ml-auto flex items-center gap-3">
-                <button
-                  onClick={() => setShowAuditModal(true)}
-                  className="flex items-center gap-2 px-4 py-2 text-sm font-semibold border rounded-lg transition-all hover:opacity-80"
-                  style={{ color: ac, borderColor: ac }}
-                >
-                  <Icons.Activity />
-                  <span className="hidden sm:block">Actividades</span>
-                </button>
                 <button
                   onClick={() => setActiveNav("dependencias")}
                   className="flex items-center gap-2 px-4 py-2.5 text-sm font-bold text-white rounded-lg shadow-sm transition-all hover:opacity-90 shrink-0"
@@ -445,22 +463,20 @@ export default function App() {
           ) : activeNav === "configuracion" ? (
             <ConfiguracionView
               onToast={(m, s) => fireToast(m, s)}
-              onLogout={() => setShowLogoutModal(true)}
               dark={darkAdmin}
               onDark={setDarkAdmin}
               accent={accentColor}
               onAccent={setAccentColor}
-              compact={compactUI}
-              onCompact={setCompactUI}
-              anim={animEnabled}
-              onAnim={setAnimEnabled}
+              onPerfilGuardado={(u) => {
+                const next = updateStoredUser(u)
+                if (next) setCurrentUser(next)
+              }}
             />
           ) : (
             <DashboardView
               onToast={fireToast}
               onNav={(k) => setActiveNav(k)}
               onOpenMap={() => setShowMapModal(true)}
-              onOpenTicket={() => setShowTicketDrawer(true)}
             />
           )}
         </div>
@@ -476,22 +492,6 @@ export default function App() {
                 fireToast(
                   "Reporte descargado con éxito",
                   "El archivo PDF fue generado correctamente.",
-                ),
-              150,
-            )
-          }}
-        />
-      )}
-      {showAuditModal && (
-        <AuditModal
-          onClose={() => setShowAuditModal(false)}
-          onExport={() => {
-            setShowAuditModal(false)
-            setTimeout(
-              () =>
-                fireToast(
-                  "Audit log exportado",
-                  "El archivo CSV/PDF fue descargado correctamente.",
                 ),
               150,
             )
@@ -516,6 +516,13 @@ export default function App() {
       )}
       {showMapModal && (
         <JurisdictionModal onClose={() => setShowMapModal(false)} />
+      )}
+      {guiaPdfId && (
+        <PdfViewerModal
+          src={guiaPdfSrc}
+          nombre={GUIAS.find((g) => g.id === guiaPdfId)?.archivo ?? "guia.pdf"}
+          onClose={cerrarGuiaPdf}
+        />
       )}
       {showLogoutModal && (
         <CerrarSesionModal

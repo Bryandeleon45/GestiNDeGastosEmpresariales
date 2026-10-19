@@ -3,6 +3,7 @@ import { pool } from "../db.js";
 import { authenticate } from "../middlewares/authenticate.js";
 import { authorize } from "../middlewares/authorize.js";
 import { registrarBitacora, ipDe } from "../services/bitacora.service.js";
+import { enviarA } from "../services/notificaciones.service.js";
 
 const router = Router();
 
@@ -512,6 +513,31 @@ router.patch("/facturas/:id/revision", authorize("facturacion"), async (req, res
       modulo: "Facturación",
       detalle: `Factura ${factura.numero_factura}: ${factura.estado} → ${estado}${accion === "aprobar" ? ` (NPG ${npg.trim()})` : ""}`,
     });
+
+    // Avisa al proveedor dueño de la factura cómo terminó la revisión.
+    if (accion === "aprobar" || accion === "rechazar") {
+      const { rows: provUsr } = await pool.query(
+        `SELECT pu.id_usuario
+           FROM proveedor_usuario pu
+           JOIN usuario u ON u.id_usuario = pu.id_usuario
+          WHERE pu.id_proveedor = $1 AND u.activo = TRUE
+          ORDER BY pu.es_principal DESC
+          LIMIT 1`,
+        [factura.id_proveedor],
+      );
+      if (provUsr[0]) {
+        await enviarA({
+          ids: [provUsr[0].id_usuario],
+          tipo: "FACTURA_REVISADA",
+          titulo: `Factura ${estado.toLowerCase()}`,
+          mensaje:
+            estado === "Aprobada"
+              ? `Su factura ${factura.numero_factura} fue aprobada (NPG ${npg.trim()}).`
+              : `Su factura ${factura.numero_factura} fue rechazada. Motivo: ${motivo_rechazo}`,
+          referencia: `F-${factura.id_factura}`,
+        }).catch(() => 0);
+      }
+    }
 
     res.json(rows[0]);
   } catch (e) {

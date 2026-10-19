@@ -169,8 +169,8 @@ export default function CotizarOportunidadModal({
   const card = dark ? "#1E293B" : "#FFFFFF"
   const text = dark ? "#F8FAFC" : "#111827"
   const sub = dark ? "#94A3B8" : "#6B7280"
-  const border = dark ? "#334155" : "#F3F4F6"
-  const inputBg = dark ? "#0F172A" : "#F9FAFB"
+  const border = dark ? "#334155" : "var(--gray-100)"
+  const inputBg = dark ? "#0F172A" : "var(--gray-50)"
 
   return (
     <>
@@ -223,7 +223,7 @@ export default function CotizarOportunidadModal({
               <div className="rounded-xl border overflow-hidden" style={{ borderColor: border }}>
                 <table className="w-full">
                   <thead>
-                    <tr className="text-[10px] font-extrabold uppercase tracking-wider" style={{ backgroundColor: dark ? "#0F172A" : "#F9FAFB", color: sub }}>
+                    <tr className="text-[10px] font-extrabold uppercase tracking-wider" style={{ backgroundColor: dark ? "#0F172A" : "var(--gray-50)", color: sub }}>
                       <th className="px-3 py-2 text-left">Descripción</th>
                       <th className="px-3 py-2 text-right">Cantidad</th>
                       <th className="px-3 py-2 text-right">Precio Unit. (Q)</th>

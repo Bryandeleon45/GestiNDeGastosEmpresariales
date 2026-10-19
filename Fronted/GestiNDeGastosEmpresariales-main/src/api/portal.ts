@@ -206,6 +206,12 @@ export function marcarNotificacionLeida(id: number) {
   return api.patch<{ ok: boolean }>(`/portal/notificaciones/${id}/leida`)
 }
 
+export function marcarTodasLeidasPortal() {
+  return api.post<{ ok: boolean; actualizadas: number }>(
+    "/portal/notificaciones/leer-todas",
+  )
+}
+
 export function listarOrdenes() {
   return api.get<OrdenPortal[]>("/portal/ordenes")
 }

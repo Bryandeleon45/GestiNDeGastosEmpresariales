@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react"
-import { G, GL, GB } from "@/constants/theme"
+import { G, GL, GB, BRAND_HEX } from "@/constants/theme"
+import { buscarGlobal } from "@/api/busqueda"
 import {
-  ALL_SEARCH_RESULTS,
   RESULT_TYPE_LABEL,
   type SearchResult,
   type SearchResultType,
@@ -43,17 +43,30 @@ const RESULT_ICON: Record<SearchResultType, React.ReactElement> = {
       strokeWidth={1.8}
     >
       <path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z" />
+      <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
+      <line x1="12" y1="22.08" x2="12" y2="12" />
     </svg>
   ),
 }
 
-export default function SearchBar() {
+function escaparRegex(texto: string) {
+  return texto.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+}
+
+export default function SearchBar({
+  onResultado,
+}: {
+  onResultado?: (r: SearchResult) => void
+}) {
   const [query, setQuery] = useState("")
+  const [resultados, setResultados] = useState<SearchResult[]>([])
+  const [cargando, setCargando] = useState(false)
   const [focused, setFocused] = useState(false)
   const [hovered, setHovered] = useState(false)
   const [selected, setSelected] = useState<string | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
+  const peticionRef = useRef(0)
 
   useEffect(() => {
     const h = (e: MouseEvent) => {
@@ -68,25 +81,50 @@ export default function SearchBar() {
     return () => document.removeEventListener("mousedown", h)
   }, [])
 
-  const trimmed = query.trim().toLowerCase()
-  const filtered =
-    trimmed.length === 0
-      ? ALL_SEARCH_RESULTS.slice(0, 5)
-      : ALL_SEARCH_RESULTS.filter(
-          (r) =>
-            r.title.toLowerCase().includes(trimmed) ||
-            r.meta.toLowerCase().includes(trimmed) ||
-            r.badge.toLowerCase().includes(trimmed),
-        )
+  useEffect(() => {
+    const h = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault()
+        inputRef.current?.focus()
+      }
+    }
+    document.addEventListener("keydown", h)
+    return () => document.removeEventListener("keydown", h)
+  }, [])
+
+  const trimmed = query.trim()
+
+  useEffect(() => {
+    const id = ++peticionRef.current
+    if (trimmed.length < 2) {
+      setResultados([])
+      setCargando(false)
+      return
+    }
+    setCargando(true)
+    const t = setTimeout(() => {
+      buscarGlobal(trimmed)
+        .then((res) => {
+          if (id === peticionRef.current) setResultados(res)
+        })
+        .catch(() => {
+          if (id === peticionRef.current) setResultados([])
+        })
+        .finally(() => {
+          if (id === peticionRef.current) setCargando(false)
+        })
+    }, 300)
+    return () => clearTimeout(t)
+  }, [trimmed])
 
   const groups: Record<SearchResultType, SearchResult[]> = {
     solicitud: [],
     proveedor: [],
     stock: [],
   }
-  filtered.forEach((r) => groups[r.type].push(r))
+  resultados.forEach((r) => groups[r.type].push(r))
   const orderedTypes: SearchResultType[] = ["solicitud", "proveedor", "stock"]
-  const showDropdown = focused && (trimmed.length > 0 || true)
+  const mostrarDropdown = focused
 
   const isActive = focused
   const isHovered = hovered && !focused
@@ -99,7 +137,7 @@ export default function SearchBar() {
   if (isActive) bgColor = "#FFFFFF"
 
   let boxShadow = "none"
-  if (isActive) boxShadow = `0 0 0 3px ${G}22, 0 1px 3px rgba(0,0,0,0.06)`
+  if (isActive) boxShadow = `0 0 0 3px ${BRAND_HEX}22, 0 1px 3px rgba(0,0,0,0.06)`
   else if (isHovered) boxShadow = "0 1px 4px rgba(0,0,0,0.08)"
 
   const iconColor = isActive ? G : "#94A3B8"
@@ -144,10 +182,23 @@ export default function SearchBar() {
             } as React.CSSProperties
           }
         />
-        {query.length > 0 && (
+        {cargando && (
+          <svg
+            className="w-4 h-4 shrink-0 animate-spin"
+            fill="none"
+            stroke={G}
+            viewBox="0 0 24 24"
+            strokeWidth={2.5}
+          >
+            <circle cx="12" cy="12" r="10" opacity="0.25" />
+            <path d="M12 2a10 10 0 019.95 9" strokeLinecap="round" />
+          </svg>
+        )}
+        {query.length > 0 && !cargando && (
           <button
             onClick={() => {
               setQuery("")
+              setResultados([])
               inputRef.current?.focus()
             }}
             className="w-5 h-5 flex items-center justify-center rounded-full shrink-0 transition-colors hover:bg-gray-200 text-gray-400 hover:text-gray-600"
@@ -176,7 +227,7 @@ export default function SearchBar() {
         )}
       </div>
 
-      {showDropdown && (
+      {mostrarDropdown && (
         <div
           className="absolute top-full left-0 right-0 mt-2 bg-white rounded-xl border border-gray-100 overflow-hidden z-[500]"
           style={{
@@ -189,19 +240,34 @@ export default function SearchBar() {
         >
           <div className="flex items-center justify-between px-4 py-2.5 border-b border-gray-50">
             <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
-              {trimmed ? `Resultados para "${query}"` : "Búsquedas Recientes"}
+              {trimmed.length >= 2
+                ? `Resultados para "${trimmed}"`
+                : "Búsqueda global"}
             </p>
-            {filtered.length > 0 && (
+            {resultados.length > 0 && !cargando && (
               <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-500">
-                {filtered.length}
+                {resultados.length}
               </span>
             )}
           </div>
 
-          {filtered.length === 0 ? (
+          {trimmed.length < 2 ? (
+            <div className="px-4 py-6 text-center">
+              <p className="text-xs text-gray-400">
+                Escribe al menos 2 caracteres para buscar en solicitudes,
+                proveedores e inventario.
+              </p>
+            </div>
+          ) : cargando && resultados.length === 0 ? (
+            <div className="px-4 py-6 text-center">
+              <p className="text-sm font-semibold text-gray-400">
+                Buscando…
+              </p>
+            </div>
+          ) : resultados.length === 0 ? (
             <div className="px-4 py-8 text-center">
               <p className="text-sm font-semibold text-gray-400">
-                Sin resultados para "{query}"
+                Sin resultados para "{trimmed}"
               </p>
               <p className="text-xs text-gray-300 mt-1">
                 Intenta con número de solicitud, proveedor o artículo
@@ -224,8 +290,8 @@ export default function SearchBar() {
                       key={r.id}
                       onClick={() => {
                         setSelected(r.id)
-                        setQuery(r.title)
                         setFocused(false)
+                        onResultado?.(r)
                       }}
                       className="w-full flex items-center gap-3 px-4 py-3 text-left transition-all group border-b border-gray-50 last:border-0"
                       style={{
@@ -242,7 +308,8 @@ export default function SearchBar() {
                       <div
                         className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-colors"
                         style={{
-                          backgroundColor: selected === r.id ? GB : "#F1F5F9",
+                          backgroundColor:
+                            selected === r.id ? GB : "var(--gray-100)",
                           color: selected === r.id ? G : "#64748B",
                         }}
                       >
@@ -254,7 +321,7 @@ export default function SearchBar() {
                           dangerouslySetInnerHTML={{
                             __html: trimmed
                               ? r.title.replace(
-                                  new RegExp(`(${trimmed})`, "gi"),
+                                  new RegExp(`(${escaparRegex(trimmed)})`, "gi"),
                                   `<mark style="background:${GL};color:${G};border-radius:2px;padding:0 1px">$1</mark>`,
                                 )
                               : r.title,
@@ -274,23 +341,6 @@ export default function SearchBar() {
                 </div>
               )
             })
-          )}
-
-          {filtered.length > 0 && (
-            <div className="border-t border-gray-100">
-              <button
-                onClick={() => setFocused(false)}
-                className="w-full flex items-center justify-between px-4 py-3 text-sm font-semibold transition-colors hover:bg-gray-50"
-                style={{ color: G }}
-              >
-                <span>
-                  Ver todos los resultados ({ALL_SEARCH_RESULTS.length}) →
-                </span>
-                <kbd className="text-[10px] font-semibold text-gray-400 px-1.5 py-0.5 rounded border border-gray-200 bg-gray-50">
-                  ↵
-                </kbd>
-              </button>
-            </div>
           )}
         </div>
       )}

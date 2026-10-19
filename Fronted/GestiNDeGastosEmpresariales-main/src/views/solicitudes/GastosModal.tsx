@@ -1,5 +1,5 @@
 import { useState, useRef } from "react"
-import { G, GL } from "@/constants/theme"
+import { G, GL, BRAND_HEX } from "@/constants/theme"
 import { Icons } from "@/components/common/Icons"
 import { DEPS_LIST } from "@/models/solicitudes"
 import { GASTOS_DATA, ESTADO_BADGE } from "@/models/gastos"
@@ -72,7 +72,7 @@ export default function GastosModal({
                   className="w-full flex items-center justify-between px-3 py-2.5 text-sm bg-white border rounded-lg transition-all"
                   style={{
                     borderColor: añoOpen ? G : "#D1D5DB",
-                    boxShadow: añoOpen ? `0 0 0 3px ${G}22` : "none",
+                    boxShadow: añoOpen ? `0 0 0 3px ${BRAND_HEX}22` : "none",
                   }}
                 >
                   <span className="font-medium text-gray-800">{año}</span>
@@ -94,7 +94,7 @@ export default function GastosModal({
                         }}
                         className="w-full flex items-center justify-between px-3 py-2.5 text-sm text-left transition-colors"
                         style={{
-                          backgroundColor: y === año ? GL : "white",
+                          backgroundColor: y === año ? GL : "var(--gray-50)",
                           color: y === año ? G : "#374151",
                         }}
                       >

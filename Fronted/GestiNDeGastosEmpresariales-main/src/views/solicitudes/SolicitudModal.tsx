@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react"
-import { G, GL, GB } from "@/constants/theme"
+import { G, GL, GB, BRAND_HEX } from "@/constants/theme"
 import { Icons } from "@/components/common/Icons"
 import Dropdown from "@/views/common/Dropdown"
 import { listarDependencias, type Dependencia } from "@/api/catalogos"
@@ -82,7 +82,7 @@ function ObjectSelect<T>({
           className="w-full flex items-center justify-between px-3 py-2.5 text-sm bg-white border rounded-lg outline-none transition-all text-left"
           style={{
             borderColor: open ? G : "#D1D5DB",
-            boxShadow: open ? `0 0 0 3px ${G}22` : "none",
+            boxShadow: open ? `0 0 0 3px ${BRAND_HEX}22` : "none",
           }}
         >
           <span
@@ -173,7 +173,7 @@ function TextInput({
       className="w-full px-3 py-2.5 text-sm bg-gray-50 border rounded-lg outline-none transition-all placeholder-gray-400"
       style={{
         borderColor: f ? G : "#E5E7EB",
-        boxShadow: f ? `0 0 0 3px ${G}22` : "none",
+        boxShadow: f ? `0 0 0 3px ${BRAND_HEX}22` : "none",
       }}
     />
   )
@@ -200,7 +200,7 @@ function TextArea({
       className="w-full px-3 py-2.5 text-sm bg-gray-50 border rounded-lg outline-none resize-none transition-all placeholder-gray-400"
       style={{
         borderColor: f ? G : "#E5E7EB",
-        boxShadow: f ? `0 0 0 3px ${G}22` : "none",
+        boxShadow: f ? `0 0 0 3px ${BRAND_HEX}22` : "none",
       }}
     />
   )
@@ -781,7 +781,7 @@ export default function SolicitudModal({
                     className="w-4 h-4 rounded-full border-2 flex items-center justify-center transition-all"
                     style={{
                       borderColor: prioridad === p ? G : "#D1D5DB",
-                      backgroundColor: prioridad === p ? G : "white",
+                      backgroundColor: prioridad === p ? G : "var(--gray-50)",
                     }}
                   >
                     {prioridad === p && (

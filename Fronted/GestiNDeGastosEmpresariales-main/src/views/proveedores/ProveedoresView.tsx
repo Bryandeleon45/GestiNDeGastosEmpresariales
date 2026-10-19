@@ -78,7 +78,7 @@ export default function ProveedoresView({
 
   return (
     <>
-      <div className="flex-1 overflow-auto" style={{ background: "#F8F9FA" }}>
+      <div className="flex-1 overflow-auto" style={{ background: "var(--gray-50)" }}>
         <div className="px-6 py-5 space-y-5">
           <div className="flex items-center gap-2 text-xs font-semibold text-gray-400">
             <span>Proveedores</span>
@@ -217,7 +217,7 @@ export default function ProveedoresView({
                           onMouseEnter={() => setHoveredRow(p.id)}
                           onMouseLeave={() => setHoveredRow(null)}
                           className="border-b border-gray-50 last:border-0 transition-colors"
-                          style={{ backgroundColor: hoveredRow === p.id ? "#F8FFFE" : "white" }}
+                          style={{ backgroundColor: hoveredRow === p.id ? "var(--brand-light)" : "var(--gray-50)" }}
                         >
                           <td className="px-4 py-4">
                             <div className="flex items-center gap-3">

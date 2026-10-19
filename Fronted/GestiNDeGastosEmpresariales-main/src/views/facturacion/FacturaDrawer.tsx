@@ -16,7 +16,7 @@ const ESTADO_STYLE: Record<string, { bg: string; color: string }> = {
   "Pagado con atraso": { bg: "#FDE68A", color: "#92400E" },
   Pendiente: { bg: "#FEF9C3", color: "#854D0E" },
   Vencido: { bg: "#FEE2E2", color: "#DC2626" },
-  Rechazada: { bg: "#F1F5F9", color: "#64748B" },
+  Rechazada: { bg: "var(--gray-100)", color: "#64748B" },
 }
 
 const fmt = (n: number | string) =>

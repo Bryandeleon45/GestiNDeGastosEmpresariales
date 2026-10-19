@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react"
-import { G, GL, GB } from "@/constants/theme"
+import { G, GL, GB, BRAND_HEX } from "@/constants/theme"
 import { Icons } from "@/components/common/Icons"
 import Dropdown from "@/views/common/Dropdown"
 import { conectarProveedor, type TipoProveedor, type RolPortal } from "@/api/proveedores"
@@ -43,7 +43,7 @@ export default function ConectarProveedorModal({
     onBlur: () => setFocus(null),
     style: {
       borderColor: focusField === id ? G : "#E5E7EB",
-      boxShadow: focusField === id ? `0 0 0 3px ${G}20` : "none",
+      boxShadow: focusField === id ? `0 0 0 3px ${BRAND_HEX}20` : "none",
       outline: "none",
       transition: "all 0.15s",
     } as React.CSSProperties,

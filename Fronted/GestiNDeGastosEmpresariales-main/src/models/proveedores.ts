@@ -28,7 +28,7 @@ export const CONEXION_STYLE: Record<
   { bg: string; text: string; dot: string; label: ProvEstadoLabel }
 > = {
   conectado: { bg: "#DCFCE7", text: "#16A34A", dot: "#16A34A", label: "Conectado" },
-  sin_conexion: { bg: "#F3F4F6", text: "#6B7280", dot: "#9CA3AF", label: "Sin Conexión" },
+  sin_conexion: { bg: "var(--gray-100)", text: "#6B7280", dot: "#9CA3AF", label: "Sin Conexión" },
   bloqueado: { bg: "#FEE2E2", text: "#DC2626", dot: "#EF4444", label: "Acceso Bloqueado" },
 }
 

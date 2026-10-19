@@ -1,12 +1,14 @@
 import { useState, useEffect, useRef } from "react"
-import { G, GL, GB } from "@/constants/theme"
+import { G, GL, GB, BRAND_HEX } from "@/constants/theme"
 import { Icons } from "@/components/common/Icons"
 import { FAQ_LINKS } from "@/models/ayuda"
 
 export default function HelpButton({
   onOpenTicket,
+  onAbrirGuia,
 }: {
   onOpenTicket: () => void
+  onAbrirGuia: (id: string) => void
 }) {
   const [open, setOpen] = useState(false)
   const [hovered, setHovered] = useState(false)
@@ -107,7 +109,7 @@ export default function HelpButton({
                 className="w-full pl-9 pr-3 py-2.5 text-sm bg-gray-50 border rounded-xl outline-none transition-all placeholder-gray-400"
                 style={{
                   borderColor: focusSearch ? G : "#E5E7EB",
-                  boxShadow: focusSearch ? `0 0 0 3px ${G}22` : "none",
+                  boxShadow: focusSearch ? `0 0 0 3px ${BRAND_HEX}22` : "none",
                 }}
               />
             </div>
@@ -125,8 +127,11 @@ export default function HelpButton({
               ) : (
                 filtered.map((f) => (
                   <button
-                    key={f.q}
-                    onClick={() => setOpen(false)}
+                    key={f.id}
+                    onClick={() => {
+                      setOpen(false)
+                      onAbrirGuia(f.id)
+                    }}
                     className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm text-left transition-all group hover:bg-gray-50"
                   >
                     <span
@@ -136,7 +141,7 @@ export default function HelpButton({
                       <svg
                         className="w-3 h-3"
                         fill="none"
-                        stroke={G}
+                        style={{ stroke: G }}
                         viewBox="0 0 24 24"
                         strokeWidth={2.5}
                       >

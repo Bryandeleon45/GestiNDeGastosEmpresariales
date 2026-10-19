@@ -3,7 +3,7 @@ import { pool } from "../db.js";
 import { authenticate } from "../middlewares/authenticate.js";
 import { authorize } from "../middlewares/authorize.js";
 import { registrarBitacora, ipDe } from "../services/bitacora.service.js";
-import { enviar } from "../services/notificaciones.service.js";
+import { enviar, usuarioDeProveedor } from "../services/notificaciones.service.js";
 
 const router = Router();
 
@@ -50,7 +50,7 @@ function dependenciaDeUsuario(id_usuario) {
 
 // Ejecuta la adjudicación de una cotización ganadora: marca estados,
 // genera la orden de compra y actualiza proceso/requisición.
-async function adjudicarInterno(client, proceso, cotizacion, motivo, idUsuario) {
+async function aplicarAdjudicacion(client, proceso, cotizacion, motivo, idUsuario) {
   await client.query(
     "UPDATE cotizacion SET estado_cotizacion = 'Rechazada', seleccionada = FALSE WHERE id_requisicion = $1 AND id_cotizacion <> $2",
     [proceso.id_requisicion, cotizacion.id_cotizacion],
@@ -308,6 +308,24 @@ router.post("/procesos", authorize("proformas"), async (req, res, next) => {
       detalle: `Publicado proceso de cotización para ${requisicion.codigo_requisicion}`,
     });
 
+    // Avisa a cada proveedor invitado que hay una nueva oportunidad.
+    try {
+      for (const idProveedor of proveedores) {
+        const idUsr = await usuarioDeProveedor(idProveedor);
+        if (idUsr) {
+          await enviar({
+            idUsuario: idUsr,
+            tipo: "NUEVA_OPORTUNIDAD",
+            titulo: "Nueva oportunidad de cotización",
+            mensaje: `Se publicó el proceso de la solicitud ${requisicion.codigo_requisicion}. Ya puede cotizar desde el portal.`,
+            referencia: String(proceso.id_proceso),
+          });
+        }
+      }
+    } catch {
+      // El aviso no debe impedir confirmar la publicación.
+    }
+
     res.status(201).json(proceso);
   } catch (e) {
     await client.query("ROLLBACK");
@@ -413,16 +431,43 @@ router.put("/procesos/:id/invitaciones", authorize("proformas"), async (req, res
         );
       }
     }
+    const agregados = [];
     for (const id of nuevoSet) {
       if (!actualSet.has(id)) {
         await client.query(
           "INSERT INTO invitacion_proveedor (id_proceso, id_proveedor) VALUES ($1, $2) ON CONFLICT DO NOTHING",
           [proceso.id_proceso, id],
         );
+        agregados.push(id);
       }
     }
 
     await client.query("COMMIT");
+
+    // Avisa a los proveedores recién agregados al proceso.
+    if (agregados.length) {
+      try {
+        const { rows: rq } = await pool.query(
+          "SELECT codigo_requisicion FROM requisicion WHERE id_requisicion = $1",
+          [proceso.id_requisicion],
+        );
+        const codigo = rq[0]?.codigo_requisicion ?? String(proceso.id_proceso);
+        for (const idProveedor of agregados) {
+          const idUsr = await usuarioDeProveedor(idProveedor);
+          if (idUsr) {
+            await enviar({
+              idUsuario: idUsr,
+              tipo: "NUEVA_OPORTUNIDAD",
+              titulo: "Nueva oportunidad de cotización",
+              mensaje: `Fue invitado a cotizar la solicitud ${codigo}. Revise los detalles en el portal.`,
+              referencia: String(proceso.id_proceso),
+            });
+          }
+        }
+      } catch {
+        // El aviso no debe impedir la respuesta.
+      }
+    }
 
     const { rows: invitados } = await client.query(
       `SELECT ip.id_invitacion, ip.id_proveedor, ip.fecha_invitacion, ip.fecha_vista,
@@ -752,7 +797,7 @@ router.post("/procesos/:id/adjudicar", authorize("proformas"), async (req, res, 
     const requisicion = reqRes.rows[0];
 
     // Marcar aceptada, generar orden de compra y actualizar proceso/requisición
-    const orden = await adjudicarInterno(client, proceso, cotizacion, motivo_adjudicacion.trim(), req.user.id_usuario);
+    const orden = await aplicarAdjudicacion(client, proceso, cotizacion, motivo_adjudicacion.trim(), req.user.id_usuario);
 
     await client.query("COMMIT");
 
@@ -830,7 +875,7 @@ router.post("/procesos/:id/auto-adjudicar", authorize("proformas"), async (req, 
 
     // Validar presupuesto disponible (el monto se establece al cargar la factura)
     const motivo = `Adjudicación automática por mejor precio: ${ganadora.razon_social} (${ganadora.nit})`;
-    const orden = await adjudicarInterno(client, proceso, ganadora, motivo, req.user.id_usuario);
+    const orden = await aplicarAdjudicacion(client, proceso, ganadora, motivo, req.user.id_usuario);
 
     await client.query("COMMIT");
 
@@ -877,6 +922,37 @@ router.post("/procesos/:id/desierto", authorize("proformas"), async (req, res, n
       [motivo_adjudicacion.trim(), req.user.id_usuario, req.params.id],
     );
     if (!rows[0]) return res.status(404).json({ error: "Proceso no encontrado" });
+
+    // Avisa a los proveedores que cotizaron que el proceso quedó desierto.
+    try {
+      const { rows: rq } = await pool.query(
+        `SELECT codigo_requisicion FROM requisicion
+          WHERE id_requisicion = (SELECT id_requisicion FROM proceso_cotizacion WHERE id_proceso = $1)`,
+        [req.params.id],
+      );
+      const codigo = rq[0]?.codigo_requisicion ?? String(req.params.id);
+      const { rows: cot } = await pool.query(
+        `SELECT DISTINCT c.id_proveedor
+           FROM cotizacion c
+          WHERE c.id_requisicion = (SELECT id_requisicion FROM proceso_cotizacion WHERE id_proceso = $1)
+            AND c.estado_cotizacion <> 'Borrador'`,
+        [req.params.id],
+      );
+      for (const c of cot) {
+        const idUsr = await usuarioDeProveedor(c.id_proveedor);
+        if (idUsr) {
+          await enviar({
+            idUsuario: idUsr,
+            tipo: "PROCESO_DESIERTO",
+            titulo: "Proceso desierto",
+            mensaje: `La solicitud ${codigo} fue declarada desierta; su cotización no fue seleccionada.`,
+            referencia: String(req.params.id),
+          });
+        }
+      }
+    } catch {
+      // El aviso no debe impedir la respuesta.
+    }
 
     await registrarBitacora({
       idUsuario: req.user.id_usuario,
@@ -1287,13 +1363,58 @@ router.patch("/cotizaciones/:id/estado", authorize("proformas"), async (req, res
       return res.status(400).json({ error: `No se puede cambiar de ${cur[0].estado_cotizacion} a ${estado}` });
     }
 
-    const { rows } = await client.query(
-      `UPDATE cotizacion
-          SET estado_cotizacion = $1, observaciones_tecnicas = COALESCE($2, observaciones_tecnicas)
-        WHERE id_cotizacion = $3
-        RETURNING *`,
-      [estado, observaciones ?? null, req.params.id],
-    );
+    let updated;
+    if (estado === "Aceptada") {
+      // Aceptar una proforma la adjudica: marca las demás como rechazadas,
+      // genera/actualiza la orden de compra con sus detalles y la pasa al
+      // estado Aprobada en bodega para continuar el flujo normal
+      // (recepción → facturación → pago).
+      const { rows: procRows } = await client.query(
+        "SELECT * FROM proceso_cotizacion WHERE id_requisicion = $1 AND fase IN ('Comparación','Publicada') ORDER BY id_proceso DESC LIMIT 1",
+        [cur[0].id_requisicion],
+      );
+      const proceso = procRows[0];
+      if (!proceso) {
+        await client.query("ROLLBACK");
+        return res.status(400).json({ error: "No hay un proceso de cotización activo para esta proforma" });
+      }
+      const { rows: reqRows } = await client.query(
+        "SELECT codigo_requisicion FROM requisicion WHERE id_requisicion = $1",
+        [cur[0].id_requisicion],
+      );
+      const codigo = reqRows[0]?.codigo_requisicion;
+
+      const orden = await aplicarAdjudicacion(client, proceso, cur[0], null, req.user.id_usuario);
+
+      await client.query(
+        "UPDATE orden_compra SET estado = 'Aprobada' WHERE id_orden_compra = $1",
+        [orden.id_orden_compra],
+      );
+
+      if (observaciones) {
+        await client.query(
+          "UPDATE cotizacion SET observaciones_tecnicas = $1 WHERE id_cotizacion = $2",
+          [observaciones, cur[0].id_cotizacion],
+        );
+      }
+
+      await notificarAdjudicacion(proceso, cur[0], codigo);
+
+      const { rows: updRows } = await client.query(
+        "SELECT * FROM cotizacion WHERE id_cotizacion = $1",
+        [cur[0].id_cotizacion],
+      );
+      updated = updRows[0];
+    } else {
+      const { rows } = await client.query(
+        `UPDATE cotizacion
+            SET estado_cotizacion = $1, observaciones_tecnicas = COALESCE($2, observaciones_tecnicas)
+          WHERE id_cotizacion = $3
+          RETURNING *`,
+        [estado, observaciones ?? null, req.params.id],
+      );
+      updated = rows[0];
+    }
 
     await client.query("COMMIT");
 
@@ -1305,7 +1426,7 @@ router.patch("/cotizaciones/:id/estado", authorize("proformas"), async (req, res
       detalle: `Cotización ${cur[0].numero_cotizacion}: ${cur[0].estado_cotizacion} → ${estado}`,
     });
 
-    res.json(rows[0]);
+    res.json(updated);
   } catch (e) {
     await client.query("ROLLBACK");
     next(e);

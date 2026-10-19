@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react"
-import { G, GL } from "@/constants/theme"
+import { G, GL, BRAND_HEX } from "@/constants/theme"
 import { Icons } from "@/components/common/Icons"
 
 export default function Dropdown({
@@ -33,7 +33,7 @@ export default function Dropdown({
           className="w-full flex items-center justify-between px-3 py-2.5 text-sm bg-white border rounded-lg outline-none transition-all text-left"
           style={{
             borderColor: open ? G : "#D1D5DB",
-            boxShadow: open ? `0 0 0 3px ${G}22` : "none",
+            boxShadow: open ? `0 0 0 3px ${BRAND_HEX}22` : "none",
           }}
         >
           <span className="text-gray-800 font-medium">{value}</span>

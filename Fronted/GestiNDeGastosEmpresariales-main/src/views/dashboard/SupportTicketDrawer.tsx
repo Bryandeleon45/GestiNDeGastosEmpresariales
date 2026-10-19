@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react"
-import { G, GL, GB } from "@/constants/theme"
+import { G, GL, GB, BRAND_HEX } from "@/constants/theme"
 import { Icons } from "@/components/common/Icons"
 
 type Priority = "Baja" | "Media" | "Alta" | "Urgente"
@@ -51,7 +51,7 @@ export default function SupportTicketDrawer({
     onBlur: () => setFocus(null),
     style: {
       borderColor: focusField === id ? G : "#E5E7EB",
-      boxShadow: focusField === id ? `0 0 0 3px ${G}20` : "none",
+      boxShadow: focusField === id ? `0 0 0 3px ${BRAND_HEX}20` : "none",
       outline: "none",
       transition: "all 0.15s",
     },
@@ -151,7 +151,7 @@ export default function SupportTicketDrawer({
                     categoria === c
                       ? { backgroundColor: G, color: "white", borderColor: G }
                       : {
-                          backgroundColor: "white",
+                          backgroundColor: "var(--gray-50)",
                           color: "#374151",
                           borderColor: "#E5E7EB",
                         }

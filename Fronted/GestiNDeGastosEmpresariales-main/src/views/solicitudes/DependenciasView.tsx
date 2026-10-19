@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { G, GL } from "@/constants/theme"
+import { G, GL, BRAND_HEX } from "@/constants/theme"
 import { Icons } from "@/components/common/Icons"
 import {
   PRIORIDAD_STYLE,
@@ -67,7 +67,7 @@ export default function DependenciasView({
 
   return (
     <>
-      <div className="flex-1 overflow-auto" style={{ background: "#F8F9FA" }}>
+      <div className="flex-1 overflow-auto" style={{ background: "var(--gray-50)" }}>
         <div className="px-6 py-5 space-y-5">
           <div className="flex items-start justify-between gap-4 flex-wrap">
             <div>
@@ -98,7 +98,7 @@ export default function DependenciasView({
                   className="w-full flex items-center justify-between px-4 py-3 text-sm bg-white border rounded-xl transition-all text-left"
                   style={{
                     borderColor: depOpen ? G : "#E5E7EB",
-                    boxShadow: depOpen ? `0 0 0 3px ${G}22` : "none",
+                    boxShadow: depOpen ? `0 0 0 3px ${BRAND_HEX}22` : "none",
                   }}
                 >
                   <span className="font-semibold text-gray-800">
@@ -218,7 +218,7 @@ export default function DependenciasView({
                             <td
                               colSpan={8}
                               className="px-4 py-2.5 border-t border-b border-gray-100"
-                              style={{ backgroundColor: "#F0FAF4" }}
+                              style={{ backgroundColor: "var(--brand-light)" }}
                             >
                               <span className="text-xs font-bold uppercase tracking-wide" style={{ color: G }}>
                                 {g.dep}
@@ -233,7 +233,7 @@ export default function DependenciasView({
                           onMouseEnter={() => setHoveredRow(r.id)}
                           onMouseLeave={() => setHoveredRow(null)}
                           className="border-b border-gray-50 last:border-0 transition-colors"
-                          style={{ backgroundColor: hoveredRow === r.id ? "#FAFFFE" : "white" }}
+                          style={{ backgroundColor: hoveredRow === r.id ? "var(--brand-light)" : "var(--gray-50)" }}
                         >
                           <td className="px-4 py-4">
                             <p className="text-xs font-bold font-mono text-gray-700">#{r.id}</p>

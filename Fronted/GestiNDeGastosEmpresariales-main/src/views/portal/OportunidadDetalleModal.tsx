@@ -14,10 +14,10 @@ const ESTADO_BADGE: Record<string, { bg: string; color: string }> = {
   Cotizada: { bg: "#DCFCE7", color: "#16A34A" },
   Adjudicada: { bg: "#22C55E", color: "#FFFFFF" },
   "No adjudicada": { bg: "#FEE2E2", color: "#DC2626" },
-  Declinada: { bg: "#F3F4F6", color: "#6B7280" },
+  Declinada: { bg: "var(--gray-100)", color: "#6B7280" },
   Vencida: { bg: "#FEF9C3", color: "#92400E" },
-  Cancelada: { bg: "#F3F4F6", color: "#6B7280" },
-  Cerrada: { bg: "#F3F4F6", color: "#6B7280" },
+  Cancelada: { bg: "var(--gray-100)", color: "#6B7280" },
+  Cerrada: { bg: "var(--gray-100)", color: "#6B7280" },
 }
 
 export default function OportunidadDetalleModal({
@@ -29,10 +29,10 @@ export default function OportunidadDetalleModal({
   onClose: () => void
   dark: boolean
 }) {
-  const es = ESTADO_BADGE[detalle.estado] ?? { bg: "#F3F4F6", color: "#6B7280" }
+  const es = ESTADO_BADGE[detalle.estado] ?? { bg: "var(--gray-100)", color: "#6B7280" }
   const card = dark ? "#1E293B" : "#FFFFFF"
   const border = dark ? "#334155" : "#E5E7EB"
-  const text = dark ? "#F1F5F9" : "#1F2937"
+  const text = dark ? "var(--gray-100)" : "#1F2937"
   const sub = dark ? "#94A3B8" : "#6B7280"
 
   return (
@@ -92,7 +92,7 @@ export default function OportunidadDetalleModal({
             <p className="text-[10px] font-extrabold uppercase tracking-widest mb-2" style={{ color: sub }}>
               Ítems Solicitados ({detalle.items.length})
             </p>
-            <div className="rounded-xl border divide-y" style={{ borderColor: border, backgroundColor: dark ? "#0F172A" : "#F9FAFB" }}>
+            <div className="rounded-xl border divide-y" style={{ borderColor: border, backgroundColor: dark ? "#0F172A" : "var(--gray-50)" }}>
               {detalle.items.map((it) => (
                 <div key={it.id_detalle} className="px-4 py-3">
                   <p className="text-sm font-semibold" style={{ color: text }}>
@@ -109,7 +109,7 @@ export default function OportunidadDetalleModal({
 
           <div>
             <p className="text-[10px] font-extrabold uppercase tracking-widest mb-1" style={{ color: sub }}>Justificación</p>
-            <p className="text-sm rounded-lg border p-3 leading-relaxed" style={{ color: text, borderColor: border, backgroundColor: dark ? "#0F172A" : "#F9FAFB" }}>
+            <p className="text-sm rounded-lg border p-3 leading-relaxed" style={{ color: text, borderColor: border, backgroundColor: dark ? "#0F172A" : "var(--gray-50)" }}>
               {detalle.justificacion}
             </p>
           </div>

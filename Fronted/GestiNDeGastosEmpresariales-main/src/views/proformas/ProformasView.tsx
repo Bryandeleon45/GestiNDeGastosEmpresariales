@@ -79,7 +79,7 @@ export default function ProformasView({
 
   return (
     <>
-      <div className="flex-1 overflow-auto" style={{ background: "#F8F9FA" }}>
+      <div className="flex-1 overflow-auto" style={{ background: "var(--gray-50)" }}>
         <div className="px-6 py-5 space-y-5">
           <div className="flex items-center gap-1.5 text-xs font-semibold text-gray-400 flex-wrap">
             <span>Adquisiciones</span>

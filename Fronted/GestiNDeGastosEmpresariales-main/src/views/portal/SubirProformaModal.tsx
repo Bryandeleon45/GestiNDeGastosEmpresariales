@@ -46,7 +46,7 @@ export default function SubirProformaModal({
         >
           <div
             className="flex items-center gap-3 px-6 pt-6 pb-4 border-b"
-            style={{ borderColor: dark ? "#334155" : "#F3F4F6" }}
+            style={{ borderColor: dark ? "#334155" : "var(--gray-100)" }}
           >
             <div
               className="w-10 h-10 rounded-xl flex items-center justify-center text-white shrink-0"
@@ -96,7 +96,7 @@ export default function SubirProformaModal({
                     : "#F0FDF4"
                   : dark
                     ? "#0F172A"
-                    : "#F9FAFB",
+                    : "var(--gray-50)",
               }}
             >
               {file ? (
@@ -104,7 +104,7 @@ export default function SubirProformaModal({
                   <svg
                     className="w-10 h-10"
                     fill="none"
-                    stroke={G}
+                    style={{ stroke: G }}
                     viewBox="0 0 24 24"
                     strokeWidth={1.5}
                   >

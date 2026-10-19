@@ -16,7 +16,7 @@ const ESTADO_ITEM_BADGE: Record<string, { bg: string; color: string }> = {
   Recibido: { bg: "#DCFCE7", color: "#16A34A" },
   Rechazado: { bg: "#FEE2E2", color: "#DC2626" },
   Faltante: { bg: "#FEF3C7", color: "#B45309" },
-  Pendiente: { bg: "#F1F5F9", color: "#64748B" },
+  Pendiente: { bg: "var(--gray-100)", color: "#64748B" },
 }
 
 export default function VerificarRecepcionModal({
@@ -224,7 +224,7 @@ export default function VerificarRecepcionModal({
             })
           ) : esCompleta && detalle ? (
             (detalle.items ?? []).map((item) => {
-              const badge = ESTADO_ITEM_BADGE[item.estado_item] ?? { bg: "#F1F5F9", color: "#64748B" }
+              const badge = ESTADO_ITEM_BADGE[item.estado_item] ?? { bg: "var(--gray-100)", color: "#64748B" }
               return (
                 <div key={item.id_detalle_recepcion} className="border border-gray-200 rounded-lg p-4">
                   <div className="flex items-start justify-between gap-3">
