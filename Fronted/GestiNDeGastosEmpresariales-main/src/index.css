@@ -207,6 +207,18 @@ body {
     box-shadow: none !important;
     background: #ffffff !important;
   }
+  .print-container {
+    position: static !important;
+    inset: auto !important;
+    overflow: visible !important;
+    background: transparent !important;
+    backdrop-filter: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    height: auto !important;
+    max-height: none !important;
+    z-index: auto !important;
+  }
   .no-print {
     display: none !important;
   }

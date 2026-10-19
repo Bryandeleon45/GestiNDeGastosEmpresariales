@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useState } from "react"
 import { G } from "@/constants/theme"
 import { Icons } from "@/components/common/Icons"
 import { useProformasController } from "@/controllers/useProformasController"
@@ -28,18 +28,14 @@ function fmtFecha(iso: string | null) {
 export default function ProformasView({
   onToast,
   onNav,
-  initialProcesoId,
-  onClearProcesoId,
 }: {
   onToast: (m: string, s: string) => void
   onNav: (key: string) => void
-  initialProcesoId?: number | null
-  onClearProcesoId?: () => void
 }) {
   const { tab, setTab, ordenes, loadingOrdenes, reload } =
     useProformasController(onToast)
 
-  const [procesoId, setProcesoId] = useState<number | null>(initialProcesoId ?? null)
+  const [procesoId, setProcesoId] = useState<number | null>(null)
   const [showPublicar, setShowPublicar] = useState(false)
   const [docOrden, setDocOrden] = useState<OrdenCompraDetalle | null>(null)
   const [cargandoDoc, setCargandoDoc] = useState(false)
@@ -57,18 +53,11 @@ export default function ProformasView({
     }
   }
 
-  useEffect(() => {
-    if (initialProcesoId != null) setProcesoId(initialProcesoId)
-  }, [initialProcesoId])
-
   if (procesoId != null) {
     return (
       <ComparativaProformasView
         idProceso={procesoId}
-        onBack={() => {
-          setProcesoId(null)
-          onClearProcesoId?.()
-        }}
+        onBack={() => setProcesoId(null)}
         onToast={onToast}
       />
     )

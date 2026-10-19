@@ -9,6 +9,7 @@ import {
 import RowMenu from "@/views/common/RowMenu"
 import SolicitudDetailModal from "@/views/solicitudes/SolicitudDetailModal"
 import SolicitudModal from "@/views/solicitudes/SolicitudModal"
+import ReporteSolicitudesDocumento from "@/views/solicitudes/ReporteSolicitudesDocumento"
 import { useDependenciasController } from "@/controllers/useDependenciasController"
 import {
   obtenerRequisicion,
@@ -23,10 +24,8 @@ type SolModalState =
 
 export default function DependenciasView({
   onToast,
-  onVerProceso,
 }: {
   onToast: (m: string, s: string) => void
-  onVerProceso?: (idProceso: number) => void
 }) {
   const {
     depFilter,
@@ -48,6 +47,9 @@ export default function DependenciasView({
     kpis,
     exportar,
     imprimir,
+    filasReporte,
+    setFilasReporte,
+    cargandoReporte,
     reload,
   } = useDependenciasController(onToast)
 
@@ -149,8 +151,9 @@ export default function DependenciasView({
               <div className="flex items-center gap-2">
                 <button
                   onClick={imprimir}
+                  disabled={cargandoReporte}
                   title="Imprimir"
-                  className="w-8 h-8 flex items-center justify-center rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-50 transition-all"
+                  className="w-8 h-8 flex items-center justify-center rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-wait transition-all"
                 >
                   <svg
                     className="w-4 h-4"
@@ -185,7 +188,6 @@ export default function DependenciasView({
                       "PRIORIDAD",
                       "ESTADO",
                       "FECHA",
-                      "PROCESO / OC",
                       "ACCIONES",
                     ].map((h) => (
                       <th
@@ -200,13 +202,13 @@ export default function DependenciasView({
                 <tbody>
                   {loading ? (
                     <tr>
-                      <td colSpan={8} className="px-4 py-12 text-center text-sm text-gray-400">
+                      <td colSpan={7} className="px-4 py-12 text-center text-sm text-gray-400">
                         Cargando solicitudes…
                       </td>
                     </tr>
                   ) : grouped.length === 0 ? (
                     <tr>
-                      <td colSpan={8} className="px-4 py-12 text-center text-sm text-gray-400">
+                      <td colSpan={7} className="px-4 py-12 text-center text-sm text-gray-400">
                         Sin solicitudes para esta dependencia.
                       </td>
                     </tr>
@@ -216,7 +218,7 @@ export default function DependenciasView({
                         return (
                           <tr key={`h-${g.dep}-${g.idx}`}>
                             <td
-                              colSpan={8}
+                              colSpan={7}
                               className="px-4 py-2.5 border-t border-b border-gray-100"
                               style={{ backgroundColor: "var(--brand-light)" }}
                             >
@@ -264,32 +266,6 @@ export default function DependenciasView({
                           <td className="px-4 py-4 whitespace-nowrap">
                             <p className="text-sm text-gray-600 font-mono">{r.fecha}</p>
                           </td>
-                          <td className="px-4 py-4 whitespace-nowrap">
-                            {r.fase_proceso ? (
-                              <div className="flex flex-col gap-1">
-                                <span
-                                  className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold whitespace-nowrap ${
-                                    r.fase_proceso === "Adjudicada"
-                                      ? "bg-green-50 text-green-700 border border-green-200"
-                                      : r.fase_proceso === "Desierta"
-                                        ? "bg-slate-100 text-slate-500 border border-slate-200"
-                                        : r.fase_proceso === "Comparación"
-                                          ? "bg-amber-50 text-amber-700 border border-amber-200"
-                                          : "bg-sky-50 text-sky-700 border border-sky-200"
-                                  }`}
-                                >
-                                  {r.fase_proceso}
-                                </span>
-                                {r.numero_orden && (
-                                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold whitespace-nowrap bg-purple-50 text-purple-700 border border-purple-200">
-                                    {r.numero_orden}
-                                  </span>
-                                )}
-                              </div>
-                            ) : (
-                              <span className="text-xs text-gray-300">—</span>
-                            )}
-                          </td>
                           <td className="px-4 py-4">
                             <div className="flex items-center gap-2">
                               <button
@@ -299,15 +275,6 @@ export default function DependenciasView({
                               >
                                 Ver
                               </button>
-                              {r.id_proceso != null && onVerProceso && (
-                                <button
-                                  onClick={() => onVerProceso(r.id_proceso!)}
-                                  className="text-sm font-semibold transition-colors hover:opacity-70"
-                                  style={{ color: "#7C3AED" }}
-                                >
-                                  Comparativa
-                                </button>
-                              )}
                               <RowMenu
                                 onVer={() => setDetailId(r.id_requisicion)}
                                 onEditar={() => abrirEditar(r)}
@@ -411,6 +378,15 @@ export default function DependenciasView({
             setDetailId(null)
             setSolModal({ mode: "edit", initial: detail })
           }}
+        />
+      )}
+
+      {filasReporte && (
+        <ReporteSolicitudesDocumento
+          rows={filasReporte}
+          kpis={kpis}
+          depFilter={depFilter}
+          onClose={() => setFilasReporte(null)}
         />
       )}
     </>

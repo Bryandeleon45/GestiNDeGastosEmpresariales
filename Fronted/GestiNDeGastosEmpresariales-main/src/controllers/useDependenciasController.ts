@@ -41,9 +41,6 @@ function mapRequisicionToRow(r: Requisicion): SolicitudRow {
     codigo_requisicion: r.codigo_requisicion,
     id_requisicion: r.id_requisicion,
     monto_adjudicado: r.monto_adjudicado ?? null,
-    id_proceso: r.id_proceso ?? null,
-    fase_proceso: r.fase_proceso ?? null,
-    numero_orden: r.numero_orden ?? null,
   }
 }
 
@@ -63,6 +60,8 @@ export function useDependenciasController(onToast: (m: string, s: string) => voi
     promedioDias: 0,
   })
   const depRef = useRef<HTMLDivElement>(null)
+  const [filasReporte, setFilasReporte] = useState<SolicitudRow[] | null>(null)
+  const [cargandoReporte, setCargandoReporte] = useState(false)
 
   const PAGE_SIZE = 5
 
@@ -168,8 +167,20 @@ export function useDependenciasController(onToast: (m: string, s: string) => voi
     }
   }
 
-  const imprimir = () => {
-    window.print()
+  const imprimir = async () => {
+    if (cargandoReporte) return
+    setCargandoReporte(true)
+    try {
+      const res = await listarRequisiciones({
+        dependencia: depFilterId != null ? String(depFilterId) : undefined,
+        pageSize: Math.max(total, 1),
+      })
+      setFilasReporte(res.data.map(mapRequisicionToRow))
+    } catch {
+      onToast("Error", "No se pudo cargar el reporte de solicitudes")
+    } finally {
+      setCargandoReporte(false)
+    }
   }
 
   return {
@@ -192,6 +203,9 @@ export function useDependenciasController(onToast: (m: string, s: string) => voi
     kpis,
     exportar,
     imprimir,
+    filasReporte,
+    setFilasReporte,
+    cargandoReporte,
     reload,
   }
 }
