@@ -3,20 +3,22 @@ import { G } from "@/constants/theme"
 import { Icons } from "@/components/common/Icons"
 import { useBodegaController, ESTADOS_SOLICITUD_FILTRO } from "@/controllers/useBodegaController"
 import {
-  autorizarValeSalida,
-  entregarValeSalida,
-  cancelarValeSalida,
   aprobarOrdenAdjudicada,
+  obtenerValeSalida,
   type Recepcion,
   type ValeSalida,
+  type ValeSalidaDetalle,
 } from "@/api/bodega"
 import { cambiarEstadoRequisicion, obtenerRequisicion, asignarProveedorRequisicion, type Requisicion } from "@/api/requisiciones"
 import { listarProveedoresActivos } from "@/api/proformas"
 import { PRIORIDAD_STYLE, ESTADO_SOL_STYLE } from "@/models/solicitudes"
 import { ApiError } from "@/api/client"
+import { generarValeSalidaPdf } from "@/lib/valeSalidaPdf"
 import NuevaRecepcionModal from "@/views/bodega/NuevaRecepcionModal"
 import VerificarRecepcionModal from "@/views/bodega/VerificarRecepcionModal"
 import NuevoValeModal from "@/views/bodega/NuevoValeModal"
+import DetalleValeModal from "@/views/bodega/DetalleValeModal"
+import PdfViewerModal from "@/views/common/PdfViewerModal"
 
 const ESTADO_REC_STYLE: Record<string, { bg: string; color: string }> = {
   "En Proceso": { bg: "#DCFCE7", color: "#16A34A" },
@@ -75,6 +77,8 @@ export default function BodegaView({
 
   const [showNuevaRec, setShowNuevaRec] = useState(false)
   const [showNuevoVale, setShowNuevoVale] = useState(false)
+  const [pdfVale, setPdfVale] = useState<{ src: string; nombre: string } | null>(null)
+  const [detalleVale, setDetalleVale] = useState<ValeSalidaDetalle | null>(null)
   const [verifRecepcion, setVerifRecepcion] = useState<Recepcion | null>(null)
   const [detalleRecepcion, setDetalleRecepcion] = useState<Recepcion | null>(null)
   const [rechazoRow, setRechazoRow] = useState<Requisicion | null>(null)
@@ -117,7 +121,6 @@ export default function BodegaView({
   }
 
   const aprobarSolicitud = async (r: Requisicion) => {
-    if (!window.confirm(`¿Aprobar la solicitud ${r.codigo_requisicion}?`)) return
     setWorkingSol(true)
     try {
       await cambiarEstadoRequisicion(r.id_requisicion, { estado: "Aprobada" })
@@ -140,7 +143,6 @@ export default function BodegaView({
 
   const aprobarAdjudicada = async (r: Requisicion) => {
     if (!r.id_orden_compra) return
-    if (!window.confirm(`¿Aprobar la orden ${r.numero_orden ?? ""}? Se registrará la recepción completa y quedará disponible en facturación.`)) return
     setWorkingSol(true)
     try {
       await aprobarOrdenAdjudicada(r.id_orden_compra)
@@ -157,7 +159,6 @@ export default function BodegaView({
   const confirmarAsignacion = async () => {
     if (!detalleSol || !proveedorSeleccionado) return
     const prov = proveedores.find((p) => p.id_proveedor === proveedorSeleccionado)
-    if (!window.confirm(`¿Asignar el pedido ${detalleSol.codigo_requisicion} al proveedor ${prov?.razon_social}?`)) return
     setAsignandoProveedor(true)
     try {
       await asignarProveedorRequisicion(detalleSol.id_requisicion, proveedorSeleccionado)
@@ -191,36 +192,38 @@ export default function BodegaView({
     }
   }
 
-  const autorizar = async (v: ValeSalida) => {
-    if (!window.confirm(`¿Autorizar el vale para ${v.nombre_dependencia}?`)) return
+  const imprimirVale = async (v: ValeSalida) => {
     try {
-      await autorizarValeSalida(v.id_vale_salida)
-      onToast("Vale autorizado", "El vale quedó listo para entrega.")
-      reload()
+      const det = await obtenerValeSalida(v.id_vale_salida)
+      const blob = await generarValeSalidaPdf({
+        id_vale_salida: det.id_vale_salida,
+        fecha_salida: det.fecha_salida,
+        justificacion: det.justificacion,
+        nombre_dependencia: det.nombre_dependencia,
+        nombre_solicitante: det.nombre_solicitante,
+        items: det.items,
+      })
+      if (pdfVale) URL.revokeObjectURL(pdfVale.src)
+      setPdfVale({
+        src: URL.createObjectURL(blob),
+        nombre: `Vale_Salida_S-2026-${det.id_vale_salida}.pdf`,
+      })
     } catch (e) {
-      onToast("Error", e instanceof ApiError ? e.message : "No se pudo autorizar el vale")
+      onToast("Error", e instanceof ApiError ? e.message : "No se pudo generar el PDF del vale")
     }
   }
 
-  const entregar = async (v: ValeSalida) => {
-    if (!window.confirm(`¿Entregar el vale y rebajar el stock de ${v.nombre_dependencia}?`)) return
-    try {
-      await entregarValeSalida(v.id_vale_salida)
-      onToast("Vale entregado", "Stock actualizado y Kardex registrado.")
-      reload()
-    } catch (e) {
-      onToast("Error", e instanceof ApiError ? e.message : "No se pudo entregar el vale")
-    }
+  const cerrarValePdf = () => {
+    if (pdfVale) URL.revokeObjectURL(pdfVale.src)
+    setPdfVale(null)
   }
 
-  const cancelar = async (v: ValeSalida) => {
-    if (!window.confirm(`¿Cancelar el vale para ${v.nombre_dependencia}?`)) return
+  const abrirDetalleVale = async (v: ValeSalida) => {
     try {
-      await cancelarValeSalida(v.id_vale_salida)
-      onToast("Vale cancelado", "El vale fue cancelado.")
-      reload()
+      const det = await obtenerValeSalida(v.id_vale_salida)
+      setDetalleVale(det)
     } catch (e) {
-      onToast("Error", e instanceof ApiError ? e.message : "No se pudo cancelar el vale")
+      onToast("Error", e instanceof ApiError ? e.message : "No se pudo cargar el detalle del vale")
     }
   }
 
@@ -546,7 +549,7 @@ export default function BodegaView({
                 <table className="w-full">
                   <thead>
                     <tr className="border-b border-gray-100">
-                      {["DEPENDENCIA", "SOLICITANTE", "JUSTIFICACIÓN", "FECHA", "ESTADO", "ACCIONES"].map((h) => (
+                      {["DEPENDENCIA", "SOLICITANTE", "JUSTIFICACIÓN", "FECHA", "ESTADO"].map((h) => (
                         <th key={h} className="px-4 py-3 text-left text-[10px] font-bold text-gray-400 uppercase tracking-wider whitespace-nowrap bg-gray-50">
                           {h}
                         </th>
@@ -555,40 +558,33 @@ export default function BodegaView({
                   </thead>
                   <tbody>
                     {vales.length === 0 ? (
-                      <tr><td colSpan={6} className="px-4 py-12 text-center text-sm text-gray-400">Sin vales de salida registrados.</td></tr>
+                      <tr><td colSpan={5} className="px-4 py-12 text-center text-sm text-gray-400">Sin vales de salida registrados.</td></tr>
                     ) : (
                       vales.map((v) => {
                         const est = ESTADO_VALE_STYLE[v.estado] ?? { bg: "var(--gray-100)", color: "#64748B" }
                         return (
-                          <tr key={v.id_vale_salida} className="border-b border-gray-50 last:border-0 hover:bg-gray-50/60 transition-colors">
+                          <tr key={v.id_vale_salida} onClick={() => abrirDetalleVale(v)} className="border-b border-gray-50 last:border-0 hover:bg-gray-50/60 transition-colors cursor-pointer">
                             <td className="px-4 py-4"><p className="text-sm font-medium text-gray-800">{v.nombre_dependencia}</p></td>
                             <td className="px-4 py-4"><p className="text-sm text-gray-600">{v.nombre_usuario}</p></td>
                             <td className="px-4 py-4"><p className="text-xs text-gray-500 max-w-[220px] truncate">{v.justificacion || "—"}</p></td>
                             <td className="px-4 py-4 whitespace-nowrap"><p className="text-sm text-gray-600 font-mono">{fmtFecha(v.fecha_salida)}</p></td>
                             <td className="px-4 py-4">
-                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold whitespace-nowrap" style={{ backgroundColor: est.bg, color: est.color }}>
-                                {v.estado}
-                              </span>
-                            </td>
-                            <td className="px-4 py-4">
                               <div className="flex items-center gap-2">
-                                {v.estado === "Pendiente" && (
-                                  <>
-                                    <button onClick={() => autorizar(v)} className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-bold rounded-lg text-white transition-colors hover:opacity-80" style={{ backgroundColor: G }}>
-                                      <Icons.ShieldCheck /> Autorizar
-                                    </button>
-                                    <button onClick={() => cancelar(v)} className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-bold rounded-lg text-red-600 border border-red-200 transition-colors hover:bg-red-50">
-                                      <Icons.X /> Cancelar
-                                    </button>
-                                  </>
-                                )}
-                                {v.estado === "Autorizado" && (
-                                  <button onClick={() => entregar(v)} className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-bold rounded-lg text-white transition-colors hover:opacity-80" style={{ backgroundColor: G }}>
-                                    <Icons.Send /> Entregar
+                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold whitespace-nowrap" style={{ backgroundColor: est.bg, color: est.color }}>
+                                  {v.estado}
+                                </span>
+                                {v.estado === "Entregado" && (
+                                  <button
+                                    title="Imprimir vale de salida"
+                                    onClick={(e) => {
+                                      e.stopPropagation()
+                                      imprimirVale(v)
+                                    }}
+                                    className="w-7 h-7 flex items-center justify-center rounded-lg transition-all hover:bg-green-50"
+                                    style={{ color: G }}
+                                  >
+                                    <Icons.Printer />
                                   </button>
-                                )}
-                                {(v.estado === "Entregado" || v.estado === "Cancelado") && (
-                                  <span className="text-xs font-semibold text-gray-400">—</span>
                                 )}
                               </div>
                             </td>
@@ -621,6 +617,25 @@ export default function BodegaView({
           onSuccess={() => {
             setShowNuevoVale(false)
             setTab("vales")
+            reload()
+          }}
+          onToast={onToast}
+        />
+      )}
+      {pdfVale && (
+        <PdfViewerModal
+          src={pdfVale.src}
+          nombre={pdfVale.nombre}
+          titulo="Vale de Salida"
+          onClose={cerrarValePdf}
+        />
+      )}
+      {detalleVale && (
+        <DetalleValeModal
+          vale={detalleVale}
+          onClose={() => setDetalleVale(null)}
+          onChanged={() => {
+            setDetalleVale(null)
             reload()
           }}
           onToast={onToast}

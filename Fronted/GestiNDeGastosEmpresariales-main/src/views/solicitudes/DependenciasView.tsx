@@ -9,7 +9,6 @@ import {
 import RowMenu from "@/views/common/RowMenu"
 import SolicitudDetailModal from "@/views/solicitudes/SolicitudDetailModal"
 import SolicitudModal from "@/views/solicitudes/SolicitudModal"
-import ReporteSolicitudesDocumento from "@/views/solicitudes/ReporteSolicitudesDocumento"
 import { useDependenciasController } from "@/controllers/useDependenciasController"
 import {
   obtenerRequisicion,
@@ -47,8 +46,6 @@ export default function DependenciasView({
     kpis,
     exportar,
     imprimir,
-    filasReporte,
-    setFilasReporte,
     cargandoReporte,
     reload,
   } = useDependenciasController(onToast)
@@ -152,7 +149,7 @@ export default function DependenciasView({
                 <button
                   onClick={imprimir}
                   disabled={cargandoReporte}
-                  title="Imprimir"
+                  title="Descargar Excel"
                   className="w-8 h-8 flex items-center justify-center rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-wait transition-all"
                 >
                   <svg
@@ -378,15 +375,6 @@ export default function DependenciasView({
             setDetailId(null)
             setSolModal({ mode: "edit", initial: detail })
           }}
-        />
-      )}
-
-      {filasReporte && (
-        <ReporteSolicitudesDocumento
-          rows={filasReporte}
-          kpis={kpis}
-          depFilter={depFilter}
-          onClose={() => setFilasReporte(null)}
         />
       )}
     </>

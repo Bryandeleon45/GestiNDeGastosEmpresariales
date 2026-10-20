@@ -70,13 +70,6 @@ export default function VerificarRecepcionModal({
 
   const ingresar = async () => {
     if (!detalle) return
-    const total = detalle.items?.length ?? 0
-    const marcadosCount = marcados.size
-    const completo = marcadosCount === total
-    const msg = completo
-      ? "Todos los ítems ingresan. Se marcará como Completado."
-      : `Solo ${marcadosCount} de ${total} ítems ingresan. Se marcará como Pendiente.`
-    if (!window.confirm(`¿Confirmar ingreso? ${msg}`)) return
     setWorking(true)
     try {
       const res = await ingresarRecepcion(recepcion.id_recepcion, Array.from(marcados))
@@ -103,10 +96,6 @@ export default function VerificarRecepcionModal({
     const total = faltantes.length
     const marcadosCount = faltantes.filter((it) => marcados.has(it.id_detalle_orden)).length
     const completo = marcadosCount === total
-    const msg = completo
-      ? "Se completará el pedido. Se marcará como Completado en todos los módulos."
-      : `Solo ${marcadosCount} de ${total} ítems faltantes ingresan. Quedará Pendiente.`
-    if (!window.confirm(`¿Confirmar ingreso? ${msg}`)) return
     setWorking(true)
     try {
       await recibirTodo({ id_orden_compra: recepcion.id_orden_compra, items_recibidos: Array.from(marcados) })
@@ -124,7 +113,6 @@ export default function VerificarRecepcionModal({
   }
 
   const cancelar = async () => {
-    if (!window.confirm("¿Cancelar esta recepción?")) return
     setWorking(true)
     try {
       await cancelarRecepcion(recepcion.id_recepcion)

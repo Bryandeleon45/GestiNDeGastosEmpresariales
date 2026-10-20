@@ -9,6 +9,8 @@ import {
 import {
   listarDependencias,
 } from "@/api/catalogos"
+import { getStoredUser } from "@/api/auth"
+import { generarExcelSolicitudes } from "@/lib/solicitudesExcel"
 
 export interface ResumenKpis {
   total: number
@@ -60,7 +62,6 @@ export function useDependenciasController(onToast: (m: string, s: string) => voi
     promedioDias: 0,
   })
   const depRef = useRef<HTMLDivElement>(null)
-  const [filasReporte, setFilasReporte] = useState<SolicitudRow[] | null>(null)
   const [cargandoReporte, setCargandoReporte] = useState(false)
 
   const PAGE_SIZE = 5
@@ -175,9 +176,25 @@ export function useDependenciasController(onToast: (m: string, s: string) => voi
         dependencia: depFilterId != null ? String(depFilterId) : undefined,
         pageSize: Math.max(total, 1),
       })
-      setFilasReporte(res.data.map(mapRequisicionToRow))
-    } catch {
-      onToast("Error", "No se pudo cargar el reporte de solicitudes")
+      const usuario = getStoredUser()
+      const emitidoPor =
+        usuario?.nombre_completo?.trim() || usuario?.nombre_usuario || "Sistema de Gestión de Gastos"
+      const blob = await generarExcelSolicitudes({
+        rows: res.data.map(mapRequisicionToRow),
+        kpis,
+        depFilter,
+        emitidoPor,
+      })
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      a.href = url
+      const hoy = new Date().toISOString().slice(0, 10)
+      a.download = `Reporte_Solicitudes_Panajachel_${hoy}.xlsx`
+      a.click()
+      window.URL.revokeObjectURL(url)
+      onToast("Excel descargado", "Reporte de solicitudes generado")
+    } catch (e) {
+      onToast("Error", e instanceof Error ? e.message : "No se pudo generar el Excel")
     } finally {
       setCargandoReporte(false)
     }
@@ -203,8 +220,6 @@ export function useDependenciasController(onToast: (m: string, s: string) => voi
     kpis,
     exportar,
     imprimir,
-    filasReporte,
-    setFilasReporte,
     cargandoReporte,
     reload,
   }

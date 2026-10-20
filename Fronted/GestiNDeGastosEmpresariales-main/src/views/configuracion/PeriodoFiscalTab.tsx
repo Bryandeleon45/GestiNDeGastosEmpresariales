@@ -80,7 +80,6 @@ export default function PeriodoFiscalTab({
   }
 
   const cerrar = async (p: PeriodoFiscal) => {
-    if (!window.confirm(`¿Cerrar el período fiscal ${p.anio}?`)) return
     try {
       await cerrarPeriodo(p.id_periodo)
       onToast("Período cerrado", `Período ${p.anio} cerrado.`)

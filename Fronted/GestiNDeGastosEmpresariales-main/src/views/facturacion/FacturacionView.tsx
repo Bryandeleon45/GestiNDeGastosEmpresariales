@@ -1,11 +1,12 @@
-import { useState } from "react"
+import { useMemo, useState } from "react"
 import { G, GL } from "@/constants/theme"
 import { Icons } from "@/components/common/Icons"
 import { useFacturacionController } from "@/controllers/useFacturacionController"
-import { type Factura } from "@/api/facturacion"
+import { type Factura, type CronogramaItem } from "@/api/facturacion"
 import NuevaOrdenModal from "@/views/facturacion/NuevaOrdenModal"
 import FacturaDrawer from "@/views/facturacion/FacturaDrawer"
-import RegistrarFacturaModal from "@/views/facturacion/RegistrarFacturaModal"
+import PdfViewerModal from "@/views/common/PdfViewerModal"
+import { generarReporteFacturacionPdf } from "@/lib/facturasPdf"
 
 const ESTADO_STYLE: Record<string, { bg: string; color: string }> = {
   Pagado: { bg: "#DCFCE7", color: "#16A34A" },
@@ -17,6 +18,51 @@ const ESTADO_STYLE: Record<string, { bg: string; color: string }> = {
 
 const fmt = (n: number | string) =>
   `Q ${Number(n).toLocaleString("es-GT", { minimumFractionDigits: 2 })}`
+
+const parseFecha = (s?: string | null): Date | null => {
+  if (!s) return null
+  const [y, m, d] = s.slice(0, 10).split("-").map(Number)
+  if (!y || !m || !d) return null
+  return new Date(y, m - 1, d)
+}
+
+const ESTADO_CRONOGRAMA: Record<string, string> = {
+  Recibida: "Recibida",
+  "En Revisión": "En revisión",
+  Aprobada: "Aprobada",
+  Pendiente: "Pendiente",
+  Programada: "Pago programado",
+}
+
+const keyFecha = (d: Date) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`
+
+const construirMes = (mes: Date): Array<{ fecha: Date; enMes: boolean }> => {
+  const primero = new Date(mes.getFullYear(), mes.getMonth(), 1)
+  const offset = (primero.getDay() + 6) % 7 // la semana inicia en lunes
+  const inicio = new Date(primero.getFullYear(), mes.getMonth(), 1 - offset)
+  return Array.from({ length: 42 }, (_, i) => {
+    const fecha = new Date(inicio.getFullYear(), inicio.getMonth(), inicio.getDate() + i)
+    return {
+      fecha,
+      enMes: fecha.getMonth() === mes.getMonth() && fecha.getFullYear() === mes.getFullYear(),
+    }
+  })
+}
+
+// Mapa fecha → true si ese día tiene un compromiso ya vencido (rojo).
+const marcasDeDias = (items: CronogramaItem[]): Map<string, boolean> => {
+  const hoy = new Date()
+  hoy.setHours(0, 0, 0, 0)
+  const mapa = new Map<string, boolean>()
+  for (const c of items) {
+    const f = parseFecha(c.fecha_pago_programada) ?? parseFecha(c.fecha_vencimiento)
+    if (!f) continue
+    const k = keyFecha(f)
+    mapa.set(k, (mapa.get(k) ?? false) || f < hoy)
+  }
+  return mapa
+}
 
 export default function FacturacionView({
   onToast,
@@ -42,7 +88,54 @@ export default function FacturacionView({
     reload,
   } = useFacturacionController(onToast)
 
-  const [showRegistrar, setShowRegistrar] = useState(false)
+  const [exportando, setExportando] = useState(false)
+  const [pdfSrc, setPdfSrc] = useState<string | null>(null)
+  const [pdfNombre, setPdfNombre] = useState("")
+  const [mesVisible, setMesVisible] = useState(() => {
+    const h = new Date()
+    return new Date(h.getFullYear(), h.getMonth(), 1)
+  })
+
+  const marcas = useMemo(() => marcasDeDias(cronograma), [cronograma])
+  const celdas = useMemo(() => construirMes(mesVisible), [mesVisible])
+
+  const exportarReporte = async () => {
+    if (exportando) return
+    setExportando(true)
+    try {
+      const blob = await generarReporteFacturacionPdf({
+        facturas,
+        resumen,
+        cronograma,
+        filtroEstado: estadoFilter,
+      })
+      const fecha = new Date().toISOString().slice(0, 10)
+      const nombre = `Reporte_Facturacion_Panajachel_${fecha}.pdf`
+      if (pdfSrc) URL.revokeObjectURL(pdfSrc)
+      setPdfSrc(URL.createObjectURL(blob))
+      setPdfNombre(nombre)
+      onToast("Reporte generado", "El PDF está listo para previsualizar o descargar.")
+    } catch (e) {
+      onToast("Error al exportar", e instanceof Error ? e.message : "No se pudo generar el PDF del reporte.")
+    } finally {
+      setExportando(false)
+    }
+  }
+
+  const cerrarVisorPdf = () => {
+    if (pdfSrc) URL.revokeObjectURL(pdfSrc)
+    setPdfSrc(null)
+  }
+
+  const hoyDate = new Date()
+  const hoyKey = keyFecha(hoyDate)
+  const esMesActual =
+    mesVisible.getMonth() === hoyDate.getMonth() &&
+    mesVisible.getFullYear() === hoyDate.getFullYear()
+  const labelMes = `${mesVisible.toLocaleDateString("es-GT", { month: "long" })} ${mesVisible.getFullYear()}`
+  const navegarMes = (delta: number) =>
+    setMesVisible((m) => new Date(m.getFullYear(), m.getMonth() + delta, 1))
+  const irAHoy = () => setMesVisible(new Date(hoyDate.getFullYear(), hoyDate.getMonth(), 1))
 
   return (
     <>
@@ -59,16 +152,12 @@ export default function FacturacionView({
             </div>
             <div className="flex items-center gap-3 shrink-0">
               <button
-                onClick={() =>
-                  onToast(
-                    "Exportando reporte…",
-                    "El archivo se descargará en breve.",
-                  )
-                }
-                className="flex items-center gap-2 px-4 py-2.5 text-sm font-semibold rounded-xl border transition-all hover:bg-gray-50"
+                onClick={exportarReporte}
+                disabled={exportando}
+                className="flex items-center gap-2 px-4 py-2.5 text-sm font-semibold rounded-xl border transition-all hover:bg-gray-50 disabled:opacity-60 disabled:cursor-wait"
                 style={{ color: G, borderColor: G }}
               >
-                <Icons.PDF /> Exportar Reporte
+                <Icons.PDF /> {exportando ? "Generando…" : "Exportar Reporte"}
               </button>
               <button
                 onClick={() => setShowNuevaOrden(true)}
@@ -84,7 +173,7 @@ export default function FacturacionView({
             <div className="bg-white rounded-xl border border-gray-100 shadow-sm px-5 py-4">
               <div className="flex items-start justify-between">
                 <p className="text-[10px] font-extrabold text-gray-400 uppercase tracking-widest leading-tight">
-                  Total por Pagar
+                  Total Pagado
                   <br />
                   (Mes)
                 </p>
@@ -99,7 +188,7 @@ export default function FacturacionView({
                 {fmt(resumen?.total_por_pagar ?? 0)}
               </p>
               <p className="text-xs font-bold mt-1.5" style={{ color: G }}>
-                Órdenes pendientes del mes
+                Pagos ejecutados en el mes
               </p>
             </div>
             <div className="bg-white rounded-xl border border-gray-100 shadow-sm px-5 py-4">
@@ -149,20 +238,115 @@ export default function FacturacionView({
               <p className="text-base font-extrabold text-gray-900 mb-3">
                 Cronograma de Pagos
               </p>
-              <div className="space-y-2.5">
+
+              <div className="flex items-center justify-between mb-2">
+                <button
+                  aria-label="Mes anterior"
+                  onClick={() => navegarMes(-1)}
+                  className="w-7 h-7 flex items-center justify-center rounded-md text-sm font-bold text-gray-500 hover:bg-gray-100 hover:text-gray-800 transition-colors"
+                >
+                  ‹
+                </button>
+                <p className="text-xs font-extrabold text-gray-800 capitalize">{labelMes}</p>
+                <button
+                  aria-label="Mes siguiente"
+                  onClick={() => navegarMes(1)}
+                  className="w-7 h-7 flex items-center justify-center rounded-md text-sm font-bold text-gray-500 hover:bg-gray-100 hover:text-gray-800 transition-colors"
+                >
+                  ›
+                </button>
+              </div>
+
+              {!esMesActual && (
+                <div className="flex justify-center mb-1.5">
+                  <button
+                    onClick={irAHoy}
+                    className="text-[10px] font-bold px-2.5 py-0.5 rounded-md border transition-all hover:bg-gray-50"
+                    style={{ color: G, borderColor: "#D1D5DB" }}
+                  >
+                    Hoy
+                  </button>
+                </div>
+              )}
+
+              <div className="grid grid-cols-7 mb-1">
+                {["L", "M", "M", "J", "V", "S", "D"].map((d, i) => (
+                  <span
+                    key={i}
+                    className="text-center text-[9px] font-bold text-gray-400 uppercase"
+                  >
+                    {d}
+                  </span>
+                ))}
+              </div>
+
+              <div className="grid grid-cols-7 gap-y-1">
+                {celdas.map((c, i) => {
+                  const k = keyFecha(c.fecha)
+                  const marca = marcas.get(k)
+                  const esHoy = k === hoyKey
+                  return (
+                    <div key={i} className="flex flex-col items-center gap-0.5">
+                      <span
+                        className="w-6 h-6 flex items-center justify-center text-[11px] rounded-full"
+                        style={
+                          esHoy
+                            ? {
+                                backgroundColor: "#ECFDF5",
+                                border: `2px solid ${G}`,
+                                color: G,
+                                fontWeight: 800,
+                              }
+                            : {
+                                color: c.enMes ? "#374151" : "#D1D5DB",
+                                fontWeight: c.enMes ? 600 : 400,
+                              }
+                        }
+                      >
+                        {c.fecha.getDate()}
+                      </span>
+                      <span
+                        className="w-1 h-1 rounded-full"
+                        style={{
+                          backgroundColor:
+                            marca === undefined ? "transparent" : marca ? "#EF4444" : "#16A34A",
+                        }}
+                      />
+                    </div>
+                  )
+                })}
+              </div>
+
+              <div className="space-y-2.5 border-t border-gray-100 mt-3 pt-3">
                 {cronograma.length === 0 && (
                   <p className="text-xs text-gray-400 py-6 text-center">
-                    Sin pagos programados o vencimientos.
+                    Sin facturas pendientes ni pagos programados.
                   </p>
                 )}
-                {cronograma.slice(0, 8).map((c) => {
-                  const vencida =
-                    c.fecha_vencimiento &&
-                    new Date(c.fecha_vencimiento) < new Date()
-                  const danger = vencida
+                {cronograma.slice(0, 8).map((c, i) => {
+                  const fechaLim =
+                    parseFecha(c.fecha_pago_programada) ?? parseFecha(c.fecha_vencimiento)
+                  const hoy = new Date()
+                  hoy.setHours(0, 0, 0, 0)
+                  const dias = fechaLim
+                    ? Math.round((fechaLim.getTime() - hoy.getTime()) / 86400000)
+                    : null
+                  const danger = dias !== null && dias < 0
+                  const fechaTexto = fechaLim
+                    ? fechaLim.toLocaleDateString("es-GT", { day: "2-digit", month: "short" })
+                    : ""
+                  const plazoTexto =
+                    dias === null
+                      ? ""
+                      : dias < 0
+                        ? `Venció ${fechaTexto} · hace ${Math.abs(dias)} ${Math.abs(dias) === 1 ? "día" : "días"}`
+                        : dias === 0
+                          ? `${fechaTexto} · vence hoy`
+                          : `Vence ${fechaTexto} · quedan ${dias} ${dias === 1 ? "día" : "días"}`
+                  const label = ESTADO_CRONOGRAMA[c.estado] ?? c.estado
                   return (
                     <div
-                      key={c.numero_orden_pago}
+                      key={`${c.origen}-${c.numero_orden_pago ?? c.numero_factura}-${i}`}
                       className="rounded-lg px-3 py-2.5 border-l-4"
                       style={
                         danger
@@ -197,11 +381,14 @@ export default function FacturacionView({
                           className="text-[11px] font-extrabold"
                           style={{ color: danger ? "#DC2626" : G }}
                         >
-                          {danger ? "Vencido" : c.estado === "Programada" ? "Pago Programado" : "Pendiente"}
+                          {label}
                         </p>
                       </div>
                       <p className="text-[11px] leading-snug" style={{ color: danger ? "#B91C1C" : "#166534" }}>
                         {c.razon_social} · {c.numero_factura}
+                      </p>
+                      <p className="text-[11px] font-semibold" style={{ color: danger ? "#DC2626" : "#4B5563" }}>
+                        {plazoTexto}
                       </p>
                       <p className="text-[11px] font-bold" style={{ color: danger ? "#DC2626" : G }}>
                         {fmt(c.monto)}
@@ -218,13 +405,6 @@ export default function FacturacionView({
                   Historial de Facturas y Pagos
                 </p>
                 <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => setShowRegistrar(true)}
-                    className="text-xs font-bold flex items-center gap-1.5 px-3 py-2 rounded-xl border transition-all hover:bg-gray-50"
-                    style={{ color: G, borderColor: "#D1D5DB" }}
-                  >
-                    <Icons.PlusSmall /> Registrar Factura
-                  </button>
                   <div className="relative" ref={estadoDDRef}>
                     <button
                       onClick={() => setShowEstadoDD((v) => !v)}
@@ -335,22 +515,20 @@ export default function FacturacionView({
           onToast={onToast}
         />
       )}
-      {showRegistrar && (
-        <RegistrarFacturaModal
-          onClose={() => setShowRegistrar(false)}
-          onSuccess={() => {
-            setShowRegistrar(false)
-            reload()
-          }}
-          onToast={onToast}
-        />
-      )}
       {selectedFactura && (
         <FacturaDrawer
           facturaId={selectedFactura.id_factura}
           onClose={() => setSelectedFactura(null)}
           onToast={onToast}
           onChanged={reload}
+        />
+      )}
+      {pdfSrc && (
+        <PdfViewerModal
+          src={pdfSrc}
+          nombre={pdfNombre}
+          titulo="Reporte de Facturación"
+          onClose={cerrarVisorPdf}
         />
       )}
     </>

@@ -240,6 +240,21 @@ export function listarValesSalida() {
   return api.get<ValeSalida[]>("/vales-salida")
 }
 
+export interface ValeSalidaDetalle extends ValeSalida {
+  nombre_solicitante: string | null
+  nombre_autoriza: string | null
+  items: Array<{
+    id_detalle_vale: number
+    cantidad_salida: number
+    observacion: string | null
+    descripcion: string | null
+  }>
+}
+
+export function obtenerValeSalida(id: number | string) {
+  return api.get<ValeSalidaDetalle>(`/vales-salida/${id}`)
+}
+
 export function crearValeSalida(data: { id_dependencia: number; justificacion?: string; items: ValeItemInput[] }) {
   return api.post<ValeSalida>("/vales-salida", data)
 }

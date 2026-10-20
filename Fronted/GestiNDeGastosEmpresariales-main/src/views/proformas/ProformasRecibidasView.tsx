@@ -81,7 +81,6 @@ export default function ProformasRecibidasView({
   }
 
   const cambiarEstado = async (id: number, estado: string) => {
-    if (!window.confirm(`¿Cambiar la proforma a ${estado}?`)) return
     setWorking(true)
     try {
       await cambiarEstadoCotizacion(id, estado)

@@ -1,24 +1,37 @@
+import { useRef } from "react"
 import { Icons } from "@/components/common/Icons"
 import { G } from "@/constants/theme"
 
 // Visor de PDF en el mismo sistema: modal oscuro con el documento embebido
-// (blob) y opción de descarga. Reutiliza el patrón del portal de proveedores.
+// (blob), opción de descarga e impresión directa desde el visor.
 
 export default function PdfViewerModal({
   src,
   nombre,
+  titulo = "Centro de Ayuda",
   onClose,
 }: {
   src: string | null
   nombre: string
+  titulo?: string
   onClose: () => void
 }) {
+  const iframeRef = useRef<HTMLIFrameElement>(null)
+
   const descargar = () => {
     if (!src) return
     const a = document.createElement("a")
     a.href = src
     a.download = nombre
     a.click()
+  }
+
+  const imprimir = () => {
+    try {
+      iframeRef.current?.contentWindow?.print()
+    } catch {
+      if (src) window.open(src, "_blank", "noopener")
+    }
   }
 
   return (
@@ -46,12 +59,20 @@ export default function PdfViewerModal({
             </div>
             <div className="min-w-0">
               <p className="text-sm font-bold text-gray-900 truncate">
-                Centro de Ayuda
+                {titulo}
               </p>
               <p className="text-xs text-gray-500 truncate">{nombre}</p>
             </div>
           </div>
           <div className="flex items-center gap-2 shrink-0">
+            <button
+              onClick={imprimir}
+              disabled={!src}
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition-all hover:opacity-90 disabled:opacity-40 border"
+              style={{ color: G, borderColor: "#D1D5DB" }}
+            >
+              <Icons.Printer /> Imprimir
+            </button>
             <button
               onClick={descargar}
               disabled={!src}
@@ -71,6 +92,7 @@ export default function PdfViewerModal({
         <div className="flex-1 bg-gray-200">
           {src ? (
             <iframe
+              ref={iframeRef}
               src={src}
               title={nombre}
               className="w-full h-full border-0"

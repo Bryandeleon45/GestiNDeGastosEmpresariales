@@ -1086,6 +1086,38 @@ router.get("/vales-salida", authorize("bodega"), async (_req, res, next) => {
   }
 });
 
+// ── Detalle de un vale (para impresión del PDF) ──────────────────────────────
+router.get("/vales-salida/:id", authorize("bodega"), async (req, res, next) => {
+  try {
+    const { rows } = await pool.query(
+      `SELECT v.*, d.nombre_dependencia,
+              us.nombre_usuario AS nombre_solicitante,
+              ua.nombre_usuario AS nombre_autoriza
+         FROM vale_salida v
+         JOIN dependencia_municipal d ON d.id_dependencia = v.id_dependencia
+         LEFT JOIN usuario us ON us.id_usuario = v.id_usuario_solicitante
+         LEFT JOIN usuario ua ON ua.id_usuario = v.id_usuario_autoriza
+        WHERE v.id_vale_salida = $1`,
+      [req.params.id],
+    );
+    if (!rows[0]) return res.status(404).json({ error: "Vale no encontrado" });
+
+    const { rows: items } = await pool.query(
+      `SELECT dv.id_detalle_vale, dv.cantidad_salida, dv.observacion,
+              i.nombre AS descripcion
+         FROM detalle_vale_salida dv
+         LEFT JOIN insumo i ON i.id_insumo = dv.id_insumo
+        WHERE dv.id_vale_salida = $1
+        ORDER BY dv.id_detalle_vale`,
+      [req.params.id],
+    );
+
+    res.json({ ...rows[0], items });
+  } catch (e) {
+    next(e);
+  }
+});
+
 router.post("/vales-salida", authorize("bodega"), async (req, res, next) => {
   const client = await pool.connect();
   try {

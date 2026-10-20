@@ -50,19 +50,6 @@ export interface FacturaItem {
   cantidad_recibida: string
 }
 
-export interface OrdenCompraFacturable {
-  id_orden_compra: number
-  numero_orden: string
-  monto_total: string
-  fecha_emision: string
-  plazo_credito_dias: number | null
-  id_proveedor: number
-  nit: string
-  razon_social: string
-  total_facturado: string
-  recibido_valorizado: string
-}
-
 export interface Partida {
   id_partida: number
   codigo: string
@@ -110,13 +97,16 @@ export interface ResumenFacturacion {
 }
 
 export interface CronogramaItem {
-  numero_orden_pago: string
+  origen: "FACTURA" | "ORDEN_PAGO"
+  numero_orden_pago: string | null
   fecha_vencimiento: string
   fecha_pago_programada: string | null
   estado: string
   monto: string
   razon_social: string
   numero_factura: string
+  fecha_emision: string | null
+  plazo_credito_dias: number | null
 }
 
 export function listarFacturas(params: { estado?: string; q?: string } = {}) {
@@ -131,24 +121,6 @@ export function obtenerFactura(id: number | string) {
   return api.get<Factura>(`/facturas/${id}`)
 }
 
-export function registrarFactura(data: {
-  id_orden_compra: number
-  serie?: string
-  numero_factura: string
-  numero_autorizacion?: string
-  npg?: string
-  fecha_emision: string
-  monto_total: number
-  plazo_credito_dias?: number
-  observaciones?: string
-  archivo_pdf_nombre?: string
-  archivo_pdf_base64?: string
-  archivo_xml_nombre?: string
-  archivo_xml_base64?: string
-}) {
-  return api.post<Factura>("/facturas", data)
-}
-
 export function revisarFactura(
   id: number | string,
   accion: "iniciar" | "aprobar" | "rechazar",
@@ -160,10 +132,6 @@ export function revisarFactura(
   } = {},
 ) {
   return api.patch<Factura>(`/facturas/${id}/revision`, { accion, ...data })
-}
-
-export function listarOrdenesCompraFacturables() {
-  return api.get<OrdenCompraFacturable[]>("/facturas/ordenes-compra")
 }
 
 export function listarOrdenesPago(params: { estado?: string } = {}) {

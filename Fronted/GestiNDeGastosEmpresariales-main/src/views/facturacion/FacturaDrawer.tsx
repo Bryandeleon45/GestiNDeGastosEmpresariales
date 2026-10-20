@@ -132,8 +132,7 @@ export default function FacturaDrawer({
         await pagarOrdenPago(op.id_orden_pago, { fecha_pago_real: new Date().toISOString().slice(0, 10) })
         onToast("Pago registrado", "La orden quedó Pagada.")
       } else {
-        const motivo = window.prompt("Motivo de anulación:")
-        if (!motivo) return
+        const motivo = "Anulación solicitada desde facturación"
         await anularOrdenPago(op.id_orden_pago, motivo)
         onToast("Orden anulada", "La orden de pago fue anulada.")
       }

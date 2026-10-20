@@ -77,27 +77,6 @@ router.post("/fuentes-financiamiento", authorize("configuracion"), async (req, r
   }
 });
 
-// ── Órdenes de compra disponibles para facturar ────────────────────────────────
-router.get("/facturas/ordenes-compra", authorize("facturacion"), async (_req, res, next) => {
-  try {
-    const { rows } = await pool.query(
-      `SELECT oc.id_orden_compra, oc.numero_orden, oc.monto_total, oc.fecha_emision,
-              oc.plazo_credito_dias, p.id_proveedor, p.nit, p.razon_social,
-              (SELECT COALESCE(SUM(f.monto_total), 0) FROM factura f
-                WHERE f.id_orden_compra = oc.id_orden_compra AND f.estado <> 'Rechazada') AS total_facturado,
-              (SELECT COALESCE(monto_recibido, 0) FROM v_recibido_oc
-                WHERE id_orden_compra = oc.id_orden_compra) AS recibido_valorizado
-         FROM orden_compra oc
-         JOIN proveedor p ON p.id_proveedor = oc.id_proveedor
-        WHERE oc.estado IN ('Aprobada', 'Enviada', 'Entregada')
-        ORDER BY oc.fecha_emision DESC`,
-    );
-    res.json(rows);
-  } catch (e) {
-    next(e);
-  }
-});
-
 // ── Resumen (KPIs) ─────────────────────────────────────────────────────────────
 router.get("/facturacion/resumen", authorize("facturacion"), async (_req, res, next) => {
   try {
@@ -105,9 +84,10 @@ router.get("/facturacion/resumen", authorize("facturacion"), async (_req, res, n
       `SELECT
          COALESCE((SELECT SUM(op.monto)::numeric(12,2)
                      FROM orden_pago op
-                    WHERE op.estado IN ('Pendiente','Programada')
-                      AND EXTRACT(MONTH FROM op.fecha_vencimiento) = EXTRACT(MONTH FROM CURRENT_DATE)
-                      AND EXTRACT(YEAR FROM op.fecha_vencimiento) = EXTRACT(YEAR FROM CURRENT_DATE)), 0) AS total_por_pagar,
+                    WHERE op.estado = 'Pagada'
+                      AND op.fecha_pago_real IS NOT NULL
+                      AND EXTRACT(MONTH FROM op.fecha_pago_real) = EXTRACT(MONTH FROM CURRENT_DATE)
+                      AND EXTRACT(YEAR FROM op.fecha_pago_real) = EXTRACT(YEAR FROM CURRENT_DATE)), 0) AS total_por_pagar,
          (SELECT COUNT(*)::int FROM factura f
            WHERE f.estado IN ('Recibida','En Revisión','Aprobada')
              AND NOT EXISTS (SELECT 1 FROM orden_pago op2 WHERE op2.id_factura = f.id_factura AND op2.estado <> 'Anulada')) AS facturas_pendientes,
@@ -128,14 +108,35 @@ router.get("/facturacion/resumen", authorize("facturacion"), async (_req, res, n
 router.get("/facturacion/cronograma", authorize("facturacion"), async (_req, res, next) => {
   try {
     const { rows } = await pool.query(
-      `SELECT op.numero_orden_pago, op.fecha_vencimiento, op.fecha_pago_programada,
-              op.estado, op.monto, p.razon_social, f.numero_factura
-         FROM orden_pago op
-         JOIN factura f ON f.id_factura = op.id_factura
-         JOIN proveedor p ON p.id_proveedor = op.id_proveedor
-        WHERE op.estado IN ('Pendiente','Programada')
-        ORDER BY COALESCE(op.fecha_pago_programada, op.fecha_vencimiento) ASC
-        LIMIT 50`,
+      `SELECT * FROM (
+         -- Facturas aún sin orden de pago: muestran el plazo del proveedor
+         SELECT 'FACTURA'::text AS origen,
+                NULL::text AS numero_orden_pago,
+                f.numero_factura, p.razon_social,
+                f.fecha_vencimiento, NULL::date AS fecha_pago_programada,
+                f.estado, f.monto_total AS monto,
+                f.fecha_emision, f.plazo_credito_dias
+           FROM factura f
+           JOIN proveedor p ON p.id_proveedor = f.id_proveedor
+          WHERE f.estado IN ('Recibida', 'En Revisión', 'Aprobada')
+            AND NOT EXISTS (SELECT 1 FROM orden_pago op
+                             WHERE op.id_factura = f.id_factura
+                               AND op.estado <> 'Anulada')
+         UNION ALL
+         -- Órdenes de pago vigentes
+         SELECT 'ORDEN_PAGO'::text AS origen,
+                op.numero_orden_pago,
+                f.numero_factura, p.razon_social,
+                op.fecha_vencimiento, op.fecha_pago_programada,
+                op.estado, op.monto,
+                f.fecha_emision, f.plazo_credito_dias
+           FROM orden_pago op
+           JOIN factura f ON f.id_factura = op.id_factura
+           JOIN proveedor p ON p.id_proveedor = op.id_proveedor
+          WHERE op.estado IN ('Pendiente', 'Programada')
+       ) t
+       ORDER BY COALESCE(t.fecha_pago_programada, t.fecha_vencimiento) ASC
+       LIMIT 50`,
     );
     res.json(rows);
   } catch (e) {
@@ -186,6 +187,7 @@ router.get("/facturas", authorize("facturacion"), async (req, res, next) => {
 // ── Factura: detalle ───────────────────────────────────────────────────────────
 router.get("/facturas/:id", authorize("facturacion"), async (req, res, next) => {
   try {
+    if (!/^\d+$/.test(req.params.id)) return res.status(404).json({ error: "Factura no encontrada" });
     const { rows } = await pool.query(
       `SELECT f.*, p.nit, p.razon_social, oc.numero_orden, oc.monto_total AS oc_monto,
               oc.plazo_credito_dias AS oc_plazo, oc.fecha_emision AS oc_fecha_emision,

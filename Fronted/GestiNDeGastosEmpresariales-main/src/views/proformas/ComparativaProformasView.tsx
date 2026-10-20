@@ -78,7 +78,6 @@ export default function ComparativaProformasView({
   }
 
   const autoAdjudicar = async () => {
-    if (!window.confirm("¿Adjudicar automáticamente la oferta de mejor precio?")) return
     setWorking(true)
     try {
       const r = await autoAdjudicarProceso(idProceso)

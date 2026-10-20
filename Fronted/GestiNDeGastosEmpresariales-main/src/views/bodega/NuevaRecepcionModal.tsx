@@ -78,10 +78,6 @@ export default function NuevaRecepcionModal({
     const total = pendientes.length
     const marcados = pendientes.filter((it) => recibidos.has(it.id_detalle_orden)).length
     const completo = marcados === total
-    const msg = completo
-      ? "Se recibió todo el pedido. Se marcará como Completado."
-      : `Solo ${marcados} de ${total} ítems recibidos. Se marcará como Pendiente.`
-    if (!window.confirm(`¿Confirmar recepción? ${msg}`)) return
     setSubmitting(true)
     try {
       await recibirTodo({ id_orden_compra: idOC, items_recibidos: Array.from(recibidos) })

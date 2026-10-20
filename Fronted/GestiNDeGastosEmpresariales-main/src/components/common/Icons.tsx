@@ -440,6 +440,19 @@ export const Icons = {
       <line x1="9" y1="11" x2="15" y2="11" />
     </svg>
   ),
+  Printer: () => (
+    <svg
+      className="w-4 h-4"
+      fill="none"
+      stroke="currentColor"
+      viewBox="0 0 24 24"
+      strokeWidth={1.8}
+    >
+      <path d="M6 9V3h12v6" />
+      <path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2" />
+      <rect x="6" y="14" width="12" height="8" />
+    </svg>
+  ),
   Money: () => (
     <svg
       className="w-6 h-6"
