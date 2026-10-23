@@ -3,6 +3,7 @@ import { G } from "@/constants/theme"
 import MunicipalSeal from "@/components/common/MunicipalSeal"
 import { LAKE_IMG } from "@/models/login"
 import ForgotPasswordModal from "@/views/auth/ForgotPasswordModal"
+import ResetPasswordModal from "@/views/auth/ResetPasswordModal"
 
 export default function LoginScreen({
   onLogin,
@@ -16,6 +17,9 @@ export default function LoginScreen({
   const [focusField, setFocusField] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [showForgot, setShowForgot] = useState(false)
+  const [reset, setReset] = useState<{ correo: string; devCodigo: string } | null>(
+    null,
+  )
   const [error, setError] = useState("")
 
   const handleLogin = async () => {
@@ -357,7 +361,25 @@ export default function LoginScreen({
       </div>
 
       {showForgot && (
-        <ForgotPasswordModal onClose={() => setShowForgot(false)} />
+        <ForgotPasswordModal
+          onClose={() => setShowForgot(false)}
+          onSent={(correo, devCodigo) => {
+            setShowForgot(false)
+            setReset({ correo, devCodigo })
+          }}
+        />
+      )}
+
+      {reset && (
+        <ResetPasswordModal
+          correo={reset.correo}
+          devCodigo={reset.devCodigo}
+          onBack={() => {
+            setReset(null)
+            setShowForgot(true)
+          }}
+          onClose={() => setReset(null)}
+        />
       )}
     </div>
   )

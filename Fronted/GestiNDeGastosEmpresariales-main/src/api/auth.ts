@@ -83,9 +83,9 @@ export async function cambiarClave(
 }
 
 export async function recuperarContrasena(
-  telefono: string,
+  correo: string,
 ): Promise<{ ok: boolean; dev_codigo?: string }> {
-  return api.post<{ ok: boolean; dev_codigo?: string }>("/auth/recuperar", { telefono })
+  return api.post<{ ok: boolean; dev_codigo?: string }>("/auth/recuperar", { correo })
 }
 
 export async function restablecerContrasena(

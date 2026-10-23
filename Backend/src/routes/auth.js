@@ -8,9 +8,9 @@ import { authenticate } from "../middlewares/authenticate.js";
 import { getMenuPermitido } from "../services/menu.service.js";
 import { registrarBitacora, ipDe } from "../services/bitacora.service.js";
 import {
-  whatsappConfigurado,
+  correoConfigurado,
   enviarCodigoRecuperacion,
-} from "../services/whatsapp.js";
+} from "../services/mailer.js";
 
 const router = Router();
 
@@ -206,22 +206,21 @@ router.post("/cambiar-clave", authenticate, async (req, res, next) => {
 
 router.post("/recuperar", async (req, res, next) => {
   try {
-    const { telefono } = req.body;
-    const digitos = String(telefono ?? "").replace(/\D/g, "");
-    if (digitos.length !== 8) {
-      return res.status(400).json({ error: "El número debe tener 8 dígitos" });
+    const { correo } = req.body;
+    const email = String(correo ?? "").trim().toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return res.status(400).json({ error: "Ingrese un correo electrónico válido" });
     }
 
     const { rows } = await pool.query(
-      `SELECT u.id_usuario, u.correo, up.whatsapp,
+      `SELECT u.id_usuario, u.correo,
               COALESCE(NULLIF(TRIM(CONCAT_WS(' ', e.nombre, e.apellido)), ''), u.nombre_usuario) AS nombre
          FROM usuario u
-         JOIN usuario_preferencia up ON up.id_usuario = u.id_usuario
          LEFT JOIN empleado e ON e.id_empleado = u.id_empleado
-        WHERE up.whatsapp = $1 AND u.activo`,
-      [digitos],
+        WHERE lower(u.correo) = $1 AND u.activo`,
+      [email],
     );
-    // Respuesta genérica para no revelar si el número está registrado.
+    // Respuesta genérica para no revelar si el correo está registrado.
     if (!rows[0]) return res.json({ ok: true });
 
     const usuario = rows[0];
@@ -252,7 +251,7 @@ router.post("/recuperar", async (req, res, next) => {
     );
 
     await enviarCodigoRecuperacion({
-      telefono: usuario.whatsapp,
+      para: usuario.correo,
       codigo,
       nombre: usuario.nombre,
     });
@@ -262,12 +261,12 @@ router.post("/recuperar", async (req, res, next) => {
       accion: "reset_solicitado",
       ip: ipDe(req),
       modulo: "Autenticación",
-      detalle: "Solicitud de restablecimiento de clave por WhatsApp",
+      detalle: "Solicitud de restablecimiento de clave por correo electrónico",
     });
 
     const respuesta = { ok: true };
-    // Solo en desarrollo (sin API de WhatsApp configurada) se expone el código para pruebas.
-    if (!whatsappConfigurado && process.env.NODE_ENV !== "production") {
+    // Solo en desarrollo (sin SMTP configurado) se expone el código para pruebas.
+    if (!correoConfigurado && process.env.NODE_ENV !== "production") {
       respuesta.dev_codigo = codigo;
     }
     res.json(respuesta);
