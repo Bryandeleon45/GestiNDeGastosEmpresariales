@@ -1,7 +1,13 @@
 // ─── Cliente HTTP para la API REST del backend ────────────────────────────────
-const BASE_URL =
+export const BASE_URL =
   (import.meta.env.VITE_API_URL as string | undefined) ||
   "http://localhost:4000/api"
+
+if (import.meta.env.PROD && !import.meta.env.VITE_API_URL) {
+  console.error(
+    "[api] Falta VITE_API_URL en el build de producción; se usará " + BASE_URL,
+  )
+}
 
 const TOKEN_KEY = "muni_token"
 

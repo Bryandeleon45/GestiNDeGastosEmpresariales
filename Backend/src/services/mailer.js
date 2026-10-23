@@ -9,6 +9,7 @@ const SMTP_FROM =
   process.env.SMTP_FROM ||
   (SMTP_USER ? `Gestion de Proveedores <${SMTP_USER}>` : "Gestion de Proveedores <no-reply@munipanajachel.gob.gt>");
 const SMTP_TEST_TO = process.env.SMTP_TEST_TO || "";
+const APP_URL = process.env.APP_URL || "http://localhost:8443";
 
 // Si no hay credenciales, el sistema entra en MODO DESARROLLO: no envía correos
 // reales y en su lugar imprime el contenido en la consola del backend.
@@ -128,7 +129,7 @@ export async function enviarNotificacionCorreo({ para, titulo, mensaje, nombre }
         ${mensaje.replace(/\n/g, "<br>")}
       </p>
       <div style="text-align:center;margin:24px 0">
-        <a href="http://localhost:8443" style="display:inline-block;background:#1E5E2F;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:600">
+        <a href="${APP_URL}" style="display:inline-block;background:#1E5E2F;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:600">
           Ir al sistema
         </a>
       </div>
@@ -151,7 +152,7 @@ export async function enviarCredencialesCorreo({ para, nombre, usuario, clave })
     `Usuario: ${usuario}\n` +
     `Contraseña temporal: ${clave}\n\n` +
     `Por seguridad, deberás cambiar tu contraseña al primer ingreso.\n\n` +
-    `Ingresa en: http://localhost:8443\n\n` +
+    `Ingresa en: ${APP_URL}\n\n` +
     `Sistema de Gestión de Proveedores — Municipalidad de Panajachel`;
 
   const html = `
@@ -173,7 +174,7 @@ export async function enviarCredencialesCorreo({ para, nombre, usuario, clave })
         <b>Por seguridad, deberás cambiar tu contraseña al primer ingreso.</b>
       </p>
       <div style="text-align:center;margin:24px 0">
-        <a href="http://localhost:8443" style="display:inline-block;background:#1E5E2F;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:600">
+        <a href="${APP_URL}" style="display:inline-block;background:#1E5E2F;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:600">
           Ir al sistema
         </a>
       </div>

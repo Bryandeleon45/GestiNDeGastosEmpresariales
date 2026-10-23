@@ -1,8 +1,4 @@
-import { api, getToken } from "./client"
-
-const BASE_URL =
-  (import.meta.env.VITE_API_URL as string | undefined) ||
-  "http://localhost:4000/api"
+import { api, getToken, BASE_URL } from "./client"
 
 export interface PortalPerfil {
   id_proveedor: number
