@@ -1,41 +1,32 @@
 import { useState, useEffect } from "react"
-import { recuperarContrasena, restablecerContrasena } from "@/api/auth"
-import { G, GL, GB, BRAND_HEX } from "@/constants/theme"
+import { restablecerContrasena } from "@/api/auth"
+import { G, GL, BRAND_HEX } from "@/constants/theme"
 
 const FOCO = "0 0 0 3px rgba(30,94,47,0.12)"
 
-export default function ResetPasswordModal({
+export default function NewPasswordModal({
   correo,
-  devCodigo,
+  codigo,
   onBack,
   onClose,
 }: {
   correo: string
-  devCodigo: string
+  codigo: string
   onBack: () => void
   onClose: () => void
 }) {
   const [visible, setVisible] = useState(false)
-  const [paso, setPaso] = useState<"codigo" | "listo">("codigo")
-  const [codigo, setCodigo] = useState("")
+  const [paso, setPaso] = useState<"clave" | "listo">("clave")
   const [clave, setClave] = useState("")
   const [clave2, setClave2] = useState("")
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
-  const [devActual, setDevActual] = useState(devCodigo)
-  const [cooldown, setCooldown] = useState(60)
   const [focusField, setFocusField] = useState<string | null>(null)
 
   useEffect(() => {
     const t = setTimeout(() => setVisible(true), 10)
     return () => clearTimeout(t)
   }, [])
-
-  useEffect(() => {
-    if (cooldown <= 0) return
-    const t = setInterval(() => setCooldown((c) => (c <= 1 ? 0 : c - 1)), 1000)
-    return () => clearInterval(t)
-  }, [cooldown])
 
   useEffect(() => {
     if (paso !== "listo") return
@@ -57,27 +48,8 @@ export default function ResetPasswordModal({
     transition: "border-color 0.2s, box-shadow 0.2s",
   })
 
-  const reenviar = async () => {
-    setError("")
-    setLoading(true)
-    try {
-      const res = await recuperarContrasena(correo)
-      setDevActual(res?.dev_codigo ?? "")
-      setCodigo("")
-      setCooldown(60)
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "No se pudo reenviar el código.")
-    } finally {
-      setLoading(false)
-    }
-  }
-
   const restablecer = async () => {
     setError("")
-    if (codigo.trim().length !== 6) {
-      setError("El código debe tener 6 dígitos.")
-      return
-    }
     if (clave.length < 8) {
       setError("La contraseña debe tener mínimo 8 caracteres.")
       return
@@ -88,10 +60,12 @@ export default function ResetPasswordModal({
     }
     setLoading(true)
     try {
-      await restablecerContrasena(codigo.trim(), clave)
+      await restablecerContrasena(codigo, clave)
       setPaso("listo")
     } catch (e) {
-      setError(e instanceof Error ? e.message : "No se pudo restablecer la contraseña.")
+      setError(
+        e instanceof Error ? e.message : "No se pudo restablecer la contraseña.",
+      )
     } finally {
       setLoading(false)
     }
@@ -113,7 +87,7 @@ export default function ResetPasswordModal({
           className="bg-white rounded-2xl shadow-2xl w-full max-w-md pointer-events-auto"
           style={{ animation: "modalIn 0.22s cubic-bezier(.16,1,.3,1)" }}
         >
-          {paso === "codigo" ? (
+          {paso === "clave" ? (
             <>
               <div className="px-8 pt-8 pb-2 text-center">
                 <div
@@ -129,44 +103,20 @@ export default function ResetPasswordModal({
                     strokeLinecap="round"
                     strokeLinejoin="round"
                   >
-                    <rect x="4" y="10" width="16" height="11" rx="2" />
-                    <path d="M8 10V7a4 4 0 0 1 8 0v3" />
+                    <circle cx="7.5" cy="15.5" r="4.5" />
+                    <path d="M10.7 12.3 21 2M16 7l3 3M19 4l2 2" />
                   </svg>
                 </div>
                 <h2 className="text-xl font-extrabold text-gray-900">
-                  Ingrese el Código
+                  Nueva Contraseña
                 </h2>
                 <p className="text-sm text-gray-500 mt-2 leading-relaxed">
-                  Enviamos un código de 6 dígitos a{" "}
-                  <b className="text-gray-700">{correo}</b>. Vence en 30
-                  minutos.
+                  Cree una nueva contraseña para{" "}
+                  <b className="text-gray-700">{correo}</b>. Debe tener al menos 8
+                  caracteres.
                 </p>
               </div>
               <div className="px-8 py-5 space-y-4">
-                {devActual && (
-                  <div
-                    className="rounded-xl px-4 py-2.5 text-xs font-semibold border"
-                    style={{ backgroundColor: GL, borderColor: GB, color: G }}
-                  >
-                    Modo desarrollo — código: <b>{devActual}</b>
-                  </div>
-                )}
-                <div>
-                  <label className="text-xs font-bold text-gray-600 block mb-1.5">
-                    Código de verificación
-                  </label>
-                  <input
-                    value={codigo}
-                    onChange={(e) => setCodigo(e.target.value.replace(/\D/g, "").slice(0, 6))}
-                    onFocus={() => setFocusField("codigo")}
-                    onBlur={() => setFocusField(null)}
-                    inputMode="numeric"
-                    autoFocus
-                    placeholder="000000"
-                    className="w-full px-4 py-3 text-center text-lg tracking-[0.5em] font-mono border border-gray-200 rounded-xl focus:outline-none"
-                    style={fieldStyle("codigo")}
-                  />
-                </div>
                 <div>
                   <label className="text-xs font-bold text-gray-600 block mb-1.5">
                     Nueva contraseña
@@ -177,6 +127,7 @@ export default function ResetPasswordModal({
                     onChange={(e) => setClave(e.target.value)}
                     onFocus={() => setFocusField("clave")}
                     onBlur={() => setFocusField(null)}
+                    autoFocus
                     placeholder="Mínimo 8 caracteres"
                     className="w-full px-4 py-3 text-sm border border-gray-200 rounded-xl focus:outline-none"
                     style={fieldStyle("clave")}
@@ -198,11 +149,14 @@ export default function ResetPasswordModal({
                   />
                 </div>
                 {error && (
-                  <p className="text-xs font-semibold text-red-500" aria-live="polite">
+                  <p
+                    className="text-xs font-semibold text-red-500"
+                    aria-live="polite"
+                  >
                     {error}
                   </p>
                 )}
-                <div className="flex items-center justify-between text-xs">
+                <div className="text-xs">
                   <button
                     onClick={() => {
                       setVisible(false)
@@ -210,15 +164,7 @@ export default function ResetPasswordModal({
                     }}
                     className="font-semibold text-gray-500 hover:text-gray-700"
                   >
-                    ← Cambiar correo
-                  </button>
-                  <button
-                    onClick={reenviar}
-                    disabled={cooldown > 0 || loading}
-                    className="font-bold disabled:opacity-50"
-                    style={{ color: G }}
-                  >
-                    {cooldown > 0 ? `Reenviar en ${cooldown}s` : "Reenviar código"}
+                    ← Cambiar código
                   </button>
                 </div>
               </div>
@@ -235,7 +181,7 @@ export default function ResetPasswordModal({
                   className="flex-1 py-3 text-sm font-bold text-white rounded-xl transition-all hover:opacity-90 shadow-sm disabled:opacity-50"
                   style={{ backgroundColor: G }}
                 >
-                  {loading ? "Restableciendo…" : "Restablecer"}
+                  {loading ? "Restableciendo…" : "Restablecer contraseña"}
                 </button>
               </div>
             </>

@@ -3,7 +3,8 @@ import { G } from "@/constants/theme"
 import MunicipalSeal from "@/components/common/MunicipalSeal"
 import { LAKE_IMG } from "@/models/login"
 import ForgotPasswordModal from "@/views/auth/ForgotPasswordModal"
-import ResetPasswordModal from "@/views/auth/ResetPasswordModal"
+import VerifyCodeModal from "@/views/auth/VerifyCodeModal"
+import NewPasswordModal from "@/views/auth/NewPasswordModal"
 
 export default function LoginScreen({
   onLogin,
@@ -17,9 +18,14 @@ export default function LoginScreen({
   const [focusField, setFocusField] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [showForgot, setShowForgot] = useState(false)
-  const [reset, setReset] = useState<{ correo: string; devCodigo: string } | null>(
+  const [verify, setVerify] = useState<{ correo: string; devCodigo: string } | null>(
     null,
   )
+  const [nueva, setNueva] = useState<{
+    correo: string
+    codigo: string
+    devCodigo: string
+  } | null>(null)
   const [error, setError] = useState("")
 
   const handleLogin = async () => {
@@ -365,20 +371,38 @@ export default function LoginScreen({
           onClose={() => setShowForgot(false)}
           onSent={(correo, devCodigo) => {
             setShowForgot(false)
-            setReset({ correo, devCodigo })
+            setVerify({ correo, devCodigo })
           }}
         />
       )}
 
-      {reset && (
-        <ResetPasswordModal
-          correo={reset.correo}
-          devCodigo={reset.devCodigo}
+      {verify && (
+        <VerifyCodeModal
+          correo={verify.correo}
+          devCodigo={verify.devCodigo}
           onBack={() => {
-            setReset(null)
+            setVerify(null)
             setShowForgot(true)
           }}
-          onClose={() => setReset(null)}
+          onClose={() => setVerify(null)}
+          onVerified={(codigo) => {
+            const { correo, devCodigo } = verify
+            setVerify(null)
+            setNueva({ correo, codigo, devCodigo })
+          }}
+        />
+      )}
+
+      {nueva && (
+        <NewPasswordModal
+          correo={nueva.correo}
+          codigo={nueva.codigo}
+          onBack={() => {
+            const { correo, devCodigo } = nueva
+            setNueva(null)
+            setVerify({ correo, devCodigo })
+          }}
+          onClose={() => setNueva(null)}
         />
       )}
     </div>

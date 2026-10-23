@@ -4721,57 +4721,170 @@ function SupplierPortal({ onLogout }: { onLogout: () => void }) {
 // ─── Forgot Password modal ────────────────────────────────────────────────────
 function ForgotPasswordModal({ onClose }: { onClose: () => void }) {
   const [visible, setVisible] = useState(false);
-  const [sent, setSent] = useState(false);
+  const [paso, setPaso] = useState<"email" | "codigo" | "clave" | "listo">("email");
   const [email, setEmail] = useState("");
+  const [codigo, setCodigo] = useState("");
+  const [clave, setClave] = useState("");
+  const [clave2, setClave2] = useState("");
+  const [error, setError] = useState("");
+  const [nota, setNota] = useState("");
+  const [focusField, setFocusField] = useState<string | null>(null);
+
   useEffect(() => { const t = setTimeout(() => setVisible(true), 10); return () => clearTimeout(t); }, []);
+  useEffect(() => {
+    if (paso !== "listo") return;
+    const t = setTimeout(() => { setVisible(false); setTimeout(onClose, 280); }, 1800);
+    return () => clearTimeout(t);
+  }, [paso, onClose]);
+
   const handleClose = () => { setVisible(false); setTimeout(onClose, 280); };
+  const emailValido = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
+
+  const fieldStyle = (name: string) => ({
+    borderColor: focusField === name ? G : "#E2E8F0",
+    boxShadow: focusField === name ? `0 0 0 3px rgba(30,94,47,0.12)` : undefined,
+    transition: "border-color 0.2s, box-shadow 0.2s",
+  });
+
+  const enviarCodigo = () => {
+    setError("");
+    setNota("");
+    if (!emailValido) { setError("Ingrese un correo electrónico válido."); return; }
+    setCodigo("");
+    setPaso("codigo");
+  };
+
+  const validarCodigo = () => {
+    setError("");
+    setNota("");
+    if (codigo.length !== 6) { setError("El código debe tener 6 dígitos."); return; }
+    setPaso("clave");
+  };
+
+  const restablecer = () => {
+    setError("");
+    setNota("");
+    if (clave.length < 8) { setError("La contraseña debe tener mínimo 8 caracteres."); return; }
+    if (clave !== clave2) { setError("Las contraseñas no coinciden."); return; }
+    setPaso("listo");
+  };
+
+  const titulo = paso === "email" ? "Recuperar Contraseña" : paso === "codigo" ? "Ingrese el Código" : "Nueva Contraseña";
+  const descripcion = paso === "email"
+    ? "Ingrese su correo electrónico y le enviaremos un código de verificación para restablecer su acceso."
+    : paso === "codigo"
+      ? <>Enviamos un código de 6 dígitos a <b className="text-gray-700">{email}</b>. Vence en 30 minutos.</>
+      : "Cree una nueva contraseña para su cuenta. Debe tener al menos 8 caracteres.";
+
+  const icono = paso === "codigo" ? (
+    <svg className="w-7 h-7" fill="none" stroke={G} viewBox="0 0 24 24" strokeWidth={1.8}><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 018 0v3"/></svg>
+  ) : paso === "clave" ? (
+    <svg className="w-7 h-7" fill="none" stroke={G} viewBox="0 0 24 24" strokeWidth={1.8}><circle cx="7.5" cy="15.5" r="4.5"/><path d="M10.7 12.3 21 2M16 7l3 3M19 4l2 2"/></svg>
+  ) : (
+    <svg className="w-7 h-7" fill="none" stroke={G} viewBox="0 0 24 24" strokeWidth={1.8}><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg>
+  );
+
   return (
     <>
       <div className="fixed inset-0 z-[200]" onClick={handleClose}
         style={{ backgroundColor: `rgba(0,0,0,${visible ? 0.55 : 0})`, backdropFilter: "blur(4px)", transition: "background-color 0.28s" }}/>
       <div className="fixed inset-0 z-[210] flex items-center justify-center p-4 pointer-events-none">
-        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md pointer-events-auto"
+        <div key={paso} className="bg-white rounded-2xl shadow-2xl w-full max-w-md pointer-events-auto"
           style={{ animation: "modalIn 0.22s cubic-bezier(.16,1,.3,1)" }}>
-          {!sent ? (
-            <>
-              <div className="px-8 pt-8 pb-2 text-center">
-                <div className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-4" style={{ backgroundColor: GL }}>
-                  <svg className="w-7 h-7" fill="none" stroke={G} viewBox="0 0 24 24" strokeWidth={1.8}><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
-                </div>
-                <h2 className="text-xl font-extrabold text-gray-900">Recuperar Contraseña</h2>
-                <p className="text-sm text-gray-500 mt-2 leading-relaxed">Ingrese su correo institucional y le enviaremos las instrucciones para restablecer su acceso.</p>
-              </div>
-              <div className="px-8 py-5">
-                <label className="text-xs font-bold text-gray-600 block mb-1.5">Correo Institucional</label>
-                <input value={email} onChange={e => setEmail(e.target.value)}
-                  placeholder="usuario@munipanajachel.gob.gt"
-                  className="w-full px-4 py-3 text-sm border border-gray-200 rounded-xl focus:outline-none transition-colors"
-                  style={{ borderColor: email ? G : undefined }}
-                  onFocus={e => e.currentTarget.style.borderColor = G}
-                  onBlur={e => { if (!email) e.currentTarget.style.borderColor = ""; }}/>
-              </div>
-              <div className="flex gap-3 px-8 pb-8">
-                <button onClick={handleClose} className="flex-1 py-3 text-sm font-semibold text-gray-600 border border-gray-200 rounded-xl hover:bg-gray-50 transition-all">Cancelar</button>
-                <button onClick={() => { if (email) setSent(true); }}
-                  className="flex-1 py-3 text-sm font-bold text-white rounded-xl transition-all hover:opacity-90 shadow-sm"
-                  style={{ backgroundColor: G, opacity: !email ? 0.5 : 1 }}>
-                  Enviar Instrucciones
-                </button>
-              </div>
-            </>
-          ) : (
+          {paso === "listo" ? (
             <div className="px-8 py-10 text-center">
               <div className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-4 bg-emerald-50">
                 <svg className="w-7 h-7 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}><polyline points="20 6 9 17 4 12"/></svg>
               </div>
-              <h2 className="text-xl font-extrabold text-gray-900">Correo enviado</h2>
-              <p className="text-sm text-gray-500 mt-2 leading-relaxed">Revise su bandeja <b className="text-gray-700">{email}</b>. Si la cuenta existe, recibirá las instrucciones en los próximos minutos.</p>
+              <h2 className="text-xl font-extrabold text-gray-900">Contraseña restablecida</h2>
+              <p className="text-sm text-gray-500 mt-2 leading-relaxed">Ya puede iniciar sesión con su nueva contraseña. Redirigiendo al inicio de sesión…</p>
               <button onClick={handleClose}
                 className="mt-6 w-full py-3 text-sm font-bold text-white rounded-xl transition-all hover:opacity-90 shadow-sm"
                 style={{ backgroundColor: G }}>
-                Cerrar
+                Ir a iniciar sesión
               </button>
             </div>
+          ) : (
+            <>
+              <div className="px-8 pt-8 pb-2 text-center">
+                <div className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-4" style={{ backgroundColor: GL }}>
+                  {icono}
+                </div>
+                <h2 className="text-xl font-extrabold text-gray-900">{titulo}</h2>
+                <p className="text-sm text-gray-500 mt-2 leading-relaxed">{descripcion}</p>
+              </div>
+              <div className="px-8 py-5 space-y-4">
+                {paso === "email" && (
+                  <div>
+                    <label className="text-xs font-bold text-gray-600 block mb-1.5">Correo electrónico</label>
+                    <input type="email" value={email} onChange={e => setEmail(e.target.value)}
+                      onFocus={() => setFocusField("email")} onBlur={() => setFocusField(null)}
+                      autoFocus placeholder="correo@ejemplo.com"
+                      className="w-full px-4 py-3 text-sm border border-gray-200 rounded-xl focus:outline-none"
+                      style={fieldStyle("email")}/>
+                  </div>
+                )}
+                {paso === "codigo" && (
+                  <>
+                    <div>
+                      <label className="text-xs font-bold text-gray-600 block mb-1.5">Código de verificación</label>
+                      <input value={codigo}
+                        onChange={e => { setCodigo(e.target.value.replace(/\D/g, "").slice(0, 6)); setNota(""); }}
+                        onFocus={() => setFocusField("codigo")} onBlur={() => setFocusField(null)}
+                        inputMode="numeric" autoFocus placeholder="000000"
+                        className="w-full px-4 py-3 text-center text-lg tracking-[0.5em] font-mono border border-gray-200 rounded-xl focus:outline-none"
+                        style={fieldStyle("codigo")}/>
+                    </div>
+                    <div className="flex items-center justify-between text-xs">
+                      <button onClick={() => { setPaso("email"); setError(""); setNota(""); }}
+                        className="font-semibold text-gray-500 hover:text-gray-700">← Cambiar correo</button>
+                      <button onClick={() => { setCodigo(""); setError(""); setNota("Código reenviado."); }}
+                        className="font-bold" style={{ color: G }}>Reenviar código</button>
+                    </div>
+                  </>
+                )}
+                {paso === "clave" && (
+                  <>
+                    <div>
+                      <label className="text-xs font-bold text-gray-600 block mb-1.5">Nueva contraseña</label>
+                      <input type="password" value={clave} onChange={e => setClave(e.target.value)}
+                        onFocus={() => setFocusField("clave")} onBlur={() => setFocusField(null)}
+                        autoFocus placeholder="Mínimo 8 caracteres"
+                        className="w-full px-4 py-3 text-sm border border-gray-200 rounded-xl focus:outline-none"
+                        style={fieldStyle("clave")}/>
+                    </div>
+                    <div>
+                      <label className="text-xs font-bold text-gray-600 block mb-1.5">Confirmar contraseña</label>
+                      <input type="password" value={clave2} onChange={e => setClave2(e.target.value)}
+                        onFocus={() => setFocusField("clave2")} onBlur={() => setFocusField(null)}
+                        placeholder="Repita la contraseña"
+                        className="w-full px-4 py-3 text-sm border border-gray-200 rounded-xl focus:outline-none"
+                        style={fieldStyle("clave2")}/>
+                    </div>
+                  </>
+                )}
+                {nota && <p className="text-xs font-semibold" style={{ color: G }}>{nota}</p>}
+                {error && <p className="text-xs font-semibold text-red-500" aria-live="polite">{error}</p>}
+              </div>
+              <div className="flex gap-3 px-8 pb-8">
+                <button onClick={handleClose} className="flex-1 py-3 text-sm font-semibold text-gray-600 border border-gray-200 rounded-xl hover:bg-gray-50 transition-all">Cancelar</button>
+                {paso === "email" && (
+                  <button onClick={enviarCodigo} disabled={!emailValido}
+                    className="flex-1 py-3 text-sm font-bold text-white rounded-xl transition-all hover:opacity-90 shadow-sm disabled:opacity-50"
+                    style={{ backgroundColor: G }}>Enviar código</button>
+                )}
+                {paso === "codigo" && (
+                  <button onClick={validarCodigo} disabled={codigo.length !== 6}
+                    className="flex-1 py-3 text-sm font-bold text-white rounded-xl transition-all hover:opacity-90 shadow-sm disabled:opacity-50"
+                    style={{ backgroundColor: G }}>Validar código</button>
+                )}
+                {paso === "clave" && (
+                  <button onClick={restablecer}
+                    className="flex-1 py-3 text-sm font-bold text-white rounded-xl transition-all hover:opacity-90 shadow-sm"
+                    style={{ backgroundColor: G }}>Restablecer contraseña</button>
+                )}
+              </div>
+            </>
           )}
         </div>
       </div>
