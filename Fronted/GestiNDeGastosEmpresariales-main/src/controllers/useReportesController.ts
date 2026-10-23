@@ -20,9 +20,16 @@ export function useReportesController(onToast: (m: string, s: string) => void) {
   const [loading, setLoading] = useState(false)
 
   useEffect(() => {
-    listarReportes().then(setCatalogo).catch(() => {})
-    obtenerOpcionesFiltros().then(setOpciones).catch(() => {})
-    obtenerReporte("RPT-11").then(setResumen).catch(() => {})
+    listarReportes()
+      .then(setCatalogo)
+      .catch(() => onToast("Error", "No se pudo cargar el catálogo de reportes"))
+    obtenerOpcionesFiltros()
+      .then(setOpciones)
+      .catch(() => onToast("Error", "No se pudieron cargar las opciones de filtros"))
+    obtenerReporte("RPT-11")
+      .then(setResumen)
+      .catch(() => onToast("Error", "No se pudo cargar el resumen ejecutivo"))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const cargar = useCallback(

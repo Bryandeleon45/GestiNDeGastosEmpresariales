@@ -14,6 +14,10 @@ import {
   Legend,
 } from "recharts"
 import { useReportesController } from "@/controllers/useReportesController"
+import type { FiltrosReporte } from "@/api/reportes"
+import { generarReportesPdf } from "@/lib/reportesPdf"
+import PdfViewerModal from "@/views/common/PdfViewerModal"
+import DateInput from "@/views/common/DateInput"
 
 const CATEGORIA_STYLE: Record<string, string> = {
   "Inventario y Kardex": "bg-green-50 text-green-700 border border-green-200",
@@ -50,19 +54,21 @@ export default function ReportesView({
   const [fi, setFi] = useState("")
   const [ff, setFf] = useState("")
   const [dim, setDim] = useState("")
+  const [estadoSel, setEstadoSel] = useState("")
+  const [prioridadSel, setPrioridadSel] = useState("")
+  const [pdfSrc, setPdfSrc] = useState<string | null>(null)
+  const [pdfNombre, setPdfNombre] = useState("")
 
   const reporte = catalogo.find((c) => c.codigo === codigo) ?? null
 
+  const filtrosDisp = reporte?.filtros ?? []
+  const dimFiltro = filtrosDisp.find((f) => f.tipo === "dimension")
+  const estadoFiltro = filtrosDisp.find((f) => f.tipo === "estado")
+  const prioridadFiltro = filtrosDisp.find((f) => f.tipo === "prioridad")
+  const conFecha = filtrosDisp.some((f) => f.tipo === "fecha")
+
   const dimTipo: "dependencia" | "proveedor" | "categoria" | "insumo" | null =
-    codigo === "RPT-01"
-      ? "insumo"
-      : codigo === "RPT-02"
-        ? "categoria"
-        : codigo === "RPT-04" || codigo === "RPT-05"
-          ? "dependencia"
-          : codigo === "RPT-06" || codigo === "RPT-08" || codigo === "RPT-09"
-            ? "proveedor"
-            : null
+    dimFiltro && dimFiltro.tipo === "dimension" ? dimFiltro.valor : null
 
   const dimOptions =
     dimTipo === "dependencia"
@@ -76,16 +82,66 @@ export default function ReportesView({
             : []
 
   const aplicar = () => {
-    const f: Record<string, string | number> = {}
-    if (fi) f.fechaInicio = fi
-    if (ff) f.fechaFin = ff
+    if (dimFiltro && dimFiltro.tipo === "dimension" && dimFiltro.requerido && !dim) {
+      onToast("Revisar filtros", `Seleccione ${dimFiltro.etiqueta.toLowerCase()} para continuar`)
+      return
+    }
+    const f: FiltrosReporte = {}
+    if (conFecha) {
+      if (fi) f.fechaInicio = fi
+      if (ff) f.fechaFin = ff
+    }
     if (dim && dimTipo) {
       if (dimTipo === "dependencia") f.idDependencia = Number(dim)
       else if (dimTipo === "proveedor") f.idProveedor = Number(dim)
       else if (dimTipo === "categoria") f.idCategoria = Number(dim)
       else if (dimTipo === "insumo") f.idInsumo = Number(dim)
     }
+    if (estadoSel) f.estado = estadoSel
+    if (prioridadSel) f.prioridad = prioridadSel
     aplicarFiltros(f)
+  }
+
+  const limpiarFiltrosLocales = () => {
+    setFi("")
+    setFf("")
+    setDim("")
+    setEstadoSel("")
+    setPrioridadSel("")
+  }
+
+  const exportarPdf = async () => {
+    if (!reporte || !data) return
+    try {
+      const f: string[] = []
+      if (conFecha && fi) f.push(`Desde: ${fi}`)
+      if (conFecha && ff) f.push(`Hasta: ${ff}`)
+      if (dim && dimFiltro && dimFiltro.tipo === "dimension") {
+        const label = dimOptions.find((o) => String(o.id) === String(dim))?.label ?? dim
+        f.push(`${dimFiltro.etiqueta}: ${label}`)
+      }
+      if (estadoSel) f.push(`Estado: ${estadoSel}`)
+      if (prioridadSel) f.push(`Prioridad: ${prioridadSel}`)
+      const blob = await generarReportesPdf({
+        codigo: reporte.codigo,
+        titulo: reporte.titulo,
+        categoria: reporte.categoria,
+        columnas: data.columnas,
+        filas: data.filas,
+        totales: data.totales,
+        filtrosAplicados: f,
+      })
+      if (pdfSrc) URL.revokeObjectURL(pdfSrc)
+      setPdfNombre(`reporte_${reporte.codigo}.pdf`)
+      setPdfSrc(URL.createObjectURL(blob))
+    } catch (e) {
+      onToast("Error", e instanceof Error ? e.message : "No se pudo generar el PDF del reporte")
+    }
+  }
+
+  const cerrarPdf = () => {
+    if (pdfSrc) URL.revokeObjectURL(pdfSrc)
+    setPdfSrc(null)
   }
 
   const kpiCards = resumen?.totales
@@ -100,8 +156,10 @@ export default function ReportesView({
     : []
 
   const solEstado = resumen?.extra?.solicitudes_por_estado ?? []
+  const ocEstado = resumen?.extra?.ordenes_por_estado ?? []
 
   return (
+    <>
     <div className="flex-1 overflow-auto" style={{ background: "var(--gray-50)" }}>
       <div className="px-6 py-5 space-y-5">
         <div className="flex items-start justify-between gap-4 flex-wrap">
@@ -112,13 +170,23 @@ export default function ReportesView({
             </p>
           </div>
           {reporte && (
-            <button
-              onClick={exportar}
-              className="flex items-center gap-2 px-5 py-2.5 text-sm font-bold text-white rounded-xl shadow-sm transition-all hover:opacity-90 shrink-0"
-              style={{ backgroundColor: G }}
-            >
-              <Icons.Download /> Exportar CSV
-            </button>
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                onClick={exportarPdf}
+                disabled={!data || loading}
+                className="flex items-center gap-2 px-5 py-2.5 text-sm font-bold rounded-xl border-2 transition-all hover:bg-green-50 disabled:opacity-50"
+                style={{ color: G, borderColor: G }}
+              >
+                <Icons.PDF /> Exportar PDF
+              </button>
+              <button
+                onClick={exportar}
+                className="flex items-center gap-2 px-5 py-2.5 text-sm font-bold text-white rounded-xl shadow-sm transition-all hover:opacity-90"
+                style={{ backgroundColor: G }}
+              >
+                <Icons.Download /> Exportar CSV
+              </button>
+            </div>
           )}
         </div>
 
@@ -148,7 +216,7 @@ export default function ReportesView({
             ))}
           </div>
 
-          <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
+          <div className="grid grid-cols-1 xl:grid-cols-3 gap-5">
             <div className="rounded-xl border border-gray-100 bg-gray-50/50 p-4">
               <p className="text-sm font-extrabold text-gray-900 mb-3">Gasto por Proveedor</p>
               {resumen?.grafico && resumen.grafico.length > 0 ? (
@@ -199,6 +267,32 @@ export default function ReportesView({
                 <p className="text-xs text-gray-400 py-10 text-center">Sin solicitudes registradas.</p>
               )}
             </div>
+
+            <div className="rounded-xl border border-gray-100 bg-gray-50/50 p-4">
+              <p className="text-sm font-extrabold text-gray-900 mb-3">Órdenes por Estado</p>
+              {ocEstado.length > 0 ? (
+                <div style={{ height: 260 }}>
+                  <PieChart width={undefined as unknown as number} height={260} style={{ width: "100%" }} className="w-full">
+                    <Pie data={ocEstado} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={90} label>
+                      {ocEstado.map((_, i) => (
+                        <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Legend wrapperStyle={{ fontSize: 11 }} />
+                    <Tooltip content={({ active, payload }) => {
+                      if (!active || !payload?.length) return null
+                      return (
+                        <div className="bg-gray-900 text-white px-3 py-2 rounded-xl text-xs font-bold shadow-lg">
+                          <p>{payload[0].name}: {payload[0].value}</p>
+                        </div>
+                      )
+                    }} />
+                  </PieChart>
+                </div>
+              ) : (
+                <p className="text-xs text-gray-400 py-10 text-center">Sin órdenes registradas.</p>
+              )}
+            </div>
           </div>
         </div>
 
@@ -241,7 +335,7 @@ export default function ReportesView({
           <>
             <div className="flex items-center gap-2 flex-wrap">
               <button
-                onClick={() => { seleccionar(null); setFi(""); setFf(""); setDim("") }}
+                onClick={() => { seleccionar(null); limpiarFiltrosLocales() }}
                 className="text-xs font-semibold text-gray-500 hover:text-gray-800 transition-colors flex items-center gap-1"
               >
                 <Icons.ChevLeft /> Volver al catálogo
@@ -256,31 +350,72 @@ export default function ReportesView({
                 </div>
               </div>
 
-              <div className="flex items-end gap-3 flex-wrap mb-4">
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Desde</label>
-                  <input type="date" value={fi} onChange={(e) => setFi(e.target.value)} className="px-3 py-2 text-sm bg-gray-50 border border-gray-200 rounded-lg outline-none focus:border-green-600" />
+              {filtrosDisp.length > 0 && (
+                <div className="flex items-end gap-3 flex-wrap mb-4">
+                  {conFecha && (
+                    <>
+                      <div className="flex flex-col gap-1.5">
+                        <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Desde</label>
+                        <DateInput value={fi} onChange={setFi} className="px-3 py-2 text-sm bg-gray-50 border border-gray-200 rounded-lg outline-none focus:border-green-600" />
+                      </div>
+                      <div className="flex flex-col gap-1.5">
+                        <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Hasta</label>
+                        <DateInput value={ff} onChange={setFf} className="px-3 py-2 text-sm bg-gray-50 border border-gray-200 rounded-lg outline-none focus:border-green-600" />
+                      </div>
+                    </>
+                  )}
+                  {dimFiltro && dimFiltro.tipo === "dimension" && (
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">{dimFiltro.etiqueta}</label>
+                      <select value={dim} onChange={(e) => setDim(e.target.value)} className="px-3 py-2 text-sm bg-gray-50 border border-gray-200 rounded-lg outline-none focus:border-green-600 min-w-[200px]">
+                        <option value="">{dimFiltro.requerido ? `Seleccione…` : "Todos"}</option>
+                        {dimOptions.map((o) => (
+                          <option key={o.id} value={o.id}>{o.label}</option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+                  {estadoFiltro && estadoFiltro.tipo === "estado" && (
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">{estadoFiltro.etiqueta}</label>
+                      <select value={estadoSel} onChange={(e) => setEstadoSel(e.target.value)} className="px-3 py-2 text-sm bg-gray-50 border border-gray-200 rounded-lg outline-none focus:border-green-600">
+                        <option value="">Todos</option>
+                        {estadoFiltro.opciones.map((o) => (
+                          <option key={o} value={o}>{o}</option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+                  {prioridadFiltro && prioridadFiltro.tipo === "prioridad" && (
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">{prioridadFiltro.etiqueta}</label>
+                      <select value={prioridadSel} onChange={(e) => setPrioridadSel(e.target.value)} className="px-3 py-2 text-sm bg-gray-50 border border-gray-200 rounded-lg outline-none focus:border-green-600">
+                        <option value="">Todas</option>
+                        {prioridadFiltro.opciones.map((o) => (
+                          <option key={o} value={o}>{o}</option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+                  <button onClick={aplicar} className="px-4 py-2 text-sm font-bold text-white rounded-lg transition-all hover:opacity-90" style={{ backgroundColor: G }}>
+                    Aplicar Filtros
+                  </button>
                 </div>
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Hasta</label>
-                  <input type="date" value={ff} onChange={(e) => setFf(e.target.value)} className="px-3 py-2 text-sm bg-gray-50 border border-gray-200 rounded-lg outline-none focus:border-green-600" />
-                </div>
-                {dimTipo && (
-                  <div className="flex flex-col gap-1.5">
-                    <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">
-                      {dimTipo === "dependencia" ? "Dependencia" : dimTipo === "proveedor" ? "Proveedor" : dimTipo === "categoria" ? "Categoría" : "Insumo"}
-                    </label>
-                    <select value={dim} onChange={(e) => setDim(e.target.value)} className="px-3 py-2 text-sm bg-gray-50 border border-gray-200 rounded-lg outline-none focus:border-green-600 min-w-[200px]">
-                      <option value="">Todos</option>
-                      {dimOptions.map((o) => (
-                        <option key={o.id} value={o.id}>{o.label}</option>
-                      ))}
-                    </select>
+              )}
+
+              <div className="flex items-center justify-between gap-3 mb-3 flex-wrap">
+                <p className="text-xs font-semibold text-gray-500">
+                  {data?.filas?.length ?? 0} registro{(data?.filas?.length ?? 0) === 1 ? "" : "s"}
+                </p>
+                {data?.totales && codigo !== "RPT-11" && (
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {Object.entries(data.totales).map(([k, v]) => (
+                      <span key={k} className="px-2.5 py-1 rounded-lg text-xs font-bold" style={{ backgroundColor: `${G}12`, color: G }}>
+                        {k === "montoTotal" ? "Monto total" : k}: {typeof v === "number" ? fmtQ(v) : String(v)}
+                      </span>
+                    ))}
                   </div>
                 )}
-                <button onClick={aplicar} className="px-4 py-2 text-sm font-bold text-white rounded-lg transition-all hover:opacity-90" style={{ backgroundColor: G }}>
-                  Aplicar Filtros
-                </button>
               </div>
 
               <div className="overflow-x-auto rounded-lg border border-gray-100">
@@ -324,5 +459,14 @@ export default function ReportesView({
         )}
       </div>
     </div>
+    {pdfSrc && (
+      <PdfViewerModal
+        src={pdfSrc}
+        nombre={pdfNombre}
+        titulo="Reporte"
+        onClose={cerrarPdf}
+      />
+    )}
+    </>
   )
 }

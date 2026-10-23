@@ -12,6 +12,7 @@ import {
 } from "@/api/requisiciones"
 import { ApiError } from "@/api/client"
 import { puedeGestionarSolicitudes } from "@/utils/permisos"
+import { fmtFecha, fmtFechaHora } from "@/utils/fechas"
 
 export default function SolicitudDetailModal({
   id,
@@ -122,7 +123,7 @@ export default function SolicitudDetailModal({
             {detail && (
               <p className="text-sm text-gray-500 mt-1">
                 {detail.nombre_dependencia} ·{" "}
-                {new Date(detail.fecha_solicitud).toLocaleDateString("es-GT")}
+                {fmtFecha(detail.fecha_solicitud)}
               </p>
             )}
           </div>
@@ -272,7 +273,7 @@ export default function SolicitudDetailModal({
                           {b.detalle}
                         </p>
                         <p className="text-[11px] text-gray-400 mt-1">
-                          {new Date(b.fecha_acceso).toLocaleString("es-GT")}
+                          {fmtFechaHora(b.fecha_acceso)}
                           {b.nombre_usuario ? ` · ${b.nombre_usuario}` : ""}
                         </p>
                       </div>

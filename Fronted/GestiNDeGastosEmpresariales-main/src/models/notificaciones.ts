@@ -1,6 +1,8 @@
 // ─── Notificaciones model ─────────────────────────────────────────────────────
 // Estilo y destino de cada tipo de notificación que emite el backend.
 // `nav` es la vista del admin a la que lleva al hacer clic.
+import { fmtFecha } from "@/utils/fechas"
+
 export interface NotifEstilo {
   color: string
   nav?: string
@@ -62,5 +64,5 @@ export function tiempoRelativo(iso: string): string {
   const dias = Math.floor(hrs / 24)
   if (dias === 1) return "Ayer"
   if (dias < 7) return `Hace ${dias} días`
-  return fecha.toLocaleDateString("es-GT", { day: "2-digit", month: "short" })
+  return fmtFecha(iso)
 }

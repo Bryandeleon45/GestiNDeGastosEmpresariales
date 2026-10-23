@@ -4,14 +4,10 @@ import { Icons } from "@/components/common/Icons"
 import { adjudicarProceso, type OrdenInvitado, type ProformaRecibidaDetalle } from "@/api/proformas"
 import { ApiError } from "@/api/client"
 import ProformaDocumento from "@/views/proformas/ProformaDocumento"
+import { fmtFecha } from "@/utils/fechas"
 
 const fmtQ = (n: number | string) =>
   `Q ${Number(n).toLocaleString("es-GT", { minimumFractionDigits: 2 })}`
-
-function fmtFecha(iso: string | null) {
-  if (!iso) return "—"
-  return new Date(iso).toLocaleDateString("es-GT")
-}
 
 const FASE_STYLE: Record<string, string> = {
   Publicada: "bg-sky-50 text-sky-700 border border-sky-200",

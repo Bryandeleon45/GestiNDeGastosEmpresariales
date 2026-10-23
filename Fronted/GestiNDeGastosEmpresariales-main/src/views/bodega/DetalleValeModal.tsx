@@ -8,17 +8,13 @@ import {
   type ValeSalidaDetalle,
 } from "@/api/bodega"
 import { ApiError } from "@/api/client"
+import { fmtFechaHora } from "@/utils/fechas"
 
 const ESTADO_VALE_STYLE: Record<string, { bg: string; color: string }> = {
   Pendiente: { bg: "var(--gray-100)", color: "#64748B" },
   Autorizado: { bg: "#FEF9C3", color: "#854D0E" },
   Entregado: { bg: "#DCFCE7", color: "#16A34A" },
   Cancelado: { bg: "#FEE2E2", color: "#DC2626" },
-}
-
-function fmtFecha(iso: string) {
-  if (!iso) return "—"
-  return new Date(iso).toLocaleString("es-GT", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })
 }
 
 export default function DetalleValeModal({
@@ -91,7 +87,7 @@ export default function DetalleValeModal({
             </div>
             <div className="flex flex-col gap-1">
               <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Fecha de salida</label>
-              <p className="text-sm text-gray-800 font-mono">{fmtFecha(vale.fecha_salida)}</p>
+              <p className="text-sm text-gray-800 font-mono">{fmtFechaHora(vale.fecha_salida)}</p>
             </div>
             <div className="flex flex-col gap-1">
               <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Dependencia</label>

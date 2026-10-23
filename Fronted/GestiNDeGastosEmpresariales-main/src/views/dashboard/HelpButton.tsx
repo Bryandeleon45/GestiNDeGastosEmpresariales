@@ -4,10 +4,8 @@ import { Icons } from "@/components/common/Icons"
 import { FAQ_LINKS } from "@/models/ayuda"
 
 export default function HelpButton({
-  onOpenTicket,
   onAbrirGuia,
 }: {
-  onOpenTicket: () => void
   onAbrirGuia: (id: string) => void
 }) {
   const [open, setOpen] = useState(false)
@@ -161,7 +159,7 @@ export default function HelpButton({
 
           <div className="px-4 pb-4">
             <div
-              className="rounded-xl border p-3.5 flex items-center gap-3 mb-3"
+              className="rounded-xl border p-3.5 flex items-center gap-3"
               style={{ backgroundColor: GL, borderColor: GB }}
             >
               <div
@@ -179,16 +177,6 @@ export default function HelpButton({
                 </p>
               </div>
             </div>
-            <button
-              onClick={() => {
-                setOpen(false)
-                onOpenTicket()
-              }}
-              className="w-full py-2.5 rounded-xl text-xs font-bold transition-all hover:opacity-90 text-white"
-              style={{ backgroundColor: G }}
-            >
-              Abrir Ticket de Soporte →
-            </button>
           </div>
         </div>
       )}

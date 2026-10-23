@@ -78,6 +78,20 @@ router.get("/", authorize("auditoria"), async (req, res, next) => {
   }
 });
 
+// Catálogo dinámico de módulos presentes en la bitácora, para el filtro.
+router.get("/modulos", authorize("auditoria"), async (_req, res, next) => {
+  try {
+    const { rows } = await pool.query(
+      `SELECT DISTINCT modulo FROM bitacora_acceso
+        WHERE modulo IS NOT NULL
+        ORDER BY modulo`,
+    );
+    res.json(rows.map((r) => r.modulo));
+  } catch (e) {
+    next(e);
+  }
+});
+
 router.get("/exportar", authorize("auditoria"), async (req, res, next) => {
   try {
     const q = {
@@ -94,35 +108,15 @@ router.get("/exportar", authorize("auditoria"), async (req, res, next) => {
       params,
     );
 
-    const esc = (v) => `"${String(v ?? "").replace(/"/g, '""')}"`;
-    const header = "Fecha,Usuario,Modulo,Accion,IP,Detalle";
-    const lines = rows.map((r) =>
-      [
-        r.fecha_acceso,
-        `${r.nombre} ${r.apellido}`.trim(),
-        r.modulo,
-        r.accion,
-        r.ip_acceso,
-        r.detalle,
-      ]
-        .map(esc)
-        .join(","),
-    );
-
     await registrarBitacora({
       idUsuario: req.user.id_usuario,
       accion: "bitacora_exportada",
       ip: ipDe(req),
       modulo: "Auditoría",
-      detalle: `Exportación CSV de ${rows.length} registros`,
+      detalle: `Exportación PDF de ${rows.length} registros`,
     });
 
-    res.setHeader("Content-Type", "text/csv; charset=utf-8");
-    res.setHeader(
-      "Content-Disposition",
-      'attachment; filename="bitacora_acceso.csv"',
-    );
-    res.send(`\uFEFF${[header, ...lines].join("\n")}`);
+    res.json({ data: rows, total: rows.length, filtros: q });
   } catch (e) {
     next(e);
   }

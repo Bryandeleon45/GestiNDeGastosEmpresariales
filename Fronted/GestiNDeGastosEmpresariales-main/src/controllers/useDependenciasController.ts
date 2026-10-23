@@ -11,6 +11,7 @@ import {
 } from "@/api/catalogos"
 import { getStoredUser } from "@/api/auth"
 import { generarExcelSolicitudes } from "@/lib/solicitudesExcel"
+import { fmtFecha, hoyISO } from "@/utils/fechas"
 
 export interface ResumenKpis {
   total: number
@@ -37,7 +38,7 @@ function mapRequisicionToRow(r: Requisicion): SolicitudRow {
     cant: `${cantidad} ${unidad}`,
     prioridad: r.prioridad,
     estado: r.estado,
-    fecha: new Date(r.fecha_solicitud).toLocaleDateString("es-GT"),
+    fecha: fmtFecha(r.fecha_solicitud),
     solicitante: `${r.usuario_nombre} ${r.usuario_apellido}`.trim(),
     justificacion: r.justificacion,
     codigo_requisicion: r.codigo_requisicion,
@@ -188,7 +189,7 @@ export function useDependenciasController(onToast: (m: string, s: string) => voi
       const url = window.URL.createObjectURL(blob)
       const a = document.createElement("a")
       a.href = url
-      const hoy = new Date().toISOString().slice(0, 10)
+      const hoy = hoyISO()
       a.download = `Reporte_Solicitudes_Panajachel_${hoy}.xlsx`
       a.click()
       window.URL.revokeObjectURL(url)

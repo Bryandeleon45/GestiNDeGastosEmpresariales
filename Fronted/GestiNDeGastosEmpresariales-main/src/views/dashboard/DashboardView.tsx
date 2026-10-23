@@ -15,6 +15,7 @@ import {
   Legend,
 } from "recharts"
 import { useDashboardController } from "@/controllers/useDashboardController"
+import { fmtFecha } from "@/utils/fechas"
 
 const PIE_COLORS = ["#1E5E2F", "#0EA5E9", "#D97706", "#DC2626", "#7C3AED", "#64748B"]
 
@@ -33,11 +34,6 @@ const fmtQ = (n: number | string) =>
 const fmtQ0 = (n: number | string) => (Number(n || 0) > 0 ? fmtQ(n) : "—")
 
 const fmtShort = (n: number) => (n >= 1000 ? `Q${(n / 1000).toFixed(0)}k` : `Q${n}`)
-
-function fmtFecha(iso: string) {
-  if (!iso) return "—"
-  return new Date(iso).toLocaleDateString("es-GT")
-}
 
 export default function DashboardView({
   onToast,

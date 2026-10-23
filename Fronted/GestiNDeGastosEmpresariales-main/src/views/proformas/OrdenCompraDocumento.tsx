@@ -2,12 +2,10 @@ import { G, BRAND_HEX } from "@/constants/theme"
 import { Icons } from "@/components/common/Icons"
 import MunicipalSeal from "@/components/common/MunicipalSeal"
 import type { OrdenCompraDetalle } from "@/api/proformas"
+import { fmtFecha } from "@/utils/fechas"
 
 const fmtQ = (n: number | string) =>
   `Q ${Number(n).toLocaleString("es-GT", { minimumFractionDigits: 2 })}`
-
-const fmtF = (iso?: string | null) =>
-  iso ? new Date(iso).toLocaleDateString("es-GT") : "—"
 
 const ESTADO_LABEL: Record<string, string> = {
   Pendiente: "PENDIENTE",
@@ -73,7 +71,7 @@ export default function OrdenCompraDocumento({
                   ORDEN DE COMPRA
                 </h1>
                 <p className="text-sm font-mono font-semibold text-gray-700 mt-1">{orden.numero_orden}</p>
-                <p className="text-xs text-gray-400 mt-0.5">Fecha: {fmtF(orden.fecha_emision)}</p>
+                <p className="text-xs text-gray-400 mt-0.5">Fecha: {fmtFecha(orden.fecha_emision)}</p>
               </div>
             </div>
 
@@ -93,7 +91,7 @@ export default function OrdenCompraDocumento({
                 <p className="text-xs text-gray-500">{orden.tipo_solicitud}</p>
                 {orden.lugar_entrega && <p className="text-xs text-gray-500">Entrega: {orden.lugar_entrega}</p>}
                 {orden.fecha_entrega_estimada && (
-                  <p className="text-xs text-gray-500">Entrega estimada: {fmtF(orden.fecha_entrega_estimada)}</p>
+                  <p className="text-xs text-gray-500">Entrega estimada: {fmtFecha(orden.fecha_entrega_estimada)}</p>
                 )}
               </div>
             </div>

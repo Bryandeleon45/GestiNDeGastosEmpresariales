@@ -12,7 +12,13 @@ router.get("/", authorize("roles"), async (_req, res, next) => {
   try {
     const { rows } = await pool.query(
       `SELECT r.id_rol, r.descripcion, r.nombre_rol, r.activo, r.fecha_registro,
-              COUNT(u.id_usuario)::int AS total_usuarios
+              COUNT(u.id_usuario)::int AS total_usuarios,
+              EXISTS (
+                SELECT 1
+                  FROM permiso p
+                  JOIN submenu s ON s.id_submenu = p.id_submenu AND s.activo
+                 WHERE p.id_rol = r.id_rol AND p.activo AND s.controlador LIKE 'portal_%'
+              ) AS es_portal
          FROM rol r
          LEFT JOIN usuario u ON u.id_rol = r.id_rol
         GROUP BY r.id_rol

@@ -125,7 +125,7 @@ FROM (VALUES
   ('3012589740301', 'DAFIM',                             'ana.ramirez',  'ana.ramirez@munipanajachel.gob.gt'),
   ('3145678920501', 'Encargado de Almacén y Suministros','maria.aju',    'maria.aju@munipanajachel.gob.gt'),
   ('2812345690201', 'Encargado de Compras / Asistente',  'luis.tzep',    'luis.tzep@munipanajachel.gob.gt'),
-  ('2771112223301', 'Administrador General',             'admin',        'admin@munipanajachel.gob.gt')
+  ('2771112223301', 'Administrador General',             'admin',        'brayandanilo938@gmail.com')
 ) AS u(dpi, rol, nombre_usuario, correo)
 JOIN empleado e ON e.dpi = u.dpi
 JOIN rol r ON r.descripcion = u.rol

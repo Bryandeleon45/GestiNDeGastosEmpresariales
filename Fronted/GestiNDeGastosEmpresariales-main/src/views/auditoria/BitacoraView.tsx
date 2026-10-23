@@ -3,30 +3,14 @@ import { G, GL } from "@/constants/theme"
 import { Icons } from "@/components/common/Icons"
 import {
   listarBitacora,
-  exportarBitacoraCSV,
+  exportarBitacora,
+  listarModulos,
   type BitacoraEntry,
 } from "@/api/bitacora"
-
-const MODULOS = [
-  "Autenticación",
-  "Usuarios",
-  "Roles",
-  "Configuración",
-  "Auditoría",
-]
-
-function fmtFecha(iso: string) {
-  const d = new Date(iso)
-  if (isNaN(d.getTime())) return iso
-  return d.toLocaleString("es-GT", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-  })
-}
+import { generarBitacoraPdf } from "@/lib/bitacoraPdf"
+import PdfViewerModal from "@/views/common/PdfViewerModal"
+import DateInput from "@/views/common/DateInput"
+import { fmtFechaHoraSec } from "@/utils/fechas"
 
 export default function BitacoraView({
   onToast,
@@ -44,6 +28,9 @@ export default function BitacoraView({
   const [fAccion, setFAccion] = useState("")
   const [fDesde, setFDesde] = useState("")
   const [fHasta, setFHasta] = useState("")
+  const [modulos, setModulos] = useState<string[]>([])
+  const [pdfSrc, setPdfSrc] = useState<string | null>(null)
+  const [pdfNombre, setPdfNombre] = useState("bitacora_acceso.pdf")
 
   const load = useCallback(async () => {
     try {
@@ -68,6 +55,12 @@ export default function BitacoraView({
     load()
   }, [load])
 
+  useEffect(() => {
+    listarModulos()
+      .then(setModulos)
+      .catch(() => {})
+  }, [])
+
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
 
   const applyFilters = () => {
@@ -84,29 +77,45 @@ export default function BitacoraView({
     setPage(1)
   }
 
-  const exportCsv = async () => {
+  const exportarPdf = async () => {
     try {
-      const { url, headers } = exportarBitacoraCSV({
+      const res = await exportarBitacora({
         usuario: fUsuario,
         modulo: fModulo,
         accion: fAccion,
         desde: fDesde,
         hasta: fHasta,
       })
-      const res = await fetch(url, { headers })
-      if (!res.ok) throw new Error("Error al exportar")
-      const blob = await res.blob()
-      const a = document.createElement("a")
-      a.href = URL.createObjectURL(blob)
-      a.download = "bitacora_acceso.csv"
-      document.body.appendChild(a)
-      a.click()
-      a.remove()
-      URL.revokeObjectURL(a.href)
-      onToast("Bitácora exportada", "El archivo CSV fue descargado.")
+      const filtrosAplicados = [
+        fUsuario ? `Usuario: "${fUsuario}"` : "",
+        fModulo ? `Módulo: ${fModulo}` : "",
+        fDesde ? `Desde: ${fDesde}` : "",
+        fHasta ? `Hasta: ${fHasta}` : "",
+      ].filter(Boolean)
+      const blob = await generarBitacoraPdf({
+        registros: res.data,
+        filtrosAplicados,
+      })
+      const url = URL.createObjectURL(blob)
+      setPdfSrc((prev) => {
+        if (prev) URL.revokeObjectURL(prev)
+        return url
+      })
+      setPdfNombre("bitacora_acceso.pdf")
+      onToast(
+        "Bitácora exportada",
+        `Se generó el PDF con ${res.total} registros.`,
+      )
     } catch (e) {
       onToast("Error", e instanceof Error ? e.message : "No se pudo exportar")
     }
+  }
+
+  const cerrarPdf = () => {
+    setPdfSrc((prev) => {
+      if (prev) URL.revokeObjectURL(prev)
+      return null
+    })
   }
 
   const selectCls =
@@ -115,6 +124,7 @@ export default function BitacoraView({
     "px-3 py-2.5 text-sm rounded-xl border outline-none transition-colors focus:border-[#1E5E2F]"
 
   return (
+    <>
     <div
       className="flex-1 overflow-auto p-5"
       style={{ background: "var(--muni-bg)" }}
@@ -133,11 +143,11 @@ export default function BitacoraView({
             </p>
           </div>
           <button
-            onClick={exportCsv}
+            onClick={exportarPdf}
             className="flex items-center gap-2 px-5 py-2.5 text-sm font-bold text-white rounded-xl shadow-sm transition-all hover:opacity-90 active:scale-95 shrink-0"
             style={{ backgroundColor: G }}
           >
-            <Icons.Download /> Exportar CSV
+            <Icons.PDF /> Exportar PDF
           </button>
         </div>
 
@@ -184,7 +194,7 @@ export default function BitacoraView({
               style={{ backgroundColor: "var(--muni-bg)", borderColor: "var(--muni-border)", color: "var(--muni-text)" }}
             >
               <option value="">Todos</option>
-              {MODULOS.map((m) => (
+              {modulos.map((m) => (
                 <option key={m} value={m}>
                   {m}
                 </option>
@@ -198,10 +208,9 @@ export default function BitacoraView({
             >
               Desde
             </label>
-            <input
-              type="date"
+            <DateInput
               value={fDesde}
-              onChange={(e) => setFDesde(e.target.value)}
+              onChange={setFDesde}
               className={inputCls}
               style={{ backgroundColor: "var(--muni-bg)", borderColor: "var(--muni-border)", color: "var(--muni-text)" }}
             />
@@ -213,10 +222,9 @@ export default function BitacoraView({
             >
               Hasta
             </label>
-            <input
-              type="date"
+            <DateInput
               value={fHasta}
-              onChange={(e) => setFHasta(e.target.value)}
+              onChange={setFHasta}
               className={inputCls}
               style={{ backgroundColor: "var(--muni-bg)", borderColor: "var(--muni-border)", color: "var(--muni-text)" }}
             />
@@ -291,7 +299,7 @@ export default function BitacoraView({
                         className="px-4 py-3 text-xs font-mono whitespace-nowrap"
                         style={{ color: "var(--muni-sub)" }}
                       >
-                        {fmtFecha(r.fecha_acceso)}
+                        {fmtFechaHoraSec(r.fecha_acceso)}
                       </td>
                       <td className="px-4 py-3">
                         <span className="text-sm font-semibold" style={{ color: "var(--muni-text)" }}>
@@ -346,7 +354,7 @@ export default function BitacoraView({
                     </span>
                   </div>
                   <p className="text-xs font-mono" style={{ color: "var(--muni-sub)" }}>
-                    {fmtFecha(r.fecha_acceso)}
+                    {fmtFechaHoraSec(r.fecha_acceso)}
                   </p>
                   <p className="text-xs" style={{ color: "var(--muni-sub)" }}>
                     {r.accion} · {r.ip_acceso || "—"}
@@ -392,5 +400,14 @@ export default function BitacoraView({
         </div>
       </div>
     </div>
+    {pdfSrc && (
+      <PdfViewerModal
+        src={pdfSrc}
+        nombre={pdfNombre}
+        titulo="Bitácora de Acceso"
+        onClose={cerrarPdf}
+      />
+    )}
+    </>
   )
 }

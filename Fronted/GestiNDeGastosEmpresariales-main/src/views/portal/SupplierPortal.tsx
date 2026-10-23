@@ -4,20 +4,24 @@ import { Icons } from "@/components/common/Icons"
 import MunicipalSeal from "@/components/common/MunicipalSeal"
 import CerrarSesionModal from "@/views/common/CerrarSesionModal"
 import Toast from "@/views/common/Toast"
-import SubirProformaModal from "@/views/portal/SubirProformaModal"
 import CotizarOportunidadModal from "@/views/portal/CotizarOportunidadModal"
 import OportunidadDetalleModal from "@/views/portal/OportunidadDetalleModal"
 import CargarFacturaModal from "@/views/portal/CargarFacturaModal"
 import { useSupplierPortalController } from "@/controllers/useSupplierPortalController"
 import NotificationBell from "@/views/dashboard/NotificationBell"
+import DateInput from "@/views/common/DateInput"
 import { destinoPortal } from "@/models/notificaciones"
 import {
   listarNotificaciones,
   marcarNotificacionLeida,
   marcarTodasLeidasPortal,
+  obtenerOportunidad,
+  listarDocumentosCotizacion,
+  descargarDocumentoCotizacion,
   type Oportunidad,
   type PedidoAsignado,
 } from "@/api/portal"
+import { fmtFecha, fmtHora } from "@/utils/fechas"
 
 const NAV_PORTAL = [
   "oportunidades",
@@ -73,12 +77,6 @@ const fmtQ = (n: number | string) =>
   `Q ${Number(n || 0).toLocaleString("es-GT", { minimumFractionDigits: 2 })}`
 
 const fmtQ0 = (n: number | string) => (Number(n || 0) > 0 ? fmtQ(n) : "—")
-
-const fmtFecha = (iso?: string | null) =>
-  iso ? new Date(iso).toLocaleDateString("es-GT") : "—"
-
-const fmtHora = (iso?: string | null) =>
-  iso ? new Date(iso).toLocaleTimeString("es-GT", { hour: "2-digit", minute: "2-digit" }) : "—"
 
 const esCotizable = (o: Oportunidad) =>
   o.fase === "Publicada" && (o.estado === "Nueva" || o.estado === "Abierta")
@@ -411,8 +409,6 @@ export default function SupplierPortal({ onLogout }: { onLogout: () => void }) {
     setTab,
     q,
     setQ,
-    showSubir,
-    setShowSubir,
     toast,
     fireToast,
     hideToast,
@@ -425,10 +421,7 @@ export default function SupplierPortal({ onLogout }: { onLogout: () => void }) {
     perfil,
     resumen,
     oportunidades,
-    ordenes,
-    entregas,
     pedidosAsignados,
-    facturas,
     ordenesFacturables,
     facturaTargetOC,
     setFacturaTargetOC,
@@ -442,8 +435,6 @@ export default function SupplierPortal({ onLogout }: { onLogout: () => void }) {
     loading,
     showCargarFactura,
     setShowCargarFactura,
-    cargarFacturas,
-    cargarOrdenes,
     recargar,
     abrirOportunidad,
     cotizarTarget,
@@ -469,6 +460,34 @@ export default function SupplierPortal({ onLogout }: { onLogout: () => void }) {
     if (estadoF) f.estado = estadoF
     setInformeFiltros(f)
     cargarInforme(f)
+  }
+
+  const verOrdenCompra = () => {
+    setActiveNav("ordenes")
+  }
+
+  const verMiProforma = async (idProceso: number) => {
+    try {
+      const det = await obtenerOportunidad(idProceso)
+      const idCot = det.cotizacion?.id_cotizacion
+      if (!idCot) {
+        fireToast("Mi Proforma", "Esta cotización no tiene documentos adjuntos.")
+        return
+      }
+      const docs = await listarDocumentosCotizacion(idCot)
+      if (!docs.length) {
+        fireToast("Mi Proforma", "Esta cotización no tiene documentos adjuntos.")
+        return
+      }
+      const doc = await descargarDocumentoCotizacion(idCot, docs[0].id_documento)
+      const bytes = Uint8Array.from(atob(doc.contenido_base64), (c) => c.charCodeAt(0))
+      const blob = new Blob([bytes], { type: doc.mime_type || "application/pdf" })
+      const url = URL.createObjectURL(blob)
+      window.open(url, "_blank")
+      setTimeout(() => URL.revokeObjectURL(url), 60_000)
+    } catch {
+      fireToast("Mi Proforma", "No se pudo abrir el documento.")
+    }
   }
 
   const bg = dark ? "#0F172A" : "var(--gray-50)"
@@ -760,10 +779,9 @@ export default function SupplierPortal({ onLogout }: { onLogout: () => void }) {
                                     ) : (
                                       <button
                                         onClick={() =>
-                                          fireToast(
-                                            sol.estado === "Adjudicada" ? "Orden de Compra" : "Mi Proforma",
-                                            `Cargando documento de ${sol.codigo_requisicion}...`,
-                                          )
+                                          sol.estado === "Adjudicada"
+                                            ? verOrdenCompra()
+                                            : verMiProforma(sol.id_proceso)
                                         }
                                         className="px-3 py-1.5 text-xs font-bold rounded-lg border-2 transition-all hover:opacity-80"
                                         style={{ color: G, borderColor: G }}
@@ -808,7 +826,11 @@ export default function SupplierPortal({ onLogout }: { onLogout: () => void }) {
                                   </button>
                                 ) : (
                                   <button
-                                    onClick={() => fireToast(sol.estado === "Adjudicada" ? "Orden de Compra" : "Mi Proforma", `Cargando documento de ${sol.codigo_requisicion}...`)}
+                                    onClick={() =>
+                                      sol.estado === "Adjudicada"
+                                        ? verOrdenCompra()
+                                        : verMiProforma(sol.id_proceso)
+                                    }
                                     className="w-full py-2 text-xs font-bold rounded-lg border-2 transition-all hover:opacity-80"
                                     style={{ color: G, borderColor: G }}
                                   >
@@ -983,11 +1005,11 @@ export default function SupplierPortal({ onLogout }: { onLogout: () => void }) {
                 <div className="flex items-end gap-3 flex-wrap">
                   <div className="flex flex-col gap-1.5">
                     <label className="text-[10px] font-bold uppercase tracking-widest" style={{ color: sub }}>Desde</label>
-                    <input type="date" value={fi} onChange={(e) => setFi(e.target.value)} className="px-3 py-2 text-sm rounded-lg border outline-none" style={{ backgroundColor: card, borderColor: border, color: text }} />
+                    <DateInput value={fi} onChange={setFi} className="px-3 py-2 text-sm rounded-lg border outline-none" style={{ backgroundColor: card, borderColor: border, color: text }} />
                   </div>
                   <div className="flex flex-col gap-1.5">
                     <label className="text-[10px] font-bold uppercase tracking-widest" style={{ color: sub }}>Hasta</label>
-                    <input type="date" value={ff} onChange={(e) => setFf(e.target.value)} className="px-3 py-2 text-sm rounded-lg border outline-none" style={{ backgroundColor: card, borderColor: border, color: text }} />
+                    <DateInput value={ff} onChange={setFf} className="px-3 py-2 text-sm rounded-lg border outline-none" style={{ backgroundColor: card, borderColor: border, color: text }} />
                   </div>
                   <div className="flex flex-col gap-1.5">
                     <label className="text-[10px] font-bold uppercase tracking-widest" style={{ color: sub }}>Estado</label>
@@ -1088,17 +1110,6 @@ export default function SupplierPortal({ onLogout }: { onLogout: () => void }) {
         </div>
       </div>
 
-      {activeNav === "oportunidades" && (
-        <button
-          onClick={() => setShowSubir(true)}
-          className="fixed bottom-6 right-5 lg:hidden flex items-center gap-2 px-4 py-3 text-sm font-bold text-white rounded-2xl shadow-lg active:scale-95 transition-all z-30"
-          style={{ backgroundColor: G, boxShadow: "0 4px 20px rgba(30,94,47,0.4)" }}
-        >
-          <Icons.Plus />
-          <span className="hidden xs:inline">Subir Proforma</span>
-        </button>
-      )}
-
       {cotizarTarget && (
         <CotizarOportunidadModal
           detalle={cotizarTarget}
@@ -1111,7 +1122,6 @@ export default function SupplierPortal({ onLogout }: { onLogout: () => void }) {
           onSuccess={recargar}
         />
       )}
-      {showSubir && <SubirProformaModal dark={dark} onClose={() => setShowSubir(false)} onToast={fireToast} />}
       {showCargarFactura && (
         <CargarFacturaModal
           initialIdOC={facturaTargetOC}
@@ -1119,8 +1129,6 @@ export default function SupplierPortal({ onLogout }: { onLogout: () => void }) {
           onClose={() => { setShowCargarFactura(false); setFacturaTargetOC(null) }}
           onToast={fireToast}
           onSuccess={() => {
-            cargarFacturas()
-            cargarOrdenes()
             cargarOrdenesFacturables()
             cargarInforme()
             setFacturaTargetOC(null)

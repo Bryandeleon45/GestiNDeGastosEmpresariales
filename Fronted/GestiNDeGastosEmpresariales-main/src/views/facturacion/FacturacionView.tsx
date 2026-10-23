@@ -7,6 +7,7 @@ import NuevaOrdenModal from "@/views/facturacion/NuevaOrdenModal"
 import FacturaDrawer from "@/views/facturacion/FacturaDrawer"
 import PdfViewerModal from "@/views/common/PdfViewerModal"
 import { generarReporteFacturacionPdf } from "@/lib/facturasPdf"
+import { fmtFecha, hoyISO } from "@/utils/fechas"
 
 const ESTADO_STYLE: Record<string, { bg: string; color: string }> = {
   Pagado: { bg: "#DCFCE7", color: "#16A34A" },
@@ -109,7 +110,7 @@ export default function FacturacionView({
         cronograma,
         filtroEstado: estadoFilter,
       })
-      const fecha = new Date().toISOString().slice(0, 10)
+      const fecha = hoyISO()
       const nombre = `Reporte_Facturacion_Panajachel_${fecha}.pdf`
       if (pdfSrc) URL.revokeObjectURL(pdfSrc)
       setPdfSrc(URL.createObjectURL(blob))
@@ -333,7 +334,7 @@ export default function FacturacionView({
                     : null
                   const danger = dias !== null && dias < 0
                   const fechaTexto = fechaLim
-                    ? fechaLim.toLocaleDateString("es-GT", { day: "2-digit", month: "short" })
+                    ? fmtFecha(fechaLim.toISOString().slice(0, 10))
                     : ""
                   const plazoTexto =
                     dias === null
@@ -480,7 +481,7 @@ export default function FacturacionView({
                               <p className="text-[11px] text-gray-400">{f.nit}</p>
                             </td>
                             <td className="px-5 py-4">
-                              <p className="text-sm text-gray-600">{f.fecha_emision}</p>
+                              <p className="text-sm text-gray-600">{fmtFecha(f.fecha_emision)}</p>
                             </td>
                             <td className="px-5 py-4">
                               <p className="text-sm font-extrabold text-gray-900 font-mono">{fmt(f.monto_total)}</p>

@@ -77,6 +77,7 @@ export default function ConfiguracionView({
   const [perfilNombre, setPerfilNombre] = useState("")
   const [perfilApellido, setPerfilApellido] = useState("")
   const [perfilTelefono, setPerfilTelefono] = useState("")
+  const [perfilWhatsapp, setPerfilWhatsapp] = useState("")
   const [perfilFoto, setPerfilFoto] = useState("")
   const fotoInputRef = useRef<HTMLInputElement>(null)
 
@@ -92,6 +93,7 @@ export default function ConfiguracionView({
         setPerfilNombre(p.nombre ?? "")
         setPerfilApellido(p.apellido ?? "")
         setPerfilTelefono(p.telefono ?? "")
+        setPerfilWhatsapp(p.whatsapp ?? "")
         setPerfilFoto(p.foto ?? "")
       })
       .catch(() => {})
@@ -136,6 +138,7 @@ export default function ConfiguracionView({
         nombre: perfilNombre.trim() || undefined,
         apellido: perfilApellido.trim() || undefined,
         telefono: perfilTelefono.trim() || undefined,
+        whatsapp: perfilWhatsapp.trim(),
         foto: perfilFoto || undefined,
       })
       setPerfil((prev) => (prev ? { ...prev, ...p } : prev))
@@ -143,6 +146,7 @@ export default function ConfiguracionView({
       const apellido = p.apellido ?? perfilApellido.trim()
       setPerfilNombre(nombre)
       setPerfilApellido(apellido)
+      setPerfilWhatsapp(p.whatsapp ?? "")
       setPerfilFoto(p.foto ?? "")
       onPerfilGuardado?.({
         nombre_completo: `${nombre} ${apellido}`.trim(),
@@ -295,11 +299,6 @@ export default function ConfiguracionView({
             <SectionTitle>Canales de Notificación</SectionTitle>
             <div className="rounded-xl border border-gray-100 px-5 divide-y divide-gray-50">
               <SettingRow
-                title="Notificaciones por Correo"
-                desc="Recibir alertas de solicitudes, vencimientos y aprobaciones por email."
-                control={<ToggleSwitch on={notifEmail} onChange={setNotifEmail} />}
-              />
-              <SettingRow
                 title="Notificaciones del Sistema"
                 desc="Alertas dentro del portal para actividades que requieren acción."
                 control={<ToggleSwitch on={notifSistema} onChange={setNotifSistema} />}
@@ -424,6 +423,25 @@ export default function ConfiguracionView({
                     onChange={(e) => setPerfilTelefono(e.target.value)}
                     className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:border-green-600 transition-colors"
                   />
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-1.5">
+                    WhatsApp
+                  </label>
+                  <div className="flex items-center border border-gray-200 rounded-xl overflow-hidden">
+                    <span className="px-3 py-2.5 text-sm font-semibold text-gray-500 bg-gray-50 border-r border-gray-200 shrink-0">
+                      +502
+                    </span>
+                    <input
+                      value={perfilWhatsapp}
+                      onChange={(e) =>
+                        setPerfilWhatsapp(e.target.value.replace(/\D/g, "").slice(0, 8))
+                      }
+                      inputMode="numeric"
+                      placeholder="55512345"
+                      className="w-full px-3 py-2.5 text-sm border-0 focus:outline-none"
+                    />
+                  </div>
                 </div>
               </div>
             </div>

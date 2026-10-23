@@ -1,4 +1,4 @@
-import { api, getToken } from "./client"
+import { api } from "./client"
 
 export interface BitacoraEntry {
   id_bitacora: string
@@ -40,7 +40,19 @@ export function listarBitacora(params: {
   return api.get<BitacoraResponse>(`/bitacora${qs ? `?${qs}` : ""}`)
 }
 
-export function exportarBitacoraCSV(params: {
+export interface BitacoraExport {
+  data: BitacoraEntry[]
+  total: number
+  filtros: {
+    usuario: string
+    modulo: string
+    accion: string
+    desde: string
+    hasta: string
+  }
+}
+
+export function exportarBitacora(params: {
   usuario?: string
   modulo?: string
   accion?: string
@@ -54,10 +66,10 @@ export function exportarBitacoraCSV(params: {
   if (params.desde) sp.set("desde", params.desde)
   if (params.hasta) sp.set("hasta", params.hasta)
   const qs = sp.toString()
-  const base = (import.meta.env.VITE_API_URL as string | undefined) || "http://localhost:4000/api"
-  const token = getToken()
-  const url = `${base}/bitacora/exportar${qs ? `?${qs}` : ""}`
-  const headers: Record<string, string> = {}
-  if (token) headers.Authorization = `Bearer ${token}`
-  return { url, headers }
+  return api.get<BitacoraExport>(`/bitacora/exportar${qs ? `?${qs}` : ""}`)
+}
+
+// Catálogo dinámico de módulos presentes en la bitácora.
+export function listarModulos() {
+  return api.get<string[]>("/bitacora/modulos")
 }

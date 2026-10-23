@@ -19,6 +19,7 @@ import VerificarRecepcionModal from "@/views/bodega/VerificarRecepcionModal"
 import NuevoValeModal from "@/views/bodega/NuevoValeModal"
 import DetalleValeModal from "@/views/bodega/DetalleValeModal"
 import PdfViewerModal from "@/views/common/PdfViewerModal"
+import { fmtFechaHora, fmtFecha } from "@/utils/fechas"
 
 const ESTADO_REC_STYLE: Record<string, { bg: string; color: string }> = {
   "En Proceso": { bg: "#DCFCE7", color: "#16A34A" },
@@ -45,11 +46,6 @@ const TIPO_KARDEX_STYLE: Record<string, string> = {
   Entrada: "bg-green-50 text-green-700 border border-green-200",
   Salida: "bg-red-50 text-red-600 border border-red-200",
   Ajuste: "bg-amber-50 text-amber-700 border border-amber-200",
-}
-
-function fmtFecha(iso: string) {
-  if (!iso) return "—"
-  return new Date(iso).toLocaleString("es-GT", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })
 }
 
 export default function BodegaView({
@@ -381,7 +377,7 @@ export default function BodegaView({
                               {r.estado}
                             </span>
                           </td>
-                          <td className="px-4 py-4 whitespace-nowrap"><p className="text-sm text-gray-600 font-mono">{new Date(r.fecha_solicitud).toLocaleDateString("es-GT")}</p></td>
+                          <td className="px-4 py-4 whitespace-nowrap"><p className="text-sm text-gray-600 font-mono">{fmtFecha(r.fecha_solicitud)}</p></td>
                           <td className="px-4 py-4">
                             <span className="inline-flex items-center gap-1 text-xs font-bold" style={{ color: G }}>
                               <Icons.Eye /> Ver
@@ -425,7 +421,7 @@ export default function BodegaView({
                             <td className="px-4 py-4"><p className="text-xs font-bold font-mono text-gray-700">{r.numero_comprobante}</p></td>
                             <td className="px-4 py-4"><p className="text-xs font-mono text-gray-600">{r.numero_orden}</p></td>
                             <td className="px-4 py-4"><p className="text-sm font-medium text-gray-800">{r.razon_social}</p></td>
-                            <td className="px-4 py-4 whitespace-nowrap"><p className="text-sm text-gray-600 font-mono">{fmtFecha(r.fecha_recepcion)}</p></td>
+                            <td className="px-4 py-4 whitespace-nowrap"><p className="text-sm text-gray-600 font-mono">{fmtFechaHora(r.fecha_recepcion)}</p></td>
                             <td className="px-4 py-4">
                               <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold whitespace-nowrap" style={{ backgroundColor: est.bg, color: est.color }}>
                                 {r.estado}
@@ -520,7 +516,7 @@ export default function BodegaView({
                     ) : (
                       kardex.map((k) => (
                         <tr key={k.id_kardex} className="border-b border-gray-50 last:border-0 hover:bg-gray-50/60 transition-colors">
-                          <td className="px-4 py-4 whitespace-nowrap"><p className="text-sm text-gray-600 font-mono">{fmtFecha(k.fecha_movimiento)}</p></td>
+                          <td className="px-4 py-4 whitespace-nowrap"><p className="text-sm text-gray-600 font-mono">{fmtFechaHora(k.fecha_movimiento)}</p></td>
                           <td className="px-4 py-4"><p className="text-sm font-medium text-gray-800">{k.insumo_nombre}</p></td>
                           <td className="px-4 py-4">
                             <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold whitespace-nowrap ${TIPO_KARDEX_STYLE[k.tipo_movimiento]}`}>
@@ -567,7 +563,7 @@ export default function BodegaView({
                             <td className="px-4 py-4"><p className="text-sm font-medium text-gray-800">{v.nombre_dependencia}</p></td>
                             <td className="px-4 py-4"><p className="text-sm text-gray-600">{v.nombre_usuario}</p></td>
                             <td className="px-4 py-4"><p className="text-xs text-gray-500 max-w-[220px] truncate">{v.justificacion || "—"}</p></td>
-                            <td className="px-4 py-4 whitespace-nowrap"><p className="text-sm text-gray-600 font-mono">{fmtFecha(v.fecha_salida)}</p></td>
+                            <td className="px-4 py-4 whitespace-nowrap"><p className="text-sm text-gray-600 font-mono">{fmtFechaHora(v.fecha_salida)}</p></td>
                             <td className="px-4 py-4">
                               <div className="flex items-center gap-2">
                                 <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold whitespace-nowrap" style={{ backgroundColor: est.bg, color: est.color }}>
@@ -731,7 +727,7 @@ export default function BodegaView({
                 </div>
                 <p className="text-sm text-gray-500 mt-1">
                   {detalleSol.nombre_dependencia} ·{" "}
-                  {new Date(detalleSol.fecha_solicitud).toLocaleDateString("es-GT")}
+                  {fmtFecha(detalleSol.fecha_solicitud)}
                 </p>
               </div>
               <button

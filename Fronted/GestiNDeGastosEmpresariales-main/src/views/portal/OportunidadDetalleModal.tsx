@@ -1,12 +1,10 @@
 import { G } from "@/constants/theme"
 import { Icons } from "@/components/common/Icons"
 import type { OportunidadDetalle } from "@/api/portal"
+import { fmtFecha } from "@/utils/fechas"
 
 const fmtQ = (n: number | string) =>
   `Q ${Number(n || 0).toLocaleString("es-GT", { minimumFractionDigits: 2 })}`
-
-const fmtFecha = (iso?: string | null) =>
-  iso ? new Date(iso).toLocaleDateString("es-GT") : "—"
 
 const ESTADO_BADGE: Record<string, { bg: string; color: string }> = {
   Nueva: { bg: "#E0F2FE", color: "#0284C7" },

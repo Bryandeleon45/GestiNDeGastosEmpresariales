@@ -8,10 +8,7 @@ import {
   enviarCotizacion,
   retirarCotizacion,
   declinarOportunidad,
-  listarOrdenes,
-  listarEntregas,
   listarPedidosAsignados,
-  listarFacturas,
   listarOrdenesFacturables,
   obtenerInformePortal,
   exportarInformePortal,
@@ -19,10 +16,7 @@ import {
   type PortalResumen,
   type Oportunidad,
   type OportunidadDetalle,
-  type OrdenPortal,
-  type EntregaPortal,
   type PedidoAsignado,
-  type FacturaPortal,
   type OrdenFacturable,
   type InformeFila,
   type InformeTotales,
@@ -40,7 +34,6 @@ export function useSupplierPortalController() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
   const [showLogout, setShowLogout] = useState(false)
-  const [showSubir, setShowSubir] = useState(false)
 
   // Toast
   const [toast, setToast] = useState({ show: false, message: "", sub: "" })
@@ -54,10 +47,7 @@ export function useSupplierPortalController() {
   const [perfil, setPerfil] = useState<PortalPerfil | null>(null)
   const [resumen, setResumen] = useState<PortalResumen | null>(null)
   const [oportunidades, setOportunidades] = useState<Oportunidad[]>([])
-  const [ordenes, setOrdenes] = useState<OrdenPortal[]>([])
-  const [entregas, setEntregas] = useState<EntregaPortal[]>([])
   const [pedidosAsignados, setPedidosAsignados] = useState<PedidoAsignado[]>([])
-  const [facturas, setFacturas] = useState<FacturaPortal[]>([])
   const [ordenesFacturables, setOrdenesFacturables] = useState<OrdenFacturable[]>([])
   const [facturaTargetOC, setFacturaTargetOC] = useState<number | null>(null)
   const [informe, setInforme] = useState<InformeFila[]>([])
@@ -90,35 +80,11 @@ export function useSupplierPortalController() {
     }
   }, [tab, q])
 
-  const cargarOrdenes = useCallback(async () => {
-    try {
-      setOrdenes(await listarOrdenes())
-    } catch {
-      setOrdenes([])
-    }
-  }, [])
-
-  const cargarEntregas = useCallback(async () => {
-    try {
-      setEntregas(await listarEntregas())
-    } catch {
-      setEntregas([])
-    }
-  }, [])
-
   const cargarPedidosAsignados = useCallback(async () => {
     try {
       setPedidosAsignados(await listarPedidosAsignados())
     } catch {
       setPedidosAsignados([])
-    }
-  }, [])
-
-  const cargarFacturas = useCallback(async () => {
-    try {
-      setFacturas(await listarFacturas())
-    } catch {
-      setFacturas([])
     }
   }, [])
 
@@ -165,15 +131,12 @@ export function useSupplierPortalController() {
       obtenerPerfilPortal().then(setPerfil),
       cargarResumen(),
       cargarOportunidades(tab, q),
-      cargarOrdenes(),
-      cargarEntregas(),
       cargarPedidosAsignados(),
-      cargarFacturas(),
       cargarOrdenesFacturables(),
       cargarInforme(informeFiltros),
     ])
     setLoading(false)
-  }, [cargarResumen, cargarOportunidades, cargarOrdenes, cargarEntregas, cargarPedidosAsignados, cargarFacturas, cargarOrdenesFacturables, cargarInforme, informeFiltros, tab, q])
+  }, [cargarResumen, cargarOportunidades, cargarPedidosAsignados, cargarOrdenesFacturables, cargarInforme, informeFiltros, tab, q])
 
   useEffect(() => {
     recargar()
@@ -240,17 +203,12 @@ export function useSupplierPortalController() {
     setSidebarCollapsed,
     mobileSidebarOpen,
     setMobileSidebarOpen,
-    showSubir,
-    setShowSubir,
     showCargarFactura,
     setShowCargarFactura,
     perfil,
     resumen,
     oportunidades,
-    ordenes,
-    entregas,
     pedidosAsignados,
-    facturas,
     ordenesFacturables,
     facturaTargetOC,
     setFacturaTargetOC,
@@ -264,8 +222,6 @@ export function useSupplierPortalController() {
     loading,
     recargar,
     cargarOportunidades,
-    cargarFacturas,
-    cargarOrdenes,
     abrirOportunidad,
     cotizarTarget,
     cerrarCotizar,

@@ -10,6 +10,7 @@ import {
   type Factura,
 } from "@/api/facturacion"
 import { ApiError } from "@/api/client"
+import { fmtFecha, hoyISO } from "@/utils/fechas"
 
 const ESTADO_STYLE: Record<string, { bg: string; color: string }> = {
   Pagado: { bg: "#DCFCE7", color: "#16A34A" },
@@ -126,10 +127,10 @@ export default function FacturaDrawer({
     setWorking(true)
     try {
       if (accion === "programar") {
-        await programarOrdenPago(op.id_orden_pago, { fecha_pago_programada: new Date().toISOString().slice(0, 10) })
+        await programarOrdenPago(op.id_orden_pago, { fecha_pago_programada: hoyISO() })
         onToast("Pago programado", "La orden quedó Programada.")
       } else if (accion === "pagar") {
-        await pagarOrdenPago(op.id_orden_pago, { fecha_pago_real: new Date().toISOString().slice(0, 10) })
+        await pagarOrdenPago(op.id_orden_pago, { fecha_pago_real: hoyISO() })
         onToast("Pago registrado", "La orden quedó Pagada.")
       } else {
         const motivo = "Anulación solicitada desde facturación"
@@ -181,10 +182,10 @@ export default function FacturaDrawer({
                 {[
                   { label: "N.° Factura", value: `${factura.serie ? `${factura.serie}-` : ""}${factura.numero_factura}` },
                   { label: "NIT Proveedor", value: factura.nit },
-                  { label: "Fecha Emisión", value: factura.fecha_emision },
+                  { label: "Fecha Emisión", value: fmtFecha(factura.fecha_emision) },
                   { label: "Monto Total", value: fmt(factura.monto_total), accent: true },
                   { label: "Orden de Compra", value: factura.numero_orden },
-                  { label: "Vencimiento", value: factura.fecha_vencimiento },
+                  { label: "Vencimiento", value: fmtFecha(factura.fecha_vencimiento) },
                 ].map((f) => (
                   <div key={f.label} className="rounded-xl border border-gray-100 bg-gray-50 px-4 py-3">
                     <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">{f.label}</p>
@@ -213,7 +214,7 @@ export default function FacturaDrawer({
                     </div>
                     <div>
                       <p className="text-[10px] text-gray-400 uppercase">Fecha Orden</p>
-                      <p className="text-sm font-bold text-gray-900">{factura.oc_fecha_emision ?? "—"}</p>
+                      <p className="text-sm font-bold text-gray-900">{factura.oc_fecha_emision ? fmtFecha(factura.oc_fecha_emision) : "—"}</p>
                     </div>
                   </div>
                   {factura.justificacion && <p className="text-xs text-gray-600 mt-2">{factura.justificacion}</p>}

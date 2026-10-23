@@ -9,23 +9,13 @@ import {
   type OrdenFacturableDetalle,
 } from "@/api/portal"
 import { ApiError } from "@/api/client"
+import DateInput from "@/views/common/DateInput"
+import { fmtFecha, hoyISO } from "@/utils/fechas"
 
 const fmtQ = (n: number | string) =>
   `Q ${Number(n).toLocaleString("es-GT", { minimumFractionDigits: 2 })}`
 
 const fmtMonto = (n: number | string) => (Number(n || 0) > 0 ? fmtQ(n) : "—")
-
-function fmtFecha(iso: string) {
-  if (!iso) return "—"
-  return new Date(iso).toLocaleDateString("es-GT")
-}
-
-function hoyISO() {
-  const d = new Date()
-  const mm = String(d.getMonth() + 1).padStart(2, "0")
-  const dd = String(d.getDate()).padStart(2, "0")
-  return `${d.getFullYear()}-${mm}-${dd}`
-}
 
 function fileToBase64(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -301,10 +291,9 @@ export default function CargarFacturaModal({
             </div>
             <div>
               <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Fecha de Emisión</label>
-              <input
-                type="date"
+              <DateInput
                 value={fechaEmision}
-                onChange={(e) => setFechaEmision(e.target.value)}
+                onChange={setFechaEmision}
                 className="w-full mt-1 px-3 py-2.5 text-sm bg-gray-50 border border-gray-200 rounded-lg outline-none focus:border-green-600"
               />
             </div>

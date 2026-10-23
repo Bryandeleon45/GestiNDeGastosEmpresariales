@@ -5,10 +5,23 @@ import { pool } from "../db.js";
 import { authenticate } from "../middlewares/authenticate.js";
 import { authorize } from "../middlewares/authorize.js";
 import { registrarBitacora, ipDe } from "../services/bitacora.service.js";
+import { enviarCredencialesCorreo, correoConfigurado } from "../services/mailer.js";
 
 const router = Router();
 
 router.use(authenticate);
+
+async function esRolPortal(idRol) {
+  const { rows } = await pool.query(
+    `SELECT 1
+       FROM permiso p
+       JOIN submenu s ON s.id_submenu = p.id_submenu AND s.activo
+      WHERE p.id_rol = $1 AND p.activo AND s.controlador LIKE 'portal_%'
+      LIMIT 1`,
+    [idRol],
+  );
+  return rows[0] != null;
+}
 
 function pad(n) {
   return String(n).padStart(3, "0");
@@ -63,7 +76,7 @@ router.get("/resumen", authorize("usuarios"), async (_req, res, next) => {
          (SELECT COUNT(*)::int FROM empleado) AS total,
          (SELECT COUNT(*)::int FROM empleado WHERE activo) AS activos,
          (SELECT COUNT(*)::int FROM empleado WHERE NOT activo) AS inactivos,
-         (SELECT COUNT(*)::int FROM usuario WHERE activo) AS con_acceso`,
+         (SELECT COUNT(*)::int FROM usuario WHERE activo AND tipo_usuario = 'INTERNO') AS con_acceso`,
     );
     res.json(rows[0]);
   } catch (e) {
@@ -176,6 +189,11 @@ router.post("/", authorize("usuarios"), async (req, res, next) => {
     if (acceso && clave && clave.length < 8) {
       return res.status(400).json({ error: "La clave debe tener mínimo 8 caracteres" });
     }
+    if (id_rol && (await esRolPortal(id_rol))) {
+      return res.status(400).json({
+        error: "Ese rol es del portal de proveedores; asígnelo desde el módulo de Proveedores",
+      });
+    }
 
     await client.query("BEGIN");
     const { rows: emp } = await client.query(
@@ -188,13 +206,26 @@ router.post("/", authorize("usuarios"), async (req, res, next) => {
     if (acceso) {
       const hashed = await bcrypt.hash(clave, 12);
       await client.query(
-        `INSERT INTO usuario (id_empleado, id_rol, nombre_usuario, clave, correo, debe_cambiar_clave)
-         VALUES ($1, $2, $3, $4, $5, TRUE)`,
+        `INSERT INTO usuario (id_empleado, id_rol, nombre_usuario, clave, correo, tipo_usuario, debe_cambiar_clave)
+         VALUES ($1, $2, $3, $4, $5, 'INTERNO', TRUE)`,
         [emp[0].id_empleado, id_rol, nombre_usuario, hashed, correo],
       );
     }
 
     await client.query("COMMIT");
+
+    // Enviar credenciales por correo si se dio acceso (fire-and-forget)
+    if (acceso && correoConfigurado) {
+      enviarCredencialesCorreo({
+        para: correo,
+        nombre: `${nombre} ${apellido}`,
+        usuario: nombre_usuario,
+        clave: clave,
+      }).catch((e) =>
+        console.error(`[mailer] Error enviando credenciales a ${correo}:`, e.message)
+      );
+    }
+
     await registrarBitacora({
       idUsuario: req.user.id_usuario,
       accion: "usuario_creado",
@@ -236,6 +267,12 @@ router.put("/:id", authorize("usuarios"), async (req, res, next) => {
       nombre_usuario,
       clave,
     } = req.body;
+
+    if (id_rol && (await esRolPortal(id_rol))) {
+      return res.status(400).json({
+        error: "Ese rol es del portal de proveedores; asígnelo desde el módulo de Proveedores",
+      });
+    }
 
     await client.query("BEGIN");
 
@@ -283,8 +320,8 @@ router.put("/:id", authorize("usuarios"), async (req, res, next) => {
       }
       const hashed = await bcrypt.hash(clave, 12);
       await client.query(
-        `INSERT INTO usuario (id_empleado, id_rol, nombre_usuario, clave, correo, debe_cambiar_clave)
-         VALUES ($1, $2, $3, $4, $5, TRUE)`,
+        `INSERT INTO usuario (id_empleado, id_rol, nombre_usuario, clave, correo, tipo_usuario, debe_cambiar_clave)
+         VALUES ($1, $2, $3, $4, $5, 'INTERNO', TRUE)`,
         [req.params.id, id_rol, nombre_usuario, hashed, correo ?? current.correo],
       );
     } else if (deseaAcceso && current.id_usuario) {

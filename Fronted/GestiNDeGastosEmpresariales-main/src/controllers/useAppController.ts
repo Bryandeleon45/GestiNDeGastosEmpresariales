@@ -10,8 +10,6 @@ export function useAppController() {
   const [accentColor, setAccentColor] = useState(BRAND_HEX)
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [mobileSidebar, setMobileSidebar] = useState(false)
-  const [showGasModal, setShowGasModal] = useState(false)
-  const [showTicketDrawer, setShowTicketDrawer] = useState(false)
   const [showLogoutModal, setShowLogoutModal] = useState(false)
   const [showMapModal, setShowMapModal] = useState(false)
   const [toast, setToast] = useState({ show: false, message: "", sub: "" })
@@ -61,10 +59,6 @@ export function useAppController() {
     setSidebarCollapsed,
     mobileSidebar,
     setMobileSidebar,
-    showGasModal,
-    setShowGasModal,
-    showTicketDrawer,
-    setShowTicketDrawer,
     showLogoutModal,
     setShowLogoutModal,
     showMapModal,

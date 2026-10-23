@@ -7,6 +7,10 @@ import { firmarToken } from "../utils/jwt.js";
 import { authenticate } from "../middlewares/authenticate.js";
 import { getMenuPermitido } from "../services/menu.service.js";
 import { registrarBitacora, ipDe } from "../services/bitacora.service.js";
+import {
+  whatsappConfigurado,
+  enviarCodigoRecuperacion,
+} from "../services/whatsapp.js";
 
 const router = Router();
 
@@ -126,6 +130,7 @@ router.post("/login", async (req, res, next) => {
         id_rol: user.id_rol,
         nombre_completo: user.nombre ? `${user.nombre} ${user.apellido}`.trim() : user.nombre_usuario,
         rol: user.nombre_rol || user.rol_descripcion,
+        tipo_usuario: user.tipo_usuario ?? null,
         foto: toDataUrl(user.foto, user.foto_mime),
       },
     });
@@ -201,35 +206,71 @@ router.post("/cambiar-clave", authenticate, async (req, res, next) => {
 
 router.post("/recuperar", async (req, res, next) => {
   try {
-    const { correo } = req.body;
-    if (!correo) return res.status(400).json({ error: "correo es requerido" });
-
-    const { rows } = await pool.query(
-      "SELECT id_usuario FROM usuario WHERE correo = $1 AND activo",
-      [correo],
-    );
-    if (!rows[0]) {
-      // Respuesta genérica para no revelar si el correo existe.
-      return res.json({ ok: true });
+    const { telefono } = req.body;
+    const digitos = String(telefono ?? "").replace(/\D/g, "");
+    if (digitos.length !== 8) {
+      return res.status(400).json({ error: "El número debe tener 8 dígitos" });
     }
 
-    const token = crypto.randomBytes(32).toString("hex");
-    const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
+    const { rows } = await pool.query(
+      `SELECT u.id_usuario, u.correo, up.whatsapp,
+              COALESCE(NULLIF(TRIM(CONCAT_WS(' ', e.nombre, e.apellido)), ''), u.nombre_usuario) AS nombre
+         FROM usuario u
+         JOIN usuario_preferencia up ON up.id_usuario = u.id_usuario
+         LEFT JOIN empleado e ON e.id_empleado = u.id_empleado
+        WHERE up.whatsapp = $1 AND u.activo`,
+      [digitos],
+    );
+    // Respuesta genérica para no revelar si el número está registrado.
+    if (!rows[0]) return res.json({ ok: true });
+
+    const usuario = rows[0];
+
+    // Anti-spam: si hay un código vigente generado hace menos de 2 minutos, no reenviar.
+    // (la expiración siempre es "ahora + 30 min", así que >28 min equivale a creado hace <2 min)
+    const reciente = await pool.query(
+      `SELECT 1 FROM token_reset
+        WHERE id_usuario = $1 AND usado = FALSE AND expira > now() + interval '28 minutes'
+        LIMIT 1`,
+      [usuario.id_usuario],
+    );
+    if (reciente.rows[0]) return res.json({ ok: true });
+
+    // Código numérico de 6 dígitos (con ceros a la izquierda si aplica).
+    const codigo = String(crypto.randomInt(0, 1000000)).padStart(6, "0");
+    const tokenHash = crypto.createHash("sha256").update(codigo).digest("hex");
+
+    // Invalida códigos anteriores para que solo el último sea válido.
+    await pool.query(
+      "UPDATE token_reset SET usado = TRUE WHERE id_usuario = $1 AND usado = FALSE",
+      [usuario.id_usuario],
+    );
     await pool.query(
       `INSERT INTO token_reset (id_usuario, token_hash, expira)
        VALUES ($1, $2, now() + interval '30 minutes')`,
-      [rows[0].id_usuario, tokenHash],
+      [usuario.id_usuario, tokenHash],
     );
+
+    await enviarCodigoRecuperacion({
+      telefono: usuario.whatsapp,
+      codigo,
+      nombre: usuario.nombre,
+    });
+
     await registrarBitacora({
-      idUsuario: rows[0].id_usuario,
+      idUsuario: usuario.id_usuario,
       accion: "reset_solicitado",
       ip: ipDe(req),
       modulo: "Autenticación",
-      detalle: "Solicitud de restablecimiento de clave",
+      detalle: "Solicitud de restablecimiento de clave por WhatsApp",
     });
 
-    // Sin servicio de correo, se devuelve el token para pruebas.
-    res.json({ ok: true, token_reset: token });
+    const respuesta = { ok: true };
+    // Solo en desarrollo (sin API de WhatsApp configurada) se expone el código para pruebas.
+    if (!whatsappConfigurado && process.env.NODE_ENV !== "production") {
+      respuesta.dev_codigo = codigo;
+    }
+    res.json(respuesta);
   } catch (e) {
     next(e);
   }
@@ -237,27 +278,31 @@ router.post("/recuperar", async (req, res, next) => {
 
 router.post("/restablecer", async (req, res, next) => {
   try {
-    const { token, clave_nueva } = req.body;
-    if (!token || !clave_nueva) {
-      return res.status(400).json({ error: "token y clave_nueva son requeridos" });
+    const { token, codigo, clave_nueva } = req.body;
+    const valor = String(codigo ?? token ?? "").trim();
+    if (!valor || !clave_nueva) {
+      return res.status(400).json({ error: "codigo y clave_nueva son requeridos" });
     }
     if (clave_nueva.length < 8) {
       return res.status(400).json({ error: "La clave debe tener mínimo 8 caracteres" });
     }
 
-    const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
+    const tokenHash = crypto.createHash("sha256").update(valor).digest("hex");
     const { rows } = await pool.query(
       `SELECT * FROM token_reset
         WHERE token_hash = $1 AND usado = FALSE AND expira > now()`,
       [tokenHash],
     );
     if (!rows[0]) {
-      return res.status(400).json({ error: "Token inválido o expirado" });
+      return res.status(400).json({ error: "Código inválido o expirado" });
     }
 
     const hashed = await bcrypt.hash(clave_nueva, 12);
     await pool.query(
-      "UPDATE usuario SET clave = $1, debe_cambiar_clave = FALSE WHERE id_usuario = $2",
+      `UPDATE usuario
+          SET clave = $1, debe_cambiar_clave = FALSE,
+              intentos_fallidos = 0, bloqueado_hasta = NULL
+        WHERE id_usuario = $2`,
       [hashed, rows[0].id_usuario],
     );
     await pool.query("UPDATE token_reset SET usado = TRUE WHERE id_token = $1", [

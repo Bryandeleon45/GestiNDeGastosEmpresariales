@@ -697,6 +697,29 @@ router.get("/cotizaciones/:id/documentos", resolveProveedor, async (req, res, ne
   }
 });
 
+router.get("/cotizaciones/:id/documentos/:idDocumento/descarga", resolveProveedor, async (req, res, next) => {
+  try {
+    const idProv = req.proveedor.id_proveedor;
+    const { rows } = await pool.query(
+      `SELECT d.id_documento, d.nombre_archivo, d.mime_type, d.contenido_base64
+         FROM documento_cotizacion d
+         JOIN cotizacion c ON c.id_cotizacion = d.id_cotizacion
+        WHERE d.id_cotizacion = $1 AND d.id_documento = $2 AND c.id_proveedor = $3`,
+      [req.params.id, req.params.idDocumento, idProv],
+    );
+    const doc = rows[0];
+    if (!doc) return res.status(404).json({ error: "Documento no encontrado" });
+    res.json({
+      id_documento: doc.id_documento,
+      nombre_archivo: doc.nombre_archivo,
+      mime_type: doc.mime_type,
+      contenido_base64: doc.contenido_base64,
+    });
+  } catch (e) {
+    next(e);
+  }
+});
+
 // ── Notificaciones ────────────────────────────────────────────────────────────
 router.get("/notificaciones", resolveProveedor, async (req, res, next) => {
   try {

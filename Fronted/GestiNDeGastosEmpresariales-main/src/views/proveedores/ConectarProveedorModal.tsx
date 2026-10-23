@@ -22,7 +22,11 @@ export default function ConectarProveedorModal({
   const [nit, setNit] = useState("")
   const [email, setEmail] = useState("")
   const [telefono, setTelefono] = useState("")
-  const [rol, setRol] = useState(rolesPortal[0]?.descripcion ?? "")
+  const [rol, setRol] = useState(
+    rolesPortal.find((r) => /proveedor/i.test(r.descripcion))?.descripcion ??
+      rolesPortal[0]?.descripcion ??
+      "",
+  )
   const [categoria, setCategoria] = useState(tipos[0]?.descripcion ?? "")
   const [visible, setVisible] = useState(false)
   const [focusField, setFocus] = useState<string | null>(null)

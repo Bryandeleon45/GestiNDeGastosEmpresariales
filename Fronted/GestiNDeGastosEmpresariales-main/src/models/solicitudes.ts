@@ -32,14 +32,3 @@ export const ESTADO_SOL_STYLE: Record<SolEstado, string> = {
   "En Compra": "bg-purple-50 text-purple-700 border border-purple-200",
   Cancelada: "bg-slate-50 text-slate-500 border border-slate-200",
 }
-
-export const DEPS_LIST = [
-  "DMP",
-  "DAFIM",
-  "DMM",
-  "OMSAN",
-  "DIGAM",
-  "Secretaría",
-  "Despacho",
-  "Compras y Almacén",
-]

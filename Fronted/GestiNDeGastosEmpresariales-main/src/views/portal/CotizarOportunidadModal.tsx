@@ -1,17 +1,16 @@
-import { useState, useEffect, useMemo } from "react"
+import { useState, useEffect, useMemo, useRef } from "react"
 import { G, GB } from "@/constants/theme"
 import { Icons } from "@/components/common/Icons"
-import type { OportunidadDetalle } from "@/api/portal"
+import {
+  listarDocumentosCotizacion,
+  subirDocumentoCotizacion,
+  type DocumentoCotizacion,
+  type OportunidadDetalle,
+} from "@/api/portal"
+import { fmtFecha } from "@/utils/fechas"
 
 const fmtQ = (n: number) =>
   `Q ${n.toLocaleString("es-GT", { minimumFractionDigits: 2 })}`
-
-const fmtFecha = (iso: string) =>
-  new Date(iso).toLocaleDateString("es-GT", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-  })
 
 export default function CotizarOportunidadModal({
   detalle,
@@ -56,14 +55,18 @@ export default function CotizarOportunidadModal({
   )
   const [referencia, setReferencia] = useState(detalle.cotizacion?.referencia_proveedor ?? "")
   const [plazoCredito, setPlazoCredito] = useState(
-    (detalle.cotizacion as { plazo_credito_dias?: number | null } | null)?.plazo_credito_dias != null
-      ? String((detalle.cotizacion as { plazo_credito_dias?: number | null }).plazo_credito_dias)
+    detalle.cotizacion?.plazo_credito_dias != null
+      ? String(detalle.cotizacion.plazo_credito_dias)
       : "",
   )
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState("")
   const [declinando, setDeclinando] = useState(false)
   const [motivo, setMotivo] = useState("")
+  const [documentos, setDocumentos] = useState<DocumentoCotizacion[]>([])
+  const [subiendoDoc, setSubiendoDoc] = useState(false)
+  const [errorDoc, setErrorDoc] = useState("")
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const setPrecio = (id: number, v: string) => setPrecios((p) => ({ ...p, [id]: v }))
 
@@ -80,6 +83,48 @@ export default function CotizarOportunidadModal({
     const p = parseFloat(precios[it.id_detalle] || "")
     return Number.isFinite(p) && p > 0
   })
+
+  useEffect(() => {
+    const idCot = borrador?.id_cotizacion
+    if (!idCot) return
+    listarDocumentosCotizacion(idCot)
+      .then(setDocumentos)
+      .catch(() => setDocumentos([]))
+  }, [borrador?.id_cotizacion])
+
+  const adjuntarArchivo = async (file: File) => {
+    if (!borrador?.id_cotizacion) return
+    if (file.size > 10 * 1024 * 1024) {
+      setErrorDoc("El archivo no debe superar 10 MB.")
+      return
+    }
+    setErrorDoc("")
+    setSubiendoDoc(true)
+    try {
+      const base64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader()
+        reader.onload = () =>
+          resolve(
+            String(reader.result).replace(/^data:[^;]+;base64,/, ""),
+          )
+        reader.onerror = reject
+        reader.readAsDataURL(file)
+      })
+      await subirDocumentoCotizacion(borrador.id_cotizacion, {
+        nombre_archivo: file.name,
+        mime_type: file.type || null,
+        contenido_base64: base64,
+      })
+      const lista = await listarDocumentosCotizacion(borrador.id_cotizacion)
+      setDocumentos(lista)
+      onToast("Documento adjunto", `${file.name} fue cargado al borrador.`)
+      if (fileInputRef.current) fileInputRef.current.value = ""
+    } catch (e) {
+      setErrorDoc((e as Error).message || "No se pudo subir el documento.")
+    } finally {
+      setSubiendoDoc(false)
+    }
+  }
 
   const handleClose = () => {
     setVisible(false)
@@ -317,6 +362,62 @@ export default function CotizarOportunidadModal({
                 />
               </div>
             </div>
+
+            {borrador && (
+              <div className="rounded-xl border p-4 space-y-3" style={{ borderColor: border }}>
+                <p className="text-xs font-bold" style={{ color: sub }}>
+                  DOCUMENTOS ADJUNTOS
+                </p>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".pdf,.xml"
+                  className="hidden"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0]
+                    if (f) adjuntarArchivo(f)
+                  }}
+                />
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={subiendoDoc}
+                    className="px-4 py-2 text-xs font-bold rounded-xl border-2 transition-all"
+                    style={{
+                      color: G,
+                      borderColor: G,
+                      opacity: subiendoDoc ? 0.5 : 1,
+                    }}
+                  >
+                    {subiendoDoc ? "Subiendo…" : "Adjuntar documento"}
+                  </button>
+                  <span className="text-[11px]" style={{ color: sub }}>
+                    PDF · XML · hasta 10 MB
+                  </span>
+                </div>
+                {documentos.length > 0 && (
+                  <ul className="space-y-1.5">
+                    {documentos.map((d) => (
+                      <li
+                        key={d.id_documento}
+                        className="flex items-center gap-2 text-xs"
+                        style={{ color: text }}
+                      >
+                        <Icons.PDF />
+                        <span className="truncate font-semibold">
+                          {d.nombre_archivo}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                {errorDoc && (
+                  <p className="text-xs font-semibold" style={{ color: "#DC2626" }}>
+                    {errorDoc}
+                  </p>
+                )}
+              </div>
+            )}
 
             {error && (
               <div className="rounded-xl px-4 py-2.5 text-xs font-semibold border" style={{ backgroundColor: "#FEE2E2", borderColor: "#FECACA", color: "#DC2626" }}>

@@ -8,6 +8,7 @@ import {
 } from "@/models/usuarios"
 import { listarRoles } from "@/api/roles"
 import { listarDependencias, listarPuestos } from "@/api/catalogos"
+import DateInput from "@/views/common/DateInput"
 
 export default function NuevoUsuarioModal({
   usuario,
@@ -41,7 +42,9 @@ export default function NuevoUsuarioModal({
         const rs = await listarRoles()
         if (active)
           setRoles(
-            rs.map((r) => ({ id: r.id_rol, label: r.nombre_rol || r.descripcion })),
+            rs
+              .filter((r) => !r.es_portal || r.id_rol === usuario?.id_rol)
+              .map((r) => ({ id: r.id_rol, label: r.nombre_rol || r.descripcion })),
           )
       } catch {
         if (active) setRoles([])
@@ -306,10 +309,9 @@ export default function NuevoUsuarioModal({
                 </div>
                 <div>
                   <label className={labelCls}>Fecha de Nacimiento</label>
-                  <input
-                    type="date"
+                  <DateInput
                     value={fnac}
-                    onChange={(e) => setFnac(e.target.value)}
+                    onChange={setFnac}
                     className={inputCls}
                     style={{ borderColor: "#E5E7EB" }}
                   />

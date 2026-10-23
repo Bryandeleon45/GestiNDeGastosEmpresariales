@@ -2,17 +2,12 @@ import { useState } from "react"
 import { G, GL } from "@/constants/theme"
 import { Icons } from "@/components/common/Icons"
 import MunicipalSeal from "@/components/common/MunicipalSeal"
-import { DashboardBarChart } from "@/components/charts/DashboardCharts"
 import { useAppController } from "@/controllers/useAppController"
 import SearchBar from "@/views/dashboard/SearchBar"
 import NotificationBell from "@/views/dashboard/NotificationBell"
 import HelpButton from "@/views/dashboard/HelpButton"
-import StockAlertsCard from "@/views/dashboard/StockAlertsCard"
-import BrandingCard from "@/views/dashboard/BrandingCard"
-import SupportTicketDrawer from "@/views/dashboard/SupportTicketDrawer"
 import DashboardView from "@/views/dashboard/DashboardView"
 import JurisdictionModal from "@/views/dashboard/JurisdictionModal"
-import GastosModal from "@/views/solicitudes/GastosModal"
 import DependenciasView from "@/views/solicitudes/DependenciasView"
 
 import ProveedoresView from "@/views/proveedores/ProveedoresView"
@@ -30,7 +25,6 @@ import LoginScreen from "@/views/auth/LoginScreen"
 import CerrarSesionModal from "@/views/common/CerrarSesionModal"
 import PdfViewerModal from "@/views/common/PdfViewerModal"
 import Toast from "@/views/common/Toast"
-import KpiCard from "@/views/common/KpiCard"
 import { generarGuiaPdf } from "@/lib/guiasPdf"
 import { GUIAS } from "@/models/ayuda"
 import {
@@ -43,26 +37,6 @@ import {
 } from "@/api/auth"
 import { flattenMenu } from "@/utils/menu"
 import CambiarClaveModal from "@/views/auth/CambiarClaveModal"
-
-const DASH_KPI_ICONS: Record<string, React.ReactNode> = {
-  solicitudes: <Icons.Solicitudes />,
-  ordenes: <Icons.Bodega />,
-  entregas: <Icons.Proformas />,
-  presupuesto: <Icons.Facturacion />,
-}
-
-const NAV_MAIN = [
-  { key: "dashboard", label: "Dashboard", Icon: Icons.Dashboard },
-  { key: "dependencias", label: "Dependencias", Icon: Icons.Dependencias },
-  { key: "proformas", label: "Proformas", Icon: Icons.Proformas },
-  { key: "facturacion", label: "Facturación", Icon: Icons.Facturacion },
-  { key: "bodega", label: "Bodega", Icon: Icons.Bodega },
-  { key: "reportes", label: "Reportes", Icon: Icons.Reportes },
-  { key: "usuarios", label: "Usuarios", Icon: Icons.Users },
-  { key: "roles", label: "Roles", Icon: Icons.Shield },
-  { key: "bitacora", label: "Bitácora", Icon: Icons.Activity },
-  { key: "configuracion", label: "Configuración", Icon: Icons.Config },
-]
 
 export default function App() {
   const {
@@ -78,10 +52,6 @@ export default function App() {
     setSidebarCollapsed,
     mobileSidebar,
     setMobileSidebar,
-    showGasModal,
-    setShowGasModal,
-    showTicketDrawer,
-    setShowTicketDrawer,
     showLogoutModal,
     setShowLogoutModal,
     showMapModal,
@@ -355,10 +325,7 @@ export default function App() {
             />
             <div className="flex items-center gap-1 ml-auto">
               <NotificationBell onNavegar={(nav) => setActiveNav(nav)} />
-              <HelpButton
-                onOpenTicket={() => setShowTicketDrawer(true)}
-                onAbrirGuia={abrirGuiaPdf}
-              />
+              <HelpButton onAbrirGuia={abrirGuiaPdf} />
               <div
                 className="h-8 w-px mx-2"
                 style={{ backgroundColor: thBorder }}
@@ -473,38 +440,6 @@ export default function App() {
         </div>
       </div>
 
-      {showGasModal && (
-        <GastosModal
-          onClose={() => setShowGasModal(false)}
-          onPDF={() => {
-            setShowGasModal(false)
-            setTimeout(
-              () =>
-                fireToast(
-                  "Reporte descargado con éxito",
-                  "El archivo PDF fue generado correctamente.",
-                ),
-              150,
-            )
-          }}
-        />
-      )}
-      {showTicketDrawer && (
-        <SupportTicketDrawer
-          onClose={() => setShowTicketDrawer(false)}
-          onSubmit={() => {
-            setShowTicketDrawer(false)
-            setTimeout(
-              () =>
-                fireToast(
-                  "Ticket enviado exitosamente",
-                  "Redirigiendo al Centro de Soporte DAFIM...",
-                ),
-              150,
-            )
-          }}
-        />
-      )}
       {showMapModal && (
         <JurisdictionModal onClose={() => setShowMapModal(false)} />
       )}

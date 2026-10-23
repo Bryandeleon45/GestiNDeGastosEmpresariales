@@ -11,6 +11,7 @@ import {
 import { ApiError } from "@/api/client"
 import AdjudicarModal from "@/views/proformas/AdjudicarModal"
 import InvitarProveedoresModal from "@/views/proformas/InvitarProveedoresModal"
+import { fmtFecha } from "@/utils/fechas"
 
 const FASE_STYLE: Record<string, string> = {
   Publicada: "bg-sky-50 text-sky-700 border border-sky-200",
@@ -227,7 +228,7 @@ export default function ComparativaProformasView({
           <div className="grid grid-cols-2 md:grid-cols-4 divide-x divide-gray-100">
             {[
               { label: "Dependencia Solicitante", value: proceso.nombre_dependencia, accent: false },
-              { label: "Fecha de Publicación", value: new Date(proceso.fecha_publicacion).toLocaleDateString("es-GT"), accent: false },
+              { label: "Fecha de Publicación", value: fmtFecha(proceso.fecha_publicacion), accent: false },
               { label: "Presupuesto Estimado", value: fmt(proceso.monto_estimado), accent: true },
               { label: "Categoría", value: proceso.tipo_solicitud, accent: false },
             ].map((f) => (

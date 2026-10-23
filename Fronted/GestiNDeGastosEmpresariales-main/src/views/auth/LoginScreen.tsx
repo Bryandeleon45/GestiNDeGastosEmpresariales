@@ -1,7 +1,7 @@
 import { useState } from "react"
 import { G } from "@/constants/theme"
 import MunicipalSeal from "@/components/common/MunicipalSeal"
-import { LAKE_IMG, LOGIN_STATS } from "@/models/login"
+import { LAKE_IMG } from "@/models/login"
 import ForgotPasswordModal from "@/views/auth/ForgotPasswordModal"
 
 export default function LoginScreen({
@@ -87,19 +87,6 @@ export default function LoginScreen({
               Plataforma digital centralizada para la administración de
               inventario y finanzas públicas.
             </p>
-            <div className="flex gap-6 mt-10">
-              {LOGIN_STATS.map((s) => (
-                <div key={s.label}>
-                  <p
-                    className="text-2xl font-extrabold"
-                    style={{ color: "#86EFAC" }}
-                  >
-                    {s.value}
-                  </p>
-                  <p className="text-xs text-white/55 mt-0.5">{s.label}</p>
-                </div>
-              ))}
-            </div>
           </div>
           <div className="flex items-center gap-2 text-white/55 text-xs">
             <svg

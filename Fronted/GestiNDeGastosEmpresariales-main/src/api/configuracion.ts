@@ -19,6 +19,7 @@ export interface Perfil {
   apellido: string
   telefono: string | null
   correo: string
+  whatsapp: string | null
   fecha_ingreso: string | null
   cargo: string | null
   nombre_dependencia: string | null
@@ -99,7 +100,7 @@ export function obtenerPerfil() {
   return api.get<Perfil>("/configuracion/perfil")
 }
 
-export function guardarPerfil(data: { nombre?: string; apellido?: string; telefono?: string; foto?: string }) {
+export function guardarPerfil(data: { nombre?: string; apellido?: string; telefono?: string; whatsapp?: string; foto?: string }) {
   return api.put<Perfil>("/configuracion/perfil", data)
 }
 

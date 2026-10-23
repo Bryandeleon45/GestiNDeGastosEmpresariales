@@ -8,6 +8,7 @@ import PublicarProcesoModal from "@/views/proformas/PublicarProcesoModal"
 import ProformasRecibidasView from "@/views/proformas/ProformasRecibidasView"
 import OrdenCompraDocumento from "@/views/proformas/OrdenCompraDocumento"
 import ProcesoAdjudicacionCard from "@/views/proformas/ProcesoAdjudicacionCard"
+import { fmtFecha } from "@/utils/fechas"
 
 const OC_STYLE: Record<string, string> = {
   Pendiente: "bg-gray-100 text-gray-600 border border-gray-200",
@@ -19,11 +20,6 @@ const OC_STYLE: Record<string, string> = {
 
 const fmtQ = (n: number | string) =>
   `Q ${Number(n).toLocaleString("es-GT", { minimumFractionDigits: 2 })}`
-
-function fmtFecha(iso: string | null) {
-  if (!iso) return "—"
-  return new Date(iso).toLocaleDateString("es-GT")
-}
 
 export default function ProformasView({
   onToast,

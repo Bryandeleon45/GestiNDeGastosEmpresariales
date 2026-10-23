@@ -5,6 +5,7 @@ import { pool } from "../db.js";
 import { authenticate } from "../middlewares/authenticate.js";
 import { authorize } from "../middlewares/authorize.js";
 import { registrarBitacora, ipDe } from "../services/bitacora.service.js";
+import { enviarCredencialesCorreo, correoConfigurado } from "../services/mailer.js";
 
 const router = Router();
 
@@ -371,6 +372,18 @@ router.post("/conectar", authorize("proveedores"), async (req, res, next) => {
     );
 
     await client.query("COMMIT");
+
+    // Enviar credenciales por correo (fire-and-forget)
+    if (correoConfigurado) {
+      enviarCredencialesCorreo({
+        para: correo.trim(),
+        nombre: razon_social,
+        usuario: usuario.rows[0].nombre_usuario,
+        clave: claveTemporal,
+      }).catch((e) =>
+        console.error(`[mailer] Error enviando credenciales a ${correo}:`, e.message)
+      );
+    }
 
     await registrarBitacora({
       idUsuario: req.user.id_usuario,

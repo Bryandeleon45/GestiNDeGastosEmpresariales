@@ -86,6 +86,17 @@ export interface DetalleCotizacionItem {
   descripcion_oferta: string | null
 }
 
+export interface CotizacionDetalle {
+  id_cotizacion: number
+  estado_cotizacion: string
+  condiciones_pago: string | null
+  tiempo_entrega_dias: number | null
+  tiempo_entrega_texto: string | null
+  referencia_proveedor: string | null
+  plazo_credito_dias: number | null
+  items: DetalleCotizacionItem[]
+}
+
 export interface OportunidadDetalle extends Omit<Oportunidad, "estado"> {
   lugar_entrega: string | null
   min_ofertas: number
@@ -93,9 +104,7 @@ export interface OportunidadDetalle extends Omit<Oportunidad, "estado"> {
   estado_invitacion: string
   motivo_declina: string | null
   items: OportunidadItem[]
-  cotizacion: (Oportunidad["cotizacion"] & {
-    items?: DetalleCotizacionItem[]
-  }) | null
+  cotizacion: CotizacionDetalle | null
   estado: OportunidadEstado
 }
 
@@ -196,6 +205,40 @@ export function retirarCotizacion(idProceso: number) {
 
 export function declinarOportunidad(idProceso: number, motivo?: string) {
   return api.post<{ ok: boolean }>(`/portal/oportunidades/${idProceso}/declinar`, { motivo })
+}
+
+export interface DocumentoCotizacion {
+  id_documento: number
+  nombre_archivo: string
+  mime_type: string | null
+  fecha_carga: string
+  tiene_contenido: boolean
+}
+
+export function subirDocumentoCotizacion(
+  idCotizacion: number,
+  data: { nombre_archivo: string; mime_type?: string | null; contenido_base64: string },
+) {
+  return api.post<DocumentoCotizacion>(
+    `/portal/cotizaciones/${idCotizacion}/documentos`,
+    data,
+  )
+}
+
+export function listarDocumentosCotizacion(idCotizacion: number) {
+  return api.get<DocumentoCotizacion[]>(
+    `/portal/cotizaciones/${idCotizacion}/documentos`,
+  )
+}
+
+export function descargarDocumentoCotizacion(idCotizacion: number, idDocumento: number) {
+  return api.get<{
+    nombre_archivo: string
+    mime_type: string | null
+    contenido_base64: string
+  }>(
+    `/portal/cotizaciones/${idCotizacion}/documentos/${idDocumento}/descarga`,
+  )
 }
 
 export function listarNotificaciones() {

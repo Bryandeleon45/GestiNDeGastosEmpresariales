@@ -10,7 +10,19 @@ export interface ReporteCatalogo {
   descripcion: string
   categoria: string
   requiereInsumo?: boolean
+  filtros: FiltroDescriptor[]
 }
+
+export type FiltroDescriptor =
+  | { tipo: "fecha" }
+  | {
+      tipo: "dimension"
+      valor: "dependencia" | "proveedor" | "categoria" | "insumo"
+      etiqueta: string
+      requerido?: boolean
+    }
+  | { tipo: "estado"; etiqueta: string; opciones: string[] }
+  | { tipo: "prioridad"; etiqueta: string; opciones: string[] }
 
 export interface ColumnaReporte {
   campo: string

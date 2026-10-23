@@ -2,12 +2,10 @@ import { G, BRAND_HEX } from "@/constants/theme"
 import { Icons } from "@/components/common/Icons"
 import MunicipalSeal from "@/components/common/MunicipalSeal"
 import type { ProformaRecibidaDetalle } from "@/api/proformas"
+import { fmtFecha } from "@/utils/fechas"
 
 const fmtQ = (n: number | string) =>
   `Q ${Number(n).toLocaleString("es-GT", { minimumFractionDigits: 2 })}`
-
-const fmtF = (iso?: string | null) =>
-  iso ? new Date(iso).toLocaleDateString("es-GT") : "—"
 
 export default function ProformaDocumento({
   detalle,
@@ -65,7 +63,7 @@ export default function ProformaDocumento({
                   PROFORMA
                 </h1>
                 <p className="text-sm font-mono font-semibold text-gray-700 mt-1">{detalle.numero_cotizacion}</p>
-                <p className="text-xs text-gray-400 mt-0.5">Fecha: {fmtF(detalle.fecha_cotizacion)}</p>
+                <p className="text-xs text-gray-400 mt-0.5">Fecha: {fmtFecha(detalle.fecha_cotizacion)}</p>
               </div>
             </div>
 

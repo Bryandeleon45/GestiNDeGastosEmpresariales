@@ -20,6 +20,7 @@ import {
   PROV_PAGE_SIZE,
   type ProveedorRow,
 } from "@/models/proveedores"
+import { fmtFechaHora } from "@/utils/fechas"
 
 function toRow(p: Proveedor): ProveedorRow {
   const cs = CONEXION_STYLE[p.estado_conexion]
@@ -34,7 +35,7 @@ function toRow(p: Proveedor): ProveedorRow {
     estado: p.estado_conexion,
     estadoLabel: cs.label,
     ultimaActividad: p.fecha_ultimo_acceso
-      ? new Date(p.fecha_ultimo_acceso).toLocaleString("es-GT")
+      ? fmtFechaHora(p.fecha_ultimo_acceso)
       : "Nunca",
     email: p.correo,
     telefono: p.telefono ?? "",

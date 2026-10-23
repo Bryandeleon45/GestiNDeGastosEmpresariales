@@ -1,24 +1,6 @@
 import { useEffect, useRef, useState } from "react"
 import { G, GL } from "@/constants/theme"
 import { Icons } from "@/components/common/Icons"
-
-const fmtQ = (n: number | string) =>
-  `Q ${Number(n).toLocaleString("es-GT", { minimumFractionDigits: 2 })}`
-
-function hoyISO() {
-  const d = new Date()
-  const mm = String(d.getMonth() + 1).padStart(2, "0")
-  const dd = String(d.getDate()).padStart(2, "0")
-  return `${d.getFullYear()}-${mm}-${dd}`
-}
-
-function diasRestantes(fecha: string) {
-  if (!fecha) return null
-  const hoy = new Date(hoyISO() + "T00:00:00")
-  const destino = new Date(fecha + "T00:00:00")
-  const diff = Math.ceil((destino.getTime() - hoy.getTime()) / (1000 * 60 * 60 * 24))
-  return diff
-}
 import {
   listarRequisicionesAprobadas,
   listarProveedoresActivos,
@@ -27,6 +9,11 @@ import {
   type ProveedorActivo,
 } from "@/api/proformas"
 import { ApiError } from "@/api/client"
+import DateInput from "@/views/common/DateInput"
+import { fmtFecha, hoyISO, diasRestantes } from "@/utils/fechas"
+
+const fmtQ = (n: number | string) =>
+  `Q ${Number(n).toLocaleString("es-GT", { minimumFractionDigits: 2 })}`
 
 export default function PublicarProcesoModal({
   onClose,
@@ -192,7 +179,7 @@ export default function PublicarProcesoModal({
                 </div>
                 <div>
                   <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Fecha sol.</p>
-                  <p className="text-sm font-bold mt-0.5">{new Date(reqSel.fecha_solicitud).toLocaleDateString("es-GT")}</p>
+                  <p className="text-sm font-bold mt-0.5">{fmtFecha(reqSel.fecha_solicitud)}</p>
                 </div>
                 <div>
                   <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Ítems</p>
@@ -235,11 +222,10 @@ export default function PublicarProcesoModal({
               <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">
                 Fecha Límite
               </label>
-              <input
-                type="date"
+              <DateInput
                 value={fechaLimite}
                 min={hoyISO()}
-                onChange={(e) => setFechaLimite(e.target.value)}
+                onChange={setFechaLimite}
                 className="w-full px-3 py-2.5 text-sm bg-gray-50 border border-gray-200 rounded-lg outline-none focus:border-green-600"
               />
               {(() => {

@@ -7,6 +7,7 @@ export interface Rol {
   activo: boolean
   fecha_registro: string
   total_usuarios: number
+  es_portal?: boolean
 }
 
 export interface PermisoSubmenu {

@@ -7,6 +7,7 @@ export interface SessionUser {
   id_rol: number
   nombre_completo: string
   rol: string
+  tipo_usuario?: string | null
   foto?: string | null
 }
 
@@ -81,6 +82,19 @@ export async function cambiarClave(
   await api.post("/auth/cambiar-clave", { clave_actual, clave_nueva })
 }
 
+export async function recuperarContrasena(
+  telefono: string,
+): Promise<{ ok: boolean; dev_codigo?: string }> {
+  return api.post<{ ok: boolean; dev_codigo?: string }>("/auth/recuperar", { telefono })
+}
+
+export async function restablecerContrasena(
+  codigo: string,
+  claveNueva: string,
+): Promise<void> {
+  await api.post("/auth/restablecer", { codigo, clave_nueva: claveNueva })
+}
+
 export async function logout(): Promise<void> {
   try {
     if (getToken()) await api.post("/auth/logout")
@@ -99,6 +113,7 @@ export function isAuthenticated(): boolean {
 
 export function esProveedor(user: SessionUser | null): boolean {
   if (!user) return false
+  if (user.tipo_usuario != null) return user.tipo_usuario === "PROVEEDOR"
   const rol = (user.rol || "").toLowerCase().trim()
   return rol === "proveedor" || rol.includes("proveedor")
 }

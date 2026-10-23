@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react"
 import { G, GL } from "@/constants/theme"
 import { Icons } from "@/components/common/Icons"
+import DateInput from "@/views/common/DateInput"
 import {
   listarCatalogosInfo,
   listarCatalogo,
@@ -16,6 +17,7 @@ import {
   type DiaInhabil,
   type Parametro,
 } from "@/api/configuracion"
+import { fmtFecha } from "@/utils/fechas"
 
 const CATALOGO_DEFS: Record<string, { titulo: string; nombre: string; campos: { key: string; label: string }[] }> = {
   categorias: {
@@ -341,7 +343,7 @@ function DiasInhabilesPanel({ onToast }: { onToast: (m: string, s: string) => vo
       <div className="flex items-end gap-3 flex-wrap">
         <div>
           <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1.5">Fecha</label>
-          <input value={fecha} onChange={(e) => setFecha(e.target.value)} type="date" className="px-3 py-2 text-sm bg-white border border-gray-200 rounded-lg outline-none focus:border-green-600" />
+          <DateInput value={fecha} onChange={setFecha} className="px-3 py-2 text-sm bg-white border border-gray-200 rounded-lg outline-none focus:border-green-600" />
         </div>
         <div className="flex-1 min-w-[200px]">
           <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1.5">Descripción</label>
@@ -374,7 +376,7 @@ function DiasInhabilesPanel({ onToast }: { onToast: (m: string, s: string) => vo
               dias.map((d) => (
                 <tr key={d.id_dia_inhabil} className="border-b border-gray-50 last:border-0 hover:bg-gray-50/60 transition-colors">
                   <td className="px-4 py-3.5">
-                    <p className="text-sm font-semibold text-gray-900">{d.fecha}</p>
+                    <p className="text-sm font-semibold text-gray-900">{fmtFecha(d.fecha)}</p>
                   </td>
                   <td className="px-4 py-3.5">
                     <p className="text-sm text-gray-600">{d.descripcion ?? "—"}</p>

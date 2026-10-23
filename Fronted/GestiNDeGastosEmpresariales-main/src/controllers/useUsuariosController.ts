@@ -9,6 +9,7 @@ import {
   restablecerClaveUsuario,
   type UsuarioApi,
 } from "@/api/usuarios"
+import { fmtFecha } from "@/utils/fechas"
 
 function mapApiToRecord(u: UsuarioApi): UsuarioRecord {
   return {
@@ -18,7 +19,7 @@ function mapApiToRecord(u: UsuarioApi): UsuarioRecord {
     dpi: u.dpi,
     estado: u.estado,
     telefono: u.telefono ?? "",
-    ingreso: u.ingreso ? new Date(u.ingreso).toLocaleDateString("es-GT") : "",
+    ingreso: u.ingreso ? fmtFecha(u.ingreso) : "",
     tieneAcceso: u.tieneAcceso,
     primer_nombre: u.primer_nombre,
     apellido: u.apellido,

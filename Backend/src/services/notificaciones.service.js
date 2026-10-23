@@ -1,9 +1,38 @@
 import { pool } from "../db.js";
+import { correoConfigurado, enviarNotificacionCorreo } from "./mailer.js";
+
+// Tipos de alerta periódica que NO deben enviar correo (solo notificación en pantalla)
+const TIPOS_SIN_CORREO = new Set([
+  "STOCK_BAJO",
+  "FACTURA_VENCIDA",
+  "FACTURA_POR_VENCER",
+]);
+
+// Caché simple de correos por usuario para evitar consultas repetidas en la misma petición
+const correoCache = new Map();
+
+async function obtenerCorreoYNombre(idUsuario) {
+  if (correoCache.has(idUsuario)) return correoCache.get(idUsuario);
+  const { rows } = await pool.query(
+    `SELECT u.correo,
+            COALESCE(NULLIF(TRIM(CONCAT_WS(' ', e.nombre, e.apellido)), ''), u.nombre_usuario) AS nombre
+       FROM usuario u
+       LEFT JOIN empleado e ON e.id_empleado = u.id_empleado
+      WHERE u.id_usuario = $1 AND u.activo`,
+    [idUsuario],
+  );
+  const dato = rows[0] ?? { correo: null, nombre: null };
+  correoCache.set(idUsuario, dato);
+  return dato;
+}
+
+// Limpia la caché (llamar al final de cada petición si se desea, o cada N segundos)
+export function limpiarCacheCorreos() {
+  correoCache.clear();
+}
 
 // Servicio compartido de notificaciones. Respeta las preferencias del usuario
 // (usuario_preferencia): canal en el sistema y aviso por correo.
-// El envío de correo es posterior a la transacción (SMTP pendiente, D-11);
-// aquí se devuelve la bandera para que el llamador decida si dispararlo.
 export async function enviar({ idUsuario, tipo, titulo, mensaje, referencia = null }) {
   const { rows } = await pool.query(
     `SELECT notif_sistema, notif_correo FROM usuario_preferencia WHERE id_usuario = $1`,
@@ -11,6 +40,7 @@ export async function enviar({ idUsuario, tipo, titulo, mensaje, referencia = nu
   );
   const p = rows[0] ?? { notif_sistema: true, notif_correo: true };
   const resultado = { sistema: false, correo: Boolean(p.notif_correo) };
+
   if (p.notif_sistema) {
     await pool.query(
       `INSERT INTO notificacion (id_usuario, tipo, titulo, mensaje, referencia)
@@ -19,6 +49,24 @@ export async function enviar({ idUsuario, tipo, titulo, mensaje, referencia = nu
     );
     resultado.sistema = true;
   }
+
+  // Envío de correo (fire-and-forget, best-effort)
+  if (
+    resultado.sistema &&
+    p.notif_correo &&
+    correoConfigurado &&
+    !TIPOS_SIN_CORREO.has(tipo)
+  ) {
+    const { correo, nombre } = await obtenerCorreoYNombre(idUsuario);
+    if (correo) {
+      enviarNotificacionCorreo({ para: correo, titulo, mensaje, nombre }).catch(
+        (e) => {
+          console.error(`[mailer] Error enviando notificación a ${correo}:`, e.message);
+        },
+      );
+    }
+  }
+
   return resultado;
 }
 

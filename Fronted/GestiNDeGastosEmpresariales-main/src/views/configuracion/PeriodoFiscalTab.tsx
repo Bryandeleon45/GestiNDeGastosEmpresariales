@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react"
 import { G, GL } from "@/constants/theme"
 import { Icons } from "@/components/common/Icons"
+import DateInput from "@/views/common/DateInput"
 import {
   listarPeriodos,
   crearPeriodo,
@@ -11,6 +12,7 @@ import {
   type PeriodoFiscal,
   type PresupuestoDependencia,
 } from "@/api/periodosFiscales"
+import { fmtFecha } from "@/utils/fechas"
 
 const fmtQ = (n: number | string | null | undefined) =>
   `Q ${Number(n ?? 0).toLocaleString("es-GT", { minimumFractionDigits: 2 })}`
@@ -185,10 +187,10 @@ export default function PeriodoFiscalTab({
                       <p className="text-sm font-semibold text-gray-700">{fmtQ(p.presupuesto_total)}</p>
                     </td>
                     <td className="px-4 py-3.5">
-                      <p className="text-sm text-gray-600">{p.fecha_inicio ?? "—"}</p>
+                      <p className="text-sm text-gray-600">{p.fecha_inicio ? fmtFecha(p.fecha_inicio) : "—"}</p>
                     </td>
                     <td className="px-4 py-3.5">
-                      <p className="text-sm text-gray-600">{p.fecha_fin ?? "—"}</p>
+                      <p className="text-sm text-gray-600">{p.fecha_fin ? fmtFecha(p.fecha_fin) : "—"}</p>
                     </td>
                     <td className="px-4 py-3.5">
                       <div className="flex items-center gap-1.5">
@@ -241,19 +243,17 @@ export default function PeriodoFiscalTab({
             </div>
             <div>
               <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1.5">Fecha inicio</label>
-              <input
+              <DateInput
                 value={fechaInicio}
-                onChange={(e) => setFechaInicio(e.target.value)}
-                type="date"
+                onChange={setFechaInicio}
                 className="w-full px-3 py-2.5 text-sm bg-white border border-gray-200 rounded-lg outline-none focus:border-green-600"
               />
             </div>
             <div>
               <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1.5">Fecha fin</label>
-              <input
+              <DateInput
                 value={fechaFin}
-                onChange={(e) => setFechaFin(e.target.value)}
-                type="date"
+                onChange={setFechaFin}
                 className="w-full px-3 py-2.5 text-sm bg-white border border-gray-200 rounded-lg outline-none focus:border-green-600"
               />
             </div>

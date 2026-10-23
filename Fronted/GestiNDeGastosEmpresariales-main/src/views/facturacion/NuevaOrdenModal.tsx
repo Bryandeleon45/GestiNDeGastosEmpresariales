@@ -11,6 +11,7 @@ import {
   type Fuente,
 } from "@/api/facturacion"
 import { ApiError } from "@/api/client"
+import DateInput from "@/views/common/DateInput"
 
 const fmt = (n: number | string) =>
   `Q ${Number(n).toLocaleString("es-GT", { minimumFractionDigits: 2 })}`
@@ -139,7 +140,7 @@ export default function NuevaOrdenModal({
             </div>
             <div>
               <label className="text-xs font-bold text-gray-600 block mb-1.5">Fecha de Vencimiento</label>
-              <input value={fechaVencimiento} onChange={(e) => setFechaVencimiento(e.target.value)} type="date" className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-green-600 transition-colors" />
+              <DateInput value={fechaVencimiento} onChange={setFechaVencimiento} className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-green-600 transition-colors" />
             </div>
           </div>
 

@@ -154,7 +154,7 @@ router.get("/perfil", authenticate, async (req, res, next) => {
     const { rows } = await pool.query(
       `SELECT e.id_empleado, e.nombre, e.apellido, e.telefono, e.correo,
               e.fecha_ingreso, p.descripcion AS cargo, d.nombre_dependencia,
-              d.siglas, u.nombre_usuario, up.foto, up.foto_mime
+              d.siglas, u.nombre_usuario, up.foto, up.foto_mime, up.whatsapp
          FROM usuario u
          JOIN empleado e ON e.id_empleado = u.id_empleado
          LEFT JOIN puesto p ON p.id_puesto = e.id_puesto
@@ -200,6 +200,28 @@ router.put("/perfil", authenticate, async (req, res, next) => {
         [req.user.id_usuario, buffer, mime],
       );
     }
+
+    if (b.whatsapp !== undefined) {
+      const digitos = b.whatsapp ? String(b.whatsapp).replace(/\D/g, "") : null;
+      if (digitos && digitos.length !== 8) {
+        return res.status(400).json({ error: "El WhatsApp debe tener 8 dígitos" });
+      }
+      try {
+        await pool.query(
+          `INSERT INTO usuario_preferencia (id_usuario, whatsapp)
+           VALUES ($1, $2)
+           ON CONFLICT (id_usuario)
+           DO UPDATE SET whatsapp = EXCLUDED.whatsapp`,
+          [req.user.id_usuario, digitos],
+        );
+      } catch (e) {
+        if (e.code === "23505") {
+          return res.status(409).json({ error: "Ese número de WhatsApp ya está registrado por otro usuario" });
+        }
+        throw e;
+      }
+    }
+
     await registrarBitacora({
       idUsuario: req.user.id_usuario,
       accion: "perfil_actualizado",
@@ -209,7 +231,7 @@ router.put("/perfil", authenticate, async (req, res, next) => {
     });
     const { rows: r2 } = await pool.query(
       `SELECT e.nombre, e.apellido, e.telefono, e.correo, p.descripcion AS cargo,
-              up.foto, up.foto_mime
+              up.foto, up.foto_mime, up.whatsapp
          FROM usuario u
          JOIN empleado e ON e.id_empleado = u.id_empleado
          LEFT JOIN puesto p ON p.id_puesto = e.id_puesto
