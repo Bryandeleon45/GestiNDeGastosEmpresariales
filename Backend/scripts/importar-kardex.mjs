@@ -9,14 +9,23 @@ import dotenv from "dotenv";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: path.join(__dirname, "..", ".env") });
 
+const REPO_ROOT = path.resolve(__dirname, "..", "..");
+
 const require = createRequire(import.meta.url);
 const ExcelJS = require(
-  "C:/Users/USUARIO/OneDrive/Escritorio/CadenaProveedores/Fronted/GestiNDeGastosEmpresariales-main/node_modules/exceljs/excel.js",
+  path.join(
+    REPO_ROOT,
+    "Frontend",
+    "municompras-web",
+    "node_modules",
+    "exceljs",
+    "excel.js",
+  ),
 );
 
 const EXCEL =
   process.env.KARDEX_EXCEL ||
-  "C:/Users/USUARIO/OneDrive/Escritorio/CadenaProveedores/kardex/CARDEX..xlsx";
+  path.join(REPO_ROOT, "kardex", "CARDEX..xlsx");
 const OUT_DIR = path.join(__dirname, "..", "backups");
 const OUT_JSON = path.join(OUT_DIR, "kardex_insumos.json");
 const OUT_CSV = path.join(OUT_DIR, "kardex_preview.csv");
