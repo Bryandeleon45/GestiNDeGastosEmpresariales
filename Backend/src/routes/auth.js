@@ -25,7 +25,8 @@ function toDataUrl(buf, mime) {
 
 router.post("/login", async (req, res, next) => {
   try {
-    const { usuario, password } = req.body;
+    const usuario = String(req.body.usuario ?? "").trim();
+    const password = req.body.password;
     if (!usuario || !password) {
       return res.status(400).json({ error: "usuario y password son requeridos" });
     }
@@ -37,7 +38,7 @@ router.post("/login", async (req, res, next) => {
          LEFT JOIN empleado e ON e.id_empleado = u.id_empleado
          JOIN rol r ON r.id_rol = u.id_rol
          LEFT JOIN usuario_preferencia up ON up.id_usuario = u.id_usuario
-        WHERE u.nombre_usuario = $1 OR u.correo = $1`,
+        WHERE u.nombre_usuario = $1 OR lower(u.correo) = lower($1)`,
       [usuario],
     );
     const user = rows[0];

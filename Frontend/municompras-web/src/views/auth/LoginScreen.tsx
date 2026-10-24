@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useRef, useState } from "react"
 import { G } from "@/constants/theme"
 import MunicipalSeal from "@/components/common/MunicipalSeal"
 import { LAKE_IMG } from "@/models/login"
@@ -13,6 +13,8 @@ export default function LoginScreen({
 }) {
   const [usuario, setUsuario] = useState("")
   const [password, setPassword] = useState("")
+  const usuarioRef = useRef<HTMLInputElement>(null)
+  const passwordRef = useRef<HTMLInputElement>(null)
   const [showPass, setShowPass] = useState(false)
   const [remember, setRemember] = useState(false)
   const [focusField, setFocusField] = useState<string | null>(null)
@@ -29,14 +31,19 @@ export default function LoginScreen({
   const [error, setError] = useState("")
 
   const handleLogin = async () => {
+    if (loading) return
     setError("")
-    if (!usuario || !password) {
+    // El autocompletado del navegador puede escribir el valor en el DOM sin
+    // disparar onChange; leer el valor real del input evita enviar datos viejos.
+    const usuarioValor = (usuarioRef.current?.value ?? usuario).trim()
+    const passwordValor = passwordRef.current?.value ?? password
+    if (!usuarioValor || !passwordValor) {
       setError("Por favor complete todos los campos.")
       return
     }
     setLoading(true)
     try {
-      await onLogin(usuario, password)
+      await onLogin(usuarioValor, passwordValor)
     } catch (e) {
       setError(e instanceof Error ? e.message : "Error al iniciar sesión.")
     } finally {
@@ -159,8 +166,14 @@ export default function LoginScreen({
                   </svg>
                 </span>
                 <input
+                  ref={usuarioRef}
+                  name="usuario"
+                  autoComplete="username"
                   value={usuario}
-                  onChange={(e) => setUsuario(e.target.value)}
+                  onChange={(e) => {
+                    setUsuario(e.target.value)
+                    if (error) setError("")
+                  }}
                   onFocus={() => setFocusField("usuario")}
                   onBlur={() => setFocusField(null)}
                   onKeyDown={(e) => e.key === "Enter" && handleLogin()}
@@ -189,8 +202,14 @@ export default function LoginScreen({
                   </svg>
                 </span>
                 <input
+                  ref={passwordRef}
+                  name="password"
+                  autoComplete="current-password"
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  onChange={(e) => {
+                    setPassword(e.target.value)
+                    if (error) setError("")
+                  }}
                   onFocus={() => setFocusField("password")}
                   onBlur={() => setFocusField(null)}
                   onKeyDown={(e) => e.key === "Enter" && handleLogin()}
