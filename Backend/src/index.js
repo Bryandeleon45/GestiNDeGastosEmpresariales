@@ -28,6 +28,7 @@ import notificacionesRouter from "./routes/notificaciones.js";
 import { sincronizarAlertas } from "./services/alertas.service.js";
 
 const app = express();
+app.set("trust proxy", 1);
 
 const origenesPermitidos = (process.env.CORS_ORIGINS || "http://localhost:8443")
   .split(",")

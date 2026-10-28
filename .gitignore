@@ -3,6 +3,7 @@ dist/
 build/
 .cache/
 .env*
+!.env.example
 .vite/
 vite.config.*.timestamp-*
 *.tsbuildinfo
@@ -11,6 +12,9 @@ logs/
 *.log
 .claude-replay.*
 .tmp-*
+
+# Dumps locales de base de datos (pueden contener datos personales).
+docker/local-db/
 
 # Estado gestionado por la plataforma, no es código del proyecto.
 /.plugins/

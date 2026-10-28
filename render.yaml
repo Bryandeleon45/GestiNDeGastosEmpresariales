@@ -1,0 +1,45 @@
+services:
+  - type: web
+    name: municompras-api
+    runtime: node
+    plan: free
+    region: virginia
+    rootDir: Backend
+    buildCommand: npm ci
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NODE_VERSION
+        value: 22.18.0
+      - key: PGDATABASE
+        value: GestionCadenadeProveedores
+      - key: PGPOOL_MAX
+        value: "5"
+      - key: JWT_EXPIRES_IN
+        value: 8h
+      - key: JWT_SECRET
+        generateValue: true
+      - key: DATABASE_URL
+        sync: false
+      - key: CORS_ORIGINS
+        value: https://municompras-web.onrender.com
+      - key: APP_URL
+        value: https://municompras-web.onrender.com
+
+  - type: web
+    name: municompras-web
+    runtime: static
+    rootDir: Frontend/municompras-web
+    buildCommand: npm ci && npm run build
+    staticPublishPath: dist
+    routes:
+      - type: rewrite
+        source: "/*"
+        destination: /index.html
+    envVars:
+      - key: NODE_VERSION
+        value: 22.18.0
+      - key: VITE_API_URL
+        value: https://municompras-api.onrender.com/api
