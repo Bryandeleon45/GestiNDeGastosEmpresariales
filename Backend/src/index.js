@@ -26,6 +26,9 @@ import catalogosRouter from "./routes/catalogos.routes.js";
 import periodosFiscalesRouter from "./routes/periodosFiscales.routes.js";
 import notificacionesRouter from "./routes/notificaciones.js";
 import { sincronizarAlertas } from "./services/alertas.service.js";
+import { logConfiguracionCorreo } from "./services/mailer.js";
+
+logConfiguracionCorreo();
 
 const app = express();
 app.set("trust proxy", 1);

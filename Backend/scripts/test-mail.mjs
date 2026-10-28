@@ -1,12 +1,23 @@
-import { verificarSMTP, enviarCorreo, enviarCodigoRecuperacion, enviarNotificacionCorreo, enviarCredencialesCorreo, correoConfigurado } from "../src/services/mailer.js";
+import {
+  logConfiguracionCorreo,
+  proveedorCorreo,
+  verificarCorreo,
+  enviarCorreo,
+  enviarCodigoRecuperacion,
+  enviarNotificacionCorreo,
+  enviarCredencialesCorreo,
+  correoConfigurado,
+} from "../src/services/mailer.js";
 
 async function main() {
-  console.log("=== Test de correo SMTP ===");
+  console.log("=== Test de correo ===");
+  logConfiguracionCorreo();
+  console.log("proveedorCorreo =", proveedorCorreo);
   console.log("correoConfigurado =", correoConfigurado);
   console.log("");
 
   if (!correoConfigurado) {
-    console.log("SMTP no configurado (SMTP_USER/SMTP_PASS vacíos).");
+    console.log("Correo no configurado (RESEND_API_KEY o SMTP_USER/SMTP_PASS vacíos).");
     console.log("Rellena .env y vuelve a ejecutar.");
     process.exit(0);
   }
@@ -15,10 +26,10 @@ async function main() {
   console.log(`Destino de prueba: ${destino}`);
   console.log("");
 
-  // 1) Verificar conexión
-  console.log("1) Verificando conexión SMTP...");
-  const v = await verificarSMTP();
-  console.log("   Resultado:", v.ok ? "✓ Conexión OK" : `✗ ${v.motivo}`);
+  // 1) Verificar proveedor activo
+  console.log(`1) Verificando proveedor de correo (${proveedorCorreo})...`);
+  const v = await verificarCorreo();
+  console.log("   Resultado:", v.ok ? "✓ Proveedor OK" : `✗ ${v.motivo}`);
   if (!v.ok) process.exit(1);
   console.log("");
 
@@ -26,7 +37,7 @@ async function main() {
   console.log("2) Enviando correo de prueba simple...");
   const r1 = await enviarCorreo({
     para: destino,
-    asunto: "Prueba SMTP — Gestión de Proveedores",
+    asunto: "Prueba de correo — Gestión de Proveedores",
     texto: "Este es un correo de prueba del sistema.",
     html: "<p>Este es un <b>correo de prueba</b> del sistema.</p>",
   });

@@ -1,23 +1,60 @@
 import nodemailer from "nodemailer";
 import "dotenv/config";
 
+const RESEND_API_KEY = (process.env.RESEND_API_KEY || "").trim();
+const RESEND_API_URL = (process.env.RESEND_API_URL || "https://api.resend.com/emails").trim();
 const SMTP_HOST = process.env.SMTP_HOST || "smtp.gmail.com";
 const SMTP_PORT = Number(process.env.SMTP_PORT || 587);
 const SMTP_USER = process.env.SMTP_USER || "";
 const SMTP_PASS = (process.env.SMTP_PASS || "").replace(/\s/g, "");
-const SMTP_FROM =
-  process.env.SMTP_FROM ||
-  (SMTP_USER ? `Gestion de Proveedores <${SMTP_USER}>` : "Gestion de Proveedores <no-reply@munipanajachel.gob.gt>");
-const SMTP_TEST_TO = process.env.SMTP_TEST_TO || "";
+const SMTP_FROM = process.env.SMTP_FROM || "";
+const MAIL_FROM =
+  (process.env.MAIL_FROM || SMTP_FROM || "").trim() ||
+  (SMTP_USER
+    ? `Gestion de Proveedores <${SMTP_USER}>`
+    : "Gestion de Proveedores <no-reply@munipanajachel.gob.gt>");
+const MAIL_TEST_TO = process.env.MAIL_TEST_TO || process.env.SMTP_TEST_TO || "";
 const APP_URL = process.env.APP_URL || "http://localhost:8443";
 
-// Si no hay credenciales, el sistema entra en MODO DESARROLLO: no envía correos
-// reales y en su lugar imprime el contenido en la consola del backend.
-export const correoConfigurado = Boolean(SMTP_USER && SMTP_PASS);
+const smtpConfigurado = Boolean(SMTP_USER && SMTP_PASS);
+
+// Resend (API HTTP) tiene prioridad. SMTP queda como respaldo local/desarrollo.
+export const proveedorCorreo = RESEND_API_KEY
+  ? "resend"
+  : smtpConfigurado
+    ? "smtp"
+    : "desarrollo";
+
+// Si no hay proveedor configurado, el sistema entra en MODO DESARROLLO:
+// no envía correos reales y en su lugar imprime el contenido en consola.
+export const correoConfigurado = proveedorCorreo !== "desarrollo";
+
+export function logConfiguracionCorreo() {
+  if (proveedorCorreo === "resend") {
+    console.log(`[mailer] Correo configurado vía Resend (from: ${MAIL_FROM}).`);
+    if (!process.env.MAIL_FROM) {
+      console.warn(
+        "[mailer] MAIL_FROM no está definido; usando remitente por defecto. Configúralo con un dominio verificado en Resend.",
+      );
+    }
+    return;
+  }
+
+  if (proveedorCorreo === "smtp") {
+    console.warn(
+      "[mailer] RESEND_API_KEY no configurada. Se usará SMTP como respaldo; en Render Free los puertos SMTP pueden estar bloqueados.",
+    );
+    return;
+  }
+
+  console.warn(
+    "[mailer] ADVERTENCIA: no hay RESEND_API_KEY ni credenciales SMTP. Los correos no se enviarán; solo se imprimirán en consola.",
+  );
+}
 
 let transporter = null;
 function getTransporter() {
-  if (!correoConfigurado) return null;
+  if (!smtpConfigurado) return null;
   if (!transporter) {
     transporter = nodemailer.createTransport({
       host: SMTP_HOST,
@@ -29,42 +66,118 @@ function getTransporter() {
   return transporter;
 }
 
-// Verifica la conexión SMTP (útil para diagnóstico al arrancar o en test-mail)
-export async function verificarSMTP() {
-  const t = getTransporter();
-  if (!t) return { ok: false, motivo: "smtp_no_configurado" };
+// Verifica el proveedor de correo activo (Resend o SMTP) para diagnóstico.
+export async function verificarCorreo() {
+  if (proveedorCorreo === "resend") {
+    return { ok: true, proveedor: "resend", motivo: "configurado" };
+  }
+
+  if (proveedorCorreo === "smtp") {
+    const t = getTransporter();
+    try {
+      await t.verify();
+      return { ok: true, proveedor: "smtp" };
+    } catch (e) {
+      return {
+        ok: false,
+        proveedor: "smtp",
+        motivo: e instanceof Error ? e.message : "error_desconocido",
+      };
+    }
+  }
+
+  return { ok: false, proveedor: "desarrollo", motivo: "correo_no_configurado" };
+}
+
+// Se mantiene el nombre anterior por compatibilidad con scripts existentes.
+export const verificarSMTP = verificarCorreo;
+
+async function enviarConResend({ para, asunto, html, texto, headers }) {
   try {
-    await t.verify();
-    return { ok: true };
+    const respuesta = await fetch(RESEND_API_URL, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${RESEND_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        from: MAIL_FROM,
+        to: [para],
+        subject: asunto,
+        html,
+        text: texto,
+        headers,
+      }),
+      signal: AbortSignal.timeout(15_000),
+    });
+
+    const data = await respuesta.json().catch(() => ({}));
+
+    if (!respuesta.ok) {
+      const motivo =
+        data.message || data.error || `resend_http_${respuesta.status}`;
+      console.error(`[mailer] Resend rechazó el envío a ${para}: ${motivo}`);
+      return { enviado: false, proveedor: "resend", motivo };
+    }
+
+    return { enviado: true, proveedor: "resend", id: data.id ?? null };
   } catch (e) {
-    return { ok: false, motivo: e instanceof Error ? e.message : "error_desconocido" };
+    const motivo = e instanceof Error ? e.message : "error_desconocido";
+    console.error(`[mailer] Error de red con Resend para ${para}: ${motivo}`);
+    return { enviado: false, proveedor: "resend", motivo };
+  }
+}
+
+async function enviarConSMTP({ para, asunto, html, texto, headers }) {
+  const t = getTransporter();
+  if (!t) {
+    return { enviado: false, proveedor: "desarrollo", motivo: "smtp_no_configurado" };
+  }
+
+  try {
+    const info = await t.sendMail({
+      from: MAIL_FROM,
+      to: para,
+      subject: asunto,
+      text: texto,
+      html,
+      headers,
+    });
+    return { enviado: true, proveedor: "smtp", id: info.messageId ?? null };
+  } catch (e) {
+    const motivo = e instanceof Error ? e.message : "error_desconocido";
+    console.error(`[mailer] Error SMTP enviando a ${para}: ${motivo}`);
+    return { enviado: false, proveedor: "smtp", motivo };
   }
 }
 
 export async function enviarCorreo({ para, asunto, html, texto }) {
-  const t = getTransporter();
-
-  // Modo test: redirige todo a SMTP_TEST_TO si está definido
-  const destinoFinal = SMTP_TEST_TO ? SMTP_TEST_TO : para;
-  const headers = SMTP_TEST_TO ? { "X-Original-To": para } : {};
-
-  if (!t) {
-    console.log("\n================ CORREO (MODO DESARROLLO) ================");
-    console.log(`Para:   ${para}${SMTP_TEST_TO ? ` (redirigido a ${destinoFinal})` : ""}`);
-    console.log(`Asunto: ${asunto}`);
-    console.log(texto || html);
-    console.log("==========================================================\n");
-    return { enviado: false, motivo: "smtp_no_configurado" };
+  if (!para) {
+    return { enviado: false, proveedor: proveedorCorreo, motivo: "destinatario_vacio" };
   }
-  await t.sendMail({
-    from: SMTP_FROM,
-    to: destinoFinal,
-    subject: asunto,
-    text: texto,
-    html,
-    headers,
-  });
-  return { enviado: true };
+
+  // Modo test: redirige todo a MAIL_TEST_TO (o SMTP_TEST_TO) si está definido.
+  const destinoFinal = MAIL_TEST_TO || para;
+  const headers = MAIL_TEST_TO ? { "X-Original-To": para } : {};
+
+  if (proveedorCorreo === "resend") {
+    return enviarConResend({ para: destinoFinal, asunto, html, texto, headers });
+  }
+
+  if (proveedorCorreo === "smtp") {
+    return enviarConSMTP({ para: destinoFinal, asunto, html, texto, headers });
+  }
+
+  console.log("\n================ CORREO (MODO DESARROLLO) ================");
+  console.log(`Para:   ${para}${MAIL_TEST_TO ? ` (redirigido a ${destinoFinal})` : ""}`);
+  console.log(`Asunto: ${asunto}`);
+  console.log(texto || html);
+  console.log("==========================================================\n");
+  return {
+    enviado: false,
+    proveedor: "desarrollo",
+    motivo: "correo_no_configurado",
+  };
 }
 
 // Plantilla para códigos de recuperación (ya existente, mantenida)

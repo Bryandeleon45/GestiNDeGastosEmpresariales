@@ -5,7 +5,7 @@ import { pool } from "../db.js";
 import { authenticate } from "../middlewares/authenticate.js";
 import { authorize } from "../middlewares/authorize.js";
 import { registrarBitacora, ipDe } from "../services/bitacora.service.js";
-import { enviarCredencialesCorreo, correoConfigurado } from "../services/mailer.js";
+import { enviarCredencialesCorreo } from "../services/mailer.js";
 
 const router = Router();
 
@@ -44,6 +44,24 @@ function mapRow(row) {
     estado_conexion: estadoConexion(row),
     tiene_acceso: row.id_usuario != null,
   };
+}
+
+async function enviarCredencialesSeguro(datos) {
+  try {
+    const resultado = await enviarCredencialesCorreo(datos);
+    if (!resultado.enviado) {
+      console.warn(
+        `[mailer] Credenciales no enviadas a ${datos.para}: ${resultado.motivo}`,
+      );
+    }
+    return resultado;
+  } catch (e) {
+    const motivo = e instanceof Error ? e.message : "error_desconocido";
+    console.error(
+      `[mailer] Error enviando credenciales a ${datos.para}: ${motivo}`,
+    );
+    return { enviado: false, proveedor: "desconocido", motivo };
+  }
 }
 
 // ── Listado paginado ──────────────────────────────────────────────────────────
@@ -373,17 +391,13 @@ router.post("/conectar", authorize("proveedores"), async (req, res, next) => {
 
     await client.query("COMMIT");
 
-    // Enviar credenciales por correo (fire-and-forget)
-    if (correoConfigurado) {
-      enviarCredencialesCorreo({
-        para: correo.trim(),
-        nombre: razon_social,
-        usuario: usuario.rows[0].nombre_usuario,
-        clave: claveTemporal,
-      }).catch((e) =>
-        console.error(`[mailer] Error enviando credenciales a ${correo}:`, e.message)
-      );
-    }
+    // El proveedor ya quedó creado: un fallo de correo no revierte la operación.
+    const resultadoCorreo = await enviarCredencialesSeguro({
+      para: correo.trim(),
+      nombre: razon_social,
+      usuario: usuario.rows[0].nombre_usuario,
+      clave: claveTemporal,
+    });
 
     await registrarBitacora({
       idUsuario: req.user.id_usuario,
@@ -399,6 +413,7 @@ router.post("/conectar", authorize("proveedores"), async (req, res, next) => {
         nombre_usuario: usuario.rows[0].nombre_usuario,
         clave_temporal: claveTemporal,
       },
+      correo: resultadoCorreo,
     });
   } catch (e) {
     await client.query("ROLLBACK");
@@ -442,8 +457,10 @@ router.patch("/:id/portal/rol", authorize("proveedores"), async (req, res, next)
 router.post("/:id/portal/reset-clave", authorize("proveedores"), async (req, res, next) => {
   try {
     const { rows } = await pool.query(
-      `SELECT u.id_usuario FROM usuario u
+      `SELECT u.id_usuario, u.nombre_usuario, u.correo, p.razon_social
+         FROM usuario u
          JOIN proveedor_usuario pu ON pu.id_usuario = u.id_usuario
+         JOIN proveedor p ON p.id_proveedor = pu.id_proveedor
         WHERE pu.id_proveedor = $1 AND pu.es_principal`,
       [req.params.id],
     );
@@ -456,6 +473,13 @@ router.post("/:id/portal/reset-clave", authorize("proveedores"), async (req, res
       [hash, rows[0].id_usuario],
     );
 
+    const resultadoCorreo = await enviarCredencialesSeguro({
+      para: rows[0].correo,
+      nombre: rows[0].razon_social,
+      usuario: rows[0].nombre_usuario,
+      clave: claveTemporal,
+    });
+
     await registrarBitacora({
       idUsuario: req.user.id_usuario,
       accion: "proveedor_reset_clave",
@@ -464,7 +488,7 @@ router.post("/:id/portal/reset-clave", authorize("proveedores"), async (req, res
       detalle: `Restablecimiento de credenciales del proveedor ${req.params.id}`,
     });
 
-    res.json({ clave_temporal: claveTemporal });
+    res.json({ clave_temporal: claveTemporal, correo: resultadoCorreo });
   } catch (e) {
     next(e);
   }

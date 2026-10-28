@@ -5,7 +5,7 @@ import { pool } from "../db.js";
 import { authenticate } from "../middlewares/authenticate.js";
 import { authorize } from "../middlewares/authorize.js";
 import { registrarBitacora, ipDe } from "../services/bitacora.service.js";
-import { enviarCredencialesCorreo, correoConfigurado } from "../services/mailer.js";
+import { enviarCredencialesCorreo } from "../services/mailer.js";
 
 const router = Router();
 
@@ -53,6 +53,24 @@ function dto(row) {
     id_puesto: row.id_puesto,
     puesto: row.puesto,
   };
+}
+
+async function enviarCredencialesSeguro(datos) {
+  try {
+    const resultado = await enviarCredencialesCorreo(datos);
+    if (!resultado.enviado) {
+      console.warn(
+        `[mailer] Credenciales no enviadas a ${datos.para}: ${resultado.motivo}`,
+      );
+    }
+    return resultado;
+  } catch (e) {
+    const motivo = e instanceof Error ? e.message : "error_desconocido";
+    console.error(
+      `[mailer] Error enviando credenciales a ${datos.para}: ${motivo}`,
+    );
+    return { enviado: false, proveedor: "desconocido", motivo };
+  }
 }
 
 const BASE_SELECT = `
@@ -214,16 +232,19 @@ router.post("/", authorize("usuarios"), async (req, res, next) => {
 
     await client.query("COMMIT");
 
-    // Enviar credenciales por correo si se dio acceso (fire-and-forget)
-    if (acceso && correoConfigurado) {
-      enviarCredencialesCorreo({
+    // El usuario ya quedó creado: un fallo de correo no revierte la operación.
+    let resultadoCorreo = {
+      enviado: false,
+      proveedor: "desconocido",
+      motivo: "sin_acceso",
+    };
+    if (acceso) {
+      resultadoCorreo = await enviarCredencialesSeguro({
         para: correo,
         nombre: `${nombre} ${apellido}`,
         usuario: nombre_usuario,
         clave: clave,
-      }).catch((e) =>
-        console.error(`[mailer] Error enviando credenciales a ${correo}:`, e.message)
-      );
+      });
     }
 
     await registrarBitacora({
@@ -238,7 +259,7 @@ router.post("/", authorize("usuarios"), async (req, res, next) => {
       `${BASE_SELECT} WHERE e.id_empleado = $1`,
       [emp[0].id_empleado],
     );
-    res.status(201).json(dto(full[0]));
+    res.status(201).json({ ...dto(full[0]), correo: resultadoCorreo });
   } catch (e) {
     await client.query("ROLLBACK");
     if (e.code === "23505") {
