@@ -380,7 +380,7 @@ export default function LoginScreen({
           </div>
 
           <p className="text-center text-[11px] text-gray-300 mt-6">
-            © 2023 Municipalidad de Panajachel · v2.4.1
+            © 2026 Municipalidad de Panajachel · v2.4.1
           </p>
         </div>
       </div>
