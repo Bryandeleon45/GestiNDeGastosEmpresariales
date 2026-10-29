@@ -1,28 +1,23 @@
 import nodemailer from "nodemailer";
 import "dotenv/config";
 
-const RESEND_API_KEY = (process.env.RESEND_API_KEY || "").trim();
-const RESEND_API_URL = (process.env.RESEND_API_URL || "https://api.resend.com/emails").trim();
-const SMTP_HOST = process.env.SMTP_HOST || "smtp.gmail.com";
-const SMTP_PORT = Number(process.env.SMTP_PORT || 587);
-const SMTP_USER = process.env.SMTP_USER || "";
-const SMTP_PASS = (process.env.SMTP_PASS || "").replace(/\s/g, "");
-const SMTP_FROM = process.env.SMTP_FROM || "";
-const MAIL_FROM =
-  (process.env.MAIL_FROM || SMTP_FROM || "").trim() ||
-  (SMTP_USER
-    ? `Gestion de Proveedores <${SMTP_USER}>`
-    : "Gestion de Proveedores <no-reply@munipanajachel.gob.gt>");
-const MAIL_TEST_TO = process.env.MAIL_TEST_TO || process.env.SMTP_TEST_TO || "";
+const BREVO_API_KEY = (process.env.BREVO_API_KEY || "").trim();
+const BREVO_API_URL = (process.env.BREVO_API_URL || "https://api.brevo.com/v3/smtp/email").trim();
+const MAIL_FROM_EMAIL = (process.env.MAIL_FROM_EMAIL || "").trim();
+const MAIL_FROM_NAME = (process.env.MAIL_FROM_NAME || "Gestion de Proveedores").trim();
+const GMAIL_USER = (process.env.GMAIL_USER || "").trim();
+const GMAIL_PASS = (process.env.GMAIL_PASS || "").trim();
 const APP_URL = process.env.APP_URL || "http://localhost:8443";
 
-const smtpConfigurado = Boolean(SMTP_USER && SMTP_PASS);
+const brevoConfigurado = Boolean(BREVO_API_KEY && MAIL_FROM_EMAIL);
+const gmailConfigurado = Boolean(GMAIL_USER && GMAIL_PASS);
 
-// Resend (API HTTP) tiene prioridad. SMTP queda como respaldo local/desarrollo.
-export const proveedorCorreo = RESEND_API_KEY
-  ? "resend"
-  : smtpConfigurado
-    ? "smtp"
+// Brevo (API HTTP, puerto 443) tiene prioridad: funciona en Render Free.
+// Gmail/Nodemailer queda solo como respaldo local/desarrollo.
+export const proveedorCorreo = brevoConfigurado
+  ? "brevo"
+  : gmailConfigurado
+    ? "gmail"
     : "desarrollo";
 
 // Si no hay proveedor configurado, el sistema entra en MODO DESARROLLO:
@@ -30,57 +25,57 @@ export const proveedorCorreo = RESEND_API_KEY
 export const correoConfigurado = proveedorCorreo !== "desarrollo";
 
 export function logConfiguracionCorreo() {
-  if (proveedorCorreo === "resend") {
-    console.log(`[mailer] Correo configurado vía Resend (from: ${MAIL_FROM}).`);
-    if (!process.env.MAIL_FROM) {
-      console.warn(
-        "[mailer] MAIL_FROM no está definido; usando remitente por defecto. Configúralo con un dominio verificado en Resend.",
-      );
-    }
+  if (proveedorCorreo === "brevo") {
+    console.log(`[mailer] Correo configurado vía Brevo (from: ${MAIL_FROM_NAME} <${MAIL_FROM_EMAIL}>).`);
     return;
   }
 
-  if (proveedorCorreo === "smtp") {
+  if (proveedorCorreo === "gmail") {
     console.warn(
-      "[mailer] RESEND_API_KEY no configurada. Se usará SMTP como respaldo; en Render Free los puertos SMTP pueden estar bloqueados.",
+      "[mailer] BREVO_API_KEY/MAIL_FROM_EMAIL no configurados; usando Gmail/Nodemailer como respaldo (no usar en Render Free).",
     );
     return;
   }
 
   console.warn(
-    "[mailer] ADVERTENCIA: no hay RESEND_API_KEY ni credenciales SMTP. Los correos no se enviarán; solo se imprimirán en consola.",
+    "[mailer] ADVERTENCIA: no hay BREVO_API_KEY/MAIL_FROM_EMAIL ni GMAIL_USER/GMAIL_PASS. Los correos no se enviarán; solo se imprimirán en consola.",
   );
 }
 
 let transporter = null;
 function getTransporter() {
-  if (!smtpConfigurado) return null;
+  if (!gmailConfigurado) return null;
   if (!transporter) {
     transporter = nodemailer.createTransport({
-      host: SMTP_HOST,
-      port: SMTP_PORT,
-      secure: SMTP_PORT === 465,
-      auth: { user: SMTP_USER, pass: SMTP_PASS },
+      service: "gmail",
+      host: "smtp.gmail.com",
+      port: 465,
+      secure: true,
+      auth: { user: GMAIL_USER, pass: GMAIL_PASS },
     });
   }
   return transporter;
 }
 
-// Verifica el proveedor de correo activo (Resend o SMTP) para diagnóstico.
+// Verifica el proveedor de correo activo para diagnóstico.
 export async function verificarCorreo() {
-  if (proveedorCorreo === "resend") {
-    return { ok: true, proveedor: "resend", motivo: "configurado" };
+  if (proveedorCorreo === "brevo") {
+    // Muchas API keys de Brevo se crean con permiso solo de "envío", por lo que
+    // GET /account puede responder 403/401 aunque la key sea válida para enviar.
+    // Por eso aquí solo confirmamos que la key esté presente y validamos el envío
+    // con scripts/test-mail.mjs.
+    return { ok: true, proveedor: "brevo", motivo: "configurado" };
   }
 
-  if (proveedorCorreo === "smtp") {
+  if (proveedorCorreo === "gmail") {
     const t = getTransporter();
     try {
       await t.verify();
-      return { ok: true, proveedor: "smtp" };
+      return { ok: true, proveedor: "gmail" };
     } catch (e) {
       return {
         ok: false,
-        proveedor: "smtp",
+        proveedor: "gmail",
         motivo: e instanceof Error ? e.message : "error_desconocido",
       };
     }
@@ -92,21 +87,21 @@ export async function verificarCorreo() {
 // Se mantiene el nombre anterior por compatibilidad con scripts existentes.
 export const verificarSMTP = verificarCorreo;
 
-async function enviarConResend({ para, asunto, html, texto, headers }) {
+async function enviarConBrevo({ para, asunto, html, texto }) {
   try {
-    const respuesta = await fetch(RESEND_API_URL, {
+    const respuesta = await fetch(BREVO_API_URL, {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${RESEND_API_KEY}`,
+        "api-key": BREVO_API_KEY,
         "Content-Type": "application/json",
+        accept: "application/json",
       },
       body: JSON.stringify({
-        from: MAIL_FROM,
-        to: [para],
+        sender: { name: MAIL_FROM_NAME, email: MAIL_FROM_EMAIL },
+        to: [{ email: para }],
         subject: asunto,
-        html,
-        text: texto,
-        headers,
+        htmlContent: html,
+        textContent: texto,
       }),
       signal: AbortSignal.timeout(15_000),
     });
@@ -114,40 +109,38 @@ async function enviarConResend({ para, asunto, html, texto, headers }) {
     const data = await respuesta.json().catch(() => ({}));
 
     if (!respuesta.ok) {
-      const motivo =
-        data.message || data.error || `resend_http_${respuesta.status}`;
-      console.error(`[mailer] Resend rechazó el envío a ${para}: ${motivo}`);
-      return { enviado: false, proveedor: "resend", motivo };
+      const motivo = data.message || data.error || `brevo_http_${respuesta.status}`;
+      console.error(`[mailer] Brevo rechazó el envío a ${para}: ${motivo}`);
+      return { enviado: false, proveedor: "brevo", motivo };
     }
 
-    return { enviado: true, proveedor: "resend", id: data.id ?? null };
+    return { enviado: true, proveedor: "brevo", id: data.messageId ?? null };
   } catch (e) {
     const motivo = e instanceof Error ? e.message : "error_desconocido";
-    console.error(`[mailer] Error de red con Resend para ${para}: ${motivo}`);
-    return { enviado: false, proveedor: "resend", motivo };
+    console.error(`[mailer] Error de red con Brevo para ${para}: ${motivo}`);
+    return { enviado: false, proveedor: "brevo", motivo };
   }
 }
 
-async function enviarConSMTP({ para, asunto, html, texto, headers }) {
+async function enviarConGmail({ para, asunto, html, texto }) {
   const t = getTransporter();
   if (!t) {
-    return { enviado: false, proveedor: "desarrollo", motivo: "smtp_no_configurado" };
+    return { enviado: false, proveedor: "desarrollo", motivo: "gmail_no_configurado" };
   }
 
   try {
     const info = await t.sendMail({
-      from: MAIL_FROM,
+      from: `${MAIL_FROM_NAME} <${GMAIL_USER}>`,
       to: para,
       subject: asunto,
       text: texto,
       html,
-      headers,
     });
-    return { enviado: true, proveedor: "smtp", id: info.messageId ?? null };
+    return { enviado: true, proveedor: "gmail", id: info.messageId ?? null };
   } catch (e) {
     const motivo = e instanceof Error ? e.message : "error_desconocido";
-    console.error(`[mailer] Error SMTP enviando a ${para}: ${motivo}`);
-    return { enviado: false, proveedor: "smtp", motivo };
+    console.error(`[mailer] Error Gmail enviando a ${para}: ${motivo}`);
+    return { enviado: false, proveedor: "gmail", motivo };
   }
 }
 
@@ -156,20 +149,16 @@ export async function enviarCorreo({ para, asunto, html, texto }) {
     return { enviado: false, proveedor: proveedorCorreo, motivo: "destinatario_vacio" };
   }
 
-  // Modo test: redirige todo a MAIL_TEST_TO (o SMTP_TEST_TO) si está definido.
-  const destinoFinal = MAIL_TEST_TO || para;
-  const headers = MAIL_TEST_TO ? { "X-Original-To": para } : {};
-
-  if (proveedorCorreo === "resend") {
-    return enviarConResend({ para: destinoFinal, asunto, html, texto, headers });
+  if (proveedorCorreo === "brevo") {
+    return enviarConBrevo({ para, asunto, html, texto });
   }
 
-  if (proveedorCorreo === "smtp") {
-    return enviarConSMTP({ para: destinoFinal, asunto, html, texto, headers });
+  if (proveedorCorreo === "gmail") {
+    return enviarConGmail({ para, asunto, html, texto });
   }
 
   console.log("\n================ CORREO (MODO DESARROLLO) ================");
-  console.log(`Para:   ${para}${MAIL_TEST_TO ? ` (redirigido a ${destinoFinal})` : ""}`);
+  console.log(`Para:   ${para}`);
   console.log(`Asunto: ${asunto}`);
   console.log(texto || html);
   console.log("==========================================================\n");

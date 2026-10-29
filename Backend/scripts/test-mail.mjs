@@ -17,7 +17,7 @@ async function main() {
   console.log("");
 
   if (!correoConfigurado) {
-    console.log("Correo no configurado (RESEND_API_KEY o SMTP_USER/SMTP_PASS vacíos).");
+    console.log("Correo no configurado (BREVO_API_KEY/MAIL_FROM_EMAIL o GMAIL_USER/GMAIL_PASS vacíos).");
     console.log("Rellena .env y vuelve a ejecutar.");
     process.exit(0);
   }

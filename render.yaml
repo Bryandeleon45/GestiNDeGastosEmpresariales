@@ -27,10 +27,12 @@ services:
         value: https://municompras-web.onrender.com
       - key: APP_URL
         sync: false
-      - key: RESEND_API_KEY
+      - key: BREVO_API_KEY
         sync: false
-      - key: MAIL_FROM
+      - key: MAIL_FROM_EMAIL
         sync: false
+      - key: MAIL_FROM_NAME
+        value: Gestion de Proveedores
 
   - type: web
     name: municompras-web
