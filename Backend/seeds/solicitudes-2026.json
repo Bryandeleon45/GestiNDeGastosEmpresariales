@@ -1,0 +1,174 @@
+[
+  {
+    "codigo": "SC-2026-001",
+    "dependencia_id": 45,
+    "dependencia": "Oficina de Juventud, Educación, Cultura y Deporte",
+    "fecha_documento": "2026-01-20",
+    "fecha_solicitud": "2026-01-20",
+    "prioridad": "Media",
+    "justificacion": "Material gráfico y de señalización para las actividades de la Escuela Municipal de Arte (EMDAP).",
+    "imagen": "WhatsApp Image 2026-11-08 at 4.04.52 PM.jpeg",
+    "items": [
+      { "descripcion": "Afiches doble carta", "cantidad": 30, "precio_unitario": 8, "id_categoria": 1, "id_unidad_medida": 1 },
+      { "descripcion": "Hojas fotografía tamaño carta", "cantidad": 100, "precio_unitario": 4, "id_categoria": 1, "id_unidad_medida": 1 },
+      { "descripcion": "Selladores", "cantidad": 2, "precio_unitario": 35, "id_categoria": 1, "id_unidad_medida": 1 },
+      { "descripcion": "Cintas doble cara", "cantidad": 2, "precio_unitario": 25, "id_categoria": 1, "id_unidad_medida": 1 }
+    ]
+  },
+  {
+    "codigo": "SC-2026-002",
+    "dependencia_id": 11,
+    "dependencia": "Dirección Municipal de la Mujer",
+    "fecha_documento": "2026-01-28",
+    "fecha_solicitud": "2026-01-28",
+    "prioridad": "Media",
+    "justificacion": "Libros de actas y sellos para el registro oficial de las atenciones de la Dirección Municipal de la Mujer.",
+    "imagen": "WhatsApp Image 2026-11-08 at 4.04.53 PM (1).jpeg",
+    "items": [
+      { "descripcion": "Libros de actas habilitadas", "cantidad": 11, "precio_unitario": 85, "id_categoria": 1, "id_unidad_medida": 1 },
+      { "descripcion": "Sellos prácticos", "cantidad": 11, "precio_unitario": 125, "id_categoria": 1, "id_unidad_medida": 1 }
+    ]
+  },
+  {
+    "codigo": "SC-2026-003",
+    "dependencia_id": 12,
+    "dependencia": "Oficina Municipal de Agua y Saneamiento",
+    "fecha_documento": "2026-02-03",
+    "fecha_solicitud": "2026-02-03",
+    "prioridad": "Media",
+    "justificacion": "Repuestos de PVC y candados para mantenimiento de la red de agua y seguridad de instalaciones.",
+    "imagen": "WhatsApp Image 2026-11-08 at 4.04.54 PM.jpeg",
+    "items": [
+      { "descripcion": "Codos PVC 4 pulgadas 45 grados", "cantidad": 2, "precio_unitario": 35, "id_categoria": 4, "id_unidad_medida": 1 },
+      { "descripcion": "Unión de reparación larga PVC 4 pulgadas", "cantidad": 1, "precio_unitario": 75, "id_categoria": 4, "id_unidad_medida": 1 },
+      { "descripcion": "Adaptadores macho PVC 4 pulgadas", "cantidad": 2, "precio_unitario": 45, "id_categoria": 4, "id_unidad_medida": 1 },
+      { "descripcion": "Tapones lisos PVC 4 pulgadas", "cantidad": 2, "precio_unitario": 30, "id_categoria": 4, "id_unidad_medida": 1 },
+      { "descripcion": "Candados grandes", "cantidad": 6, "precio_unitario": 85, "id_categoria": 2, "id_unidad_medida": 1 }
+    ]
+  },
+  {
+    "codigo": "SC-2026-004",
+    "dependencia_id": 50,
+    "dependencia": "Unidad de Gestión Ambiental Municipal",
+    "fecha_documento": "2026-02-18",
+    "fecha_solicitud": "2026-02-18",
+    "prioridad": "Urgente",
+    "justificacion": "Sistema de riego para áreas verdes, malecón y espacios públicos; oficio OF-NO-72-26/DIGAM.",
+    "imagen": "WhatsApp Image 2026-11-08 at 4.05.19 PM (1).jpeg",
+    "items": [
+      { "descripcion": "Bomba de alta presión", "cantidad": 1, "precio_unitario": 3200, "id_categoria": 4, "id_unidad_medida": 1 },
+      { "descripcion": "Tubo PVC flexible de 1 1/2 pulgadas para succión (25 pies)", "cantidad": 25, "precio_unitario": 18, "id_categoria": 4, "id_unidad_medida": 1 },
+      { "descripcion": "Manguera AQUAFLAT de 1 1/2 pulgadas", "cantidad": 50, "precio_unitario": 22, "id_categoria": 4, "id_unidad_medida": 2 },
+      { "descripcion": "Válvula de pie de uso rudo de 1 1/2 pulgadas", "cantidad": 1, "precio_unitario": 180, "id_categoria": 4, "id_unidad_medida": 1 },
+      { "descripcion": "Kit de acoples rápidos de 2 pulgadas", "cantidad": 2, "precio_unitario": 150, "id_categoria": 4, "id_unidad_medida": 1 },
+      { "descripcion": "Accesorios PVC y sellantes", "cantidad": 1, "precio_unitario": 120, "id_categoria": 4, "id_unidad_medida": 1 },
+      { "descripcion": "Soporte de cheque para succión", "cantidad": 1, "precio_unitario": 250, "id_categoria": 4, "id_unidad_medida": 1 }
+    ]
+  },
+  {
+    "codigo": "SC-2026-005",
+    "dependencia_id": 41,
+    "dependencia": "Dirección de Servicios Públicos Municipales",
+    "fecha_documento": "2026-04-14",
+    "fecha_solicitud": "2026-04-14",
+    "prioridad": "Alta",
+    "justificacion": "Materiales y herramienta para la elaboración de dos puertas metálicas en el segundo nivel del Mercado Municipal.",
+    "imagen": "WhatsApp Image 2026-11-08 at 4.05.20 PM (3).jpeg",
+    "items": [
+      { "descripcion": "Hoja de lámina de 2 hojas", "cantidad": 1, "precio_unitario": 450, "id_categoria": 2, "id_unidad_medida": 1 },
+      { "descripcion": "Tubos redondos proceso ligero de 3/4", "cantidad": 16, "precio_unitario": 95, "id_categoria": 2, "id_unidad_medida": 1 },
+      { "descripcion": "Angulares", "cantidad": 5, "precio_unitario": 110, "id_categoria": 2, "id_unidad_medida": 1 },
+      { "descripcion": "Planos de 1 1/4", "cantidad": 3, "precio_unitario": 140, "id_categoria": 2, "id_unidad_medida": 1 },
+      { "descripcion": "Bisagras", "cantidad": 6, "precio_unitario": 25, "id_categoria": 2, "id_unidad_medida": 1 },
+      { "descripcion": "Hierro liso de 3/8 comercial", "cantidad": 1, "precio_unitario": 85, "id_categoria": 2, "id_unidad_medida": 1 },
+      { "descripcion": "Galones de pintura", "cantidad": 3, "precio_unitario": 180, "id_categoria": 2, "id_unidad_medida": 1 },
+      { "descripcion": "Galones de thinner", "cantidad": 3, "precio_unitario": 70, "id_categoria": 2, "id_unidad_medida": 1 },
+      { "descripcion": "Libras de electrodo", "cantidad": 25, "precio_unitario": 18, "id_categoria": 2, "id_unidad_medida": 1 },
+      { "descripcion": "Discos de corte", "cantidad": 30, "precio_unitario": 22, "id_categoria": 2, "id_unidad_medida": 1 },
+      { "descripcion": "Discos para pulir", "cantidad": 12, "precio_unitario": 18, "id_categoria": 2, "id_unidad_medida": 1 },
+      { "descripcion": "Tornillos de anclaje (hangler 3/8)", "cantidad": 24, "precio_unitario": 8, "id_categoria": 2, "id_unidad_medida": 1 }
+    ]
+  },
+  {
+    "codigo": "SC-2026-006",
+    "dependencia_id": 43,
+    "dependencia": "Dirección de Obras e Infraestructura",
+    "fecha_documento": "2026-05-07",
+    "fecha_solicitud": "2026-05-07",
+    "prioridad": "Alta",
+    "justificacion": "Herramienta para el proyecto de perforación de pozo mecánico de agua, solicitud del Cuerpo de Ingenieros del Ejército.",
+    "imagen": "WhatsApp Image 2026-11-08 at 4.05.22 PM (3).jpeg",
+    "items": [
+      { "descripcion": "Pala punta cuadrada", "cantidad": 2, "precio_unitario": 75, "id_categoria": 7, "id_unidad_medida": 1 },
+      { "descripcion": "Pala punta redonda", "cantidad": 2, "precio_unitario": 75, "id_categoria": 7, "id_unidad_medida": 1 },
+      { "descripcion": "Azadón", "cantidad": 1, "precio_unitario": 85, "id_categoria": 7, "id_unidad_medida": 1 },
+      { "descripcion": "Barreta", "cantidad": 2, "precio_unitario": 165, "id_categoria": 7, "id_unidad_medida": 1 },
+      { "descripcion": "Carreta", "cantidad": 2, "precio_unitario": 850, "id_categoria": 7, "id_unidad_medida": 1 },
+      { "descripcion": "Tonel plástico de 50 galones para transporte de combustible", "cantidad": 2, "precio_unitario": 350, "id_categoria": 7, "id_unidad_medida": 1 },
+      { "descripcion": "Pistola de impacto 3/4 con juego de copas", "cantidad": 1, "precio_unitario": 950, "id_categoria": 7, "id_unidad_medida": 1 }
+    ]
+  },
+  {
+    "codigo": "SC-2026-007",
+    "dependencia_id": 52,
+    "dependencia": "Oficina de Recursos Humanos",
+    "fecha_documento": "2026-05-04",
+    "fecha_solicitud": "2026-05-04",
+    "prioridad": "Media",
+    "justificacion": "Tintas y mantenimiento para la impresora EPSON WorkForce Pro WF-C5891 de Recursos Humanos.",
+    "imagen": "WhatsApp Image 2026-11-08 at 4.05.23 PM (5).jpeg",
+    "items": [
+      { "descripcion": "Juegos de tinta color EPSON", "cantidad": 2, "precio_unitario": 350, "id_categoria": 5, "id_unidad_medida": 10 },
+      { "descripcion": "Juegos de tinta negra EPSON", "cantidad": 3, "precio_unitario": 350, "id_categoria": 5, "id_unidad_medida": 10 },
+      { "descripcion": "Cajas de mantenimiento EPSON WorkForce Pro WF-C5891", "cantidad": 2, "precio_unitario": 950, "id_categoria": 5, "id_unidad_medida": 7 }
+    ]
+  },
+  {
+    "codigo": "SC-2026-008",
+    "dependencia_id": 46,
+    "dependencia": "Oficina de Organización Comunitaria y Coordinación de COCODES",
+    "fecha_documento": "2026-05-06",
+    "fecha_solicitud": "2026-05-06",
+    "prioridad": "Media",
+    "justificacion": "Equipo de protección y herramienta para trabajos comunitarios del COCODE de Patanatic.",
+    "imagen": "WhatsApp Image 2026-11-08 at 4.05.24 PM (1).jpeg",
+    "items": [
+      { "descripcion": "Pares de botas (dos talla 40 y uno talla 38)", "cantidad": 3, "precio_unitario": 180, "id_categoria": 7, "id_unidad_medida": 1 },
+      { "descripcion": "Pares de guantes de albañilería", "cantidad": 3, "precio_unitario": 35, "id_categoria": 7, "id_unidad_medida": 1 },
+      { "descripcion": "Barreta", "cantidad": 1, "precio_unitario": 165, "id_categoria": 7, "id_unidad_medida": 1 }
+    ]
+  },
+  {
+    "codigo": "SC-2026-009",
+    "dependencia_id": 49,
+    "dependencia": "Policía Municipal de Tránsito",
+    "fecha_documento": "2026-05-13",
+    "fecha_solicitud": "2026-05-13",
+    "prioridad": "Media",
+    "justificacion": "Calcomanías, carnets y material de identificación para mototaxis, transporte colectivo y pilotos.",
+    "imagen": "WhatsApp Image 2026-11-08 at 4.05.28 PM (5).jpeg",
+    "items": [
+      { "descripcion": "Calcomanías para mototaxis", "cantidad": 161, "precio_unitario": 6, "id_categoria": 1, "id_unidad_medida": 1 },
+      { "descripcion": "Calcomanías para transporte colectivo y repartidores", "cantidad": 400, "precio_unitario": 5, "id_categoria": 1, "id_unidad_medida": 1 },
+      { "descripcion": "Hojas de papel fotográfico doble carta para carnets", "cantidad": 30, "precio_unitario": 4, "id_categoria": 1, "id_unidad_medida": 1 },
+      { "descripcion": "Porta gafetes verticales", "cantidad": 250, "precio_unitario": 8, "id_categoria": 1, "id_unidad_medida": 1 },
+      { "descripcion": "Resmas de hojas de oficio membretadas", "cantidad": 2, "precio_unitario": 45, "id_categoria": 1, "id_unidad_medida": 1 },
+      { "descripcion": "Marcadores permanentes Pelikan negro punta gruesa", "cantidad": 6, "precio_unitario": 18, "id_categoria": 1, "id_unidad_medida": 1 }
+    ]
+  },
+  {
+    "codigo": "SC-2026-010",
+    "dependencia_id": 39,
+    "dependencia": "Tesorería Municipal",
+    "fecha_documento": "2026-08-17",
+    "fecha_solicitud": "2026-11-06",
+    "prioridad": "Media",
+    "justificacion": "Silla tipo cajero, teclados y mouse inalámbricos para el área de Recaudación y recepción municipal; oficio del 17/08/2026 registrado en noviembre.",
+    "imagen": "WhatsApp Image 2026-11-08 at 4.05.29 PM (1).jpeg",
+    "items": [
+      { "descripcion": "Silla tipo cajero", "cantidad": 1, "precio_unitario": 1450, "id_categoria": 6, "id_unidad_medida": 1 },
+      { "descripcion": "Teclados", "cantidad": 2, "precio_unitario": 180, "id_categoria": 5, "id_unidad_medida": 1 },
+      { "descripcion": "Mouse inalámbricos", "cantidad": 2, "precio_unitario": 95, "id_categoria": 5, "id_unidad_medida": 1 }
+    ]
+  }
+]

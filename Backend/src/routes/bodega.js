@@ -1245,7 +1245,7 @@ router.get("/resumen", authorize("bodega"), async (_req, res, next) => {
       `SELECT
          (SELECT COUNT(*)::int FROM recepcion_bodega WHERE estado IN ('Completa','Parcial','Con Novedades')) AS recepciones,
          (SELECT COUNT(*)::int FROM recepcion_bodega WHERE estado = 'En Proceso') AS en_proceso,
-         (SELECT COUNT(*)::int FROM insumo_bodega ib WHERE ib.stock_actual <= ib.stock_minimo) AS alertas_stock`,
+         (SELECT COUNT(*)::int FROM insumo_bodega ib WHERE ib.stock_minimo > 0 AND ib.stock_actual <= ib.stock_minimo) AS alertas_stock`,
     );
     res.json(rows[0]);
   } catch (e) {

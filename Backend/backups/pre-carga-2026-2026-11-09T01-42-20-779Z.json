@@ -1,0 +1,41 @@
+{
+  "generatedAt": "2026-11-09T01:42:20.778Z",
+  "scope": "Carga histórica MuniCompras 2026",
+  "affectedInsumoBodega": [
+    {
+      "id_insumo": 567,
+      "id_bodega": 1,
+      "stock_actual": 1000,
+      "stock_minimo": 0
+    },
+    {
+      "id_insumo": 665,
+      "id_bodega": 1,
+      "stock_actual": 2000,
+      "stock_minimo": 0
+    },
+    {
+      "id_insumo": 733,
+      "id_bodega": 1,
+      "stock_actual": 1695,
+      "stock_minimo": 0
+    },
+    {
+      "id_insumo": 1095,
+      "id_bodega": 1,
+      "stock_actual": 900,
+      "stock_minimo": 0
+    },
+    {
+      "id_insumo": 1192,
+      "id_bodega": 1,
+      "stock_actual": 1600,
+      "stock_minimo": 0
+    }
+  ],
+  "tableCounts": {
+    "requisiciones": 0,
+    "facturas": 0,
+    "proveedores": 0
+  }
+}

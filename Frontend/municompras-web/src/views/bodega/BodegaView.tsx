@@ -20,6 +20,7 @@ import NuevoValeModal from "@/views/bodega/NuevoValeModal"
 import DetalleValeModal from "@/views/bodega/DetalleValeModal"
 import PdfViewerModal from "@/views/common/PdfViewerModal"
 import { fmtFechaHora, fmtFecha } from "@/utils/fechas"
+import { toPdfSrc } from "@/utils/pdf"
 
 const ESTADO_REC_STYLE: Record<string, { bg: string; color: string }> = {
   "En Proceso": { bg: "#DCFCE7", color: "#16A34A" },
@@ -812,7 +813,7 @@ export default function BodegaView({
                               </button>
                               {abierto && (
                                 <iframe
-                                  src={img.contenido_base64}
+                                  src={toPdfSrc(img.contenido_base64, img.mime_type)}
                                   title={img.nombre_archivo}
                                   className="w-full h-80 border-t border-gray-200 bg-white"
                                 />

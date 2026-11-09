@@ -13,6 +13,7 @@ import {
 import { ApiError } from "@/api/client"
 import { puedeGestionarSolicitudes } from "@/utils/permisos"
 import { fmtFecha, fmtFechaHora } from "@/utils/fechas"
+import { toPdfSrc } from "@/utils/pdf"
 
 export default function SolicitudDetailModal({
   id,
@@ -190,7 +191,7 @@ export default function SolicitudDetailModal({
                           </button>
                           {abierto && (
                             <iframe
-                              src={img.contenido_base64}
+                              src={toPdfSrc(img.contenido_base64, img.mime_type)}
                               title={img.nombre_archivo}
                               className="w-full h-80 border-t border-gray-200 bg-white"
                             />

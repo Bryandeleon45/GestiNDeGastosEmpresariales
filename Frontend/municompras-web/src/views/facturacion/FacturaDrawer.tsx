@@ -11,6 +11,7 @@ import {
 } from "@/api/facturacion"
 import { ApiError } from "@/api/client"
 import { fmtFecha, hoyISO } from "@/utils/fechas"
+import { toPdfSrc } from "@/utils/pdf"
 
 const ESTADO_STYLE: Record<string, { bg: string; color: string }> = {
   Pagado: { bg: "#DCFCE7", color: "#16A34A" },
@@ -259,7 +260,7 @@ export default function FacturaDrawer({
                 <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Documento de la Factura</p>
                 {factura.archivo_pdf_base64 ? (
                   <button
-                    onClick={() => setPdfViewer({ src: factura.archivo_pdf_base64!, nombre: factura.archivo_pdf_nombre ?? "Factura.pdf" })}
+                    onClick={() => setPdfViewer({ src: toPdfSrc(factura.archivo_pdf_base64), nombre: factura.archivo_pdf_nombre ?? "Factura.pdf" })}
                     className="mt-2 flex items-center gap-2 px-3 py-2 text-xs font-bold text-white rounded-lg transition-all hover:opacity-90"
                     style={{ backgroundColor: G }}
                   >
@@ -296,7 +297,7 @@ export default function FacturaDrawer({
                     </div>
                     {factura.npg_pdf_base64 && (
                       <button
-                        onClick={() => setPdfViewer({ src: factura.npg_pdf_base64!, nombre: factura.npg_pdf_nombre ?? "NPG.pdf" })}
+                        onClick={() => setPdfViewer({ src: toPdfSrc(factura.npg_pdf_base64), nombre: factura.npg_pdf_nombre ?? "NPG.pdf" })}
                         className="shrink-0 flex items-center gap-2 px-3 py-2 text-xs font-bold text-white rounded-lg transition-all hover:opacity-90"
                         style={{ backgroundColor: G }}
                       >

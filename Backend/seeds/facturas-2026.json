@@ -1,0 +1,1058 @@
+[
+  {
+    "serie": "745DE9CE",
+    "numero_factura": "1969508295",
+    "numero_autorizacion": "745DE9CE-7564-4FC7-BD62-B252BA1CC061",
+    "archivo": "745DE9CE-7564-4FC7-BD62-B252BA1CC061.pdf",
+    "fecha_emision": "2026-06-17",
+    "proveedor_nit": "2736920K",
+    "proveedor_razon_social": "MULTISERVICIOS DANY",
+    "total": 14750,
+    "items": [
+      {
+        "nro": 1,
+        "descripcion": "bateria AM-27-700 120-27",
+        "cantidad": 1,
+        "precio_unitario": 1950,
+        "subtotal": 1950,
+        "id_categoria": 10,
+        "id_unidad_medida": 1
+      },
+      {
+        "nro": 2,
+        "descripcion": "Yoyos Honda",
+        "cantidad": 2,
+        "precio_unitario": 390,
+        "subtotal": 780,
+        "id_categoria": 10,
+        "id_unidad_medida": 1
+      },
+      {
+        "nro": 3,
+        "descripcion": "Limas completos",
+        "cantidad": 5,
+        "precio_unitario": 65,
+        "subtotal": 325,
+        "id_categoria": 10,
+        "id_unidad_medida": 1
+      },
+      {
+        "nro": 4,
+        "descripcion": "Castrol sintetico 20w50",
+        "cantidad": 2,
+        "precio_unitario": 155,
+        "subtotal": 310,
+        "id_categoria": 10,
+        "id_unidad_medida": 1
+      },
+      {
+        "nro": 5,
+        "descripcion": "Tubo grueso 110 90  16",
+        "cantidad": 1,
+        "precio_unitario": 145,
+        "subtotal": 145,
+        "id_categoria": 10,
+        "id_unidad_medida": 1
+      },
+      {
+        "nro": 6,
+        "descripcion": "Yoyos Honda LR",
+        "cantidad": 2,
+        "precio_unitario": 410,
+        "subtotal": 820,
+        "id_categoria": 10,
+        "id_unidad_medida": 1
+      },
+      {
+        "nro": 7,
+        "descripcion": "Litros actevo sintetico",
+        "cantidad": 4,
+        "precio_unitario": 155,
+        "subtotal": 620,
+        "id_categoria": 10,
+        "id_unidad_medida": 1
+      },
+      {
+        "nro": 8,
+        "descripcion": "Galon de aceite 80w90 primium",
+        "cantidad": 1,
+        "precio_unitario": 560,
+        "subtotal": 560,
+        "id_categoria": 10,
+        "id_unidad_medida": 1
+      },
+      {
+        "nro": 9,
+        "descripcion": "Cable Original completovelocidad",
+        "cantidad": 2,
+        "precio_unitario": 125,
+        "subtotal": 250,
+        "id_categoria": 10,
+        "id_unidad_medida": 1
+      },
+      {
+        "nro": 10,
+        "descripcion": "Talcos pidevia retroceso stopcompleto",
+        "cantidad": 2,
+        "precio_unitario": 355,
+        "subtotal": 710,
+        "id_categoria": 10,
+        "id_unidad_medida": 1
+      },
+      {
+        "nro": 11,
+        "descripcion": "Cable de Closh Original completo",
+        "cantidad": 1,
+        "precio_unitario": 125,
+        "subtotal": 125,
+        "id_categoria": 10,
+        "id_unidad_medida": 1
+      },
+      {
+        "nro": 12,
+        "descripcion": "Tubo de grasa Sintetico",
+        "cantidad": 2,
+        "precio_unitario": 135,
+        "subtotal": 270,
+        "id_categoria": 10,
+        "id_unidad_medida": 1
+      },
+      {
+        "nro": 13,
+        "descripcion": "Filtro de aceite y empaqueoriginal",
+        "cantidad": 2,
+        "precio_unitario": 97.5,
+        "subtotal": 195,
+        "id_categoria": 10,
+        "id_unidad_medida": 1
+      },
+      {
+        "nro": 14,
+        "descripcion": "Silicon Gris",
+        "cantidad": 1,
+        "precio_unitario": 85,
+        "subtotal": 85,
+        "id_categoria": 10,
+        "id_unidad_medida": 1
+      },
+      {
+        "nro": 15,
+        "descripcion": "Tapon de Radiador  Japon",
+        "cantidad": 1,
+        "precio_unitario": 140,
+        "subtotal": 140,
+        "id_categoria": 10,
+        "id_unidad_medida": 1
+      },
+      {
+        "nro": 16,
+        "descripcion": "Empaques de bomba auxiliar",
+        "cantidad": 8,
+        "precio_unitario": 47.5,
+        "subtotal": 380,
+        "id_categoria": 10,
+        "id_unidad_medida": 1
+      },
+      {
+        "nro": 17,
+        "descripcion": "Juego Pastillas Del. F.",
+        "cantidad": 2,
+        "precio_unitario": 670,
+        "subtotal": 1340,
+        "id_categoria": 10,
+        "id_unidad_medida": 1
+      },
+      {
+        "nro": 18,
+        "descripcion": "garrafas Castrol Sintetico",
+        "cantidad": 3,
+        "precio_unitario": 560,
+        "subtotal": 1680,
+        "id_categoria": 10,
+        "id_unidad_medida": 1
+      },
+      {
+        "nro": 19,
+        "descripcion": "Filtros de Aceite Ford",
+        "cantidad": 2,
+        "precio_unitario": 165,
+        "subtotal": 330,
+        "id_categoria": 10,
+        "id_unidad_medida": 1
+      },
+      {
+        "nro": 20,
+        "descripcion": "Filtros de Aire Genuino",
+        "cantidad": 2,
+        "precio_unitario": 325,
+        "subtotal": 650,
+        "id_categoria": 10,
+        "id_unidad_medida": 1
+      },
+      {
+        "nro": 21,
+        "descripcion": "Juego empaques de mordas 8unidades",
+        "cantidad": 1,
+        "precio_unitario": 260,
+        "subtotal": 260,
+        "id_categoria": 10,
+        "id_unidad_medida": 1
+      },
+      {
+        "nro": 22,
+        "descripcion": "Grasa sintetica Alta temperaturaCojinetes",
+        "cantidad": 1,
+        "precio_unitario": 125,
+        "subtotal": 125,
+        "id_categoria": 10,
+        "id_unidad_medida": 1
+      },
+      {
+        "nro": 23,
+        "descripcion": "Desengrasante Pre. Ebul.",
+        "cantidad": 1,
+        "precio_unitario": 150,
+        "subtotal": 150,
+        "id_categoria": 10,
+        "id_unidad_medida": 1
+      },
+      {
+        "nro": 24,
+        "descripcion": "5 pares cojinetes 6208 NACHIPREM.",
+        "cantidad": 10,
+        "precio_unitario": 255,
+        "subtotal": 2550,
+        "id_categoria": 10,
+        "id_unidad_medida": 1
+      }
+    ]
+  },
+  {
+    "serie": "A2B01570",
+    "numero_factura": "339886390",
+    "numero_autorizacion": "A2B01570-1442-4136-B361-48A56BEC7D07",
+    "archivo": "A2B01570-1442-4136-B361-48A56BEC7D07.pdf",
+    "fecha_emision": "2026-06-17",
+    "proveedor_nit": "2736920K",
+    "proveedor_razon_social": "MULTISERVICIOS DANY",
+    "total": 18383.7,
+    "items": [
+      {
+        "nro": 1,
+        "descripcion": "Bujes JAC",
+        "cantidad": 40,
+        "precio_unitario": 117,
+        "subtotal": 4680,
+        "id_categoria": 10,
+        "id_unidad_medida": 1
+      },
+      {
+        "nro": 2,
+        "descripcion": "Filtros JAC ORIG.",
+        "cantidad": 8,
+        "precio_unitario": 715,
+        "subtotal": 5720,
+        "id_categoria": 10,
+        "id_unidad_medida": 1
+      },
+      {
+        "nro": 3,
+        "descripcion": "FILTROS AIRE k3000",
+        "cantidad": 2,
+        "precio_unitario": 297,
+        "subtotal": 594,
+        "id_categoria": 10,
+        "id_unidad_medida": 1
+      },
+      {
+        "nro": 4,
+        "descripcion": "La├▒as de Resorte Originales JAC",
+        "cantidad": 8,
+        "precio_unitario": 230.9,
+        "subtotal": 1847.2,
+        "id_categoria": 10,
+        "id_unidad_medida": 1
+      },
+      {
+        "nro": 5,
+        "descripcion": "Empaques de BomBa Freno",
+        "cantidad": 8,
+        "precio_unitario": 45,
+        "subtotal": 360,
+        "id_categoria": 10,
+        "id_unidad_medida": 1
+      },
+      {
+        "nro": 6,
+        "descripcion": "Litros Freno Ate full",
+        "cantidad": 2,
+        "precio_unitario": 145,
+        "subtotal": 290,
+        "id_categoria": 10,
+        "id_unidad_medida": 1
+      },
+      {
+        "nro": 7,
+        "descripcion": "Llantas DUNLOP spVano1",
+        "cantidad": 4,
+        "precio_unitario": 1075,
+        "subtotal": 4300,
+        "id_categoria": 10,
+        "id_unidad_medida": 1
+      },
+      {
+        "nro": 8,
+        "descripcion": "desengrasante especial HARMISHQUALITIES EXTREM",
+        "cantidad": 3,
+        "precio_unitario": 97.5,
+        "subtotal": 292.5,
+        "id_categoria": 10,
+        "id_unidad_medida": 1
+      },
+      {
+        "nro": 9,
+        "descripcion": "galones Desengrasante extr.",
+        "cantidad": 2,
+        "precio_unitario": 150,
+        "subtotal": 300,
+        "id_categoria": 10,
+        "id_unidad_medida": 1
+      }
+    ]
+  },
+  {
+    "serie": "607828BA",
+    "numero_factura": "3591324255",
+    "numero_autorizacion": "607828BA-D60F-425F-87F9-73D0E6E83902",
+    "archivo": "607828BA-D60F-425F-87F9-73D0E6E83902.pdf",
+    "fecha_emision": "2026-07-03",
+    "proveedor_nit": "2736920K",
+    "proveedor_razon_social": "MULTISERVICIOS DANY",
+    "total": 24583.16,
+    "items": [
+      {
+        "nro": 1,
+        "descripcion": "Cojintes de bufa JAC",
+        "cantidad": 16,
+        "precio_unitario": 593.25,
+        "subtotal": 9492,
+        "id_categoria": 10,
+        "id_unidad_medida": 1
+      },
+      {
+        "nro": 2,
+        "descripcion": "Retenedores de Bufa JAC",
+        "cantidad": 8,
+        "precio_unitario": 297.5,
+        "subtotal": 2380,
+        "id_categoria": 10,
+        "id_unidad_medida": 1
+      },
+      {
+        "nro": 3,
+        "descripcion": "Bomba central de FRENO CONBOSTER JAC-ORIGINAL",
+        "cantidad": 1,
+        "precio_unitario": 5970,
+        "subtotal": 5970,
+        "id_categoria": 10,
+        "id_unidad_medida": 1
+      },
+      {
+        "nro": 4,
+        "descripcion": "Tambores Originales JAC",
+        "cantidad": 2,
+        "precio_unitario": 3370.58,
+        "subtotal": 6741.16,
+        "id_categoria": 10,
+        "id_unidad_medida": 1
+      }
+    ]
+  },
+  {
+    "serie": "10B9912D",
+    "numero_factura": "159008793",
+    "numero_autorizacion": "10B9912D-097A-4819-A258-4A44E0AEC519",
+    "archivo": "10B9912D-097A-4819-A258-4A44E0AEC519.pdf",
+    "fecha_emision": "2026-08-25",
+    "proveedor_nit": "2736920K",
+    "proveedor_razon_social": "MULTISERVICIOS DANY",
+    "total": 12265.7,
+    "items": [
+      {
+        "nro": 1,
+        "descripcion": "Disco Freno Delantero GenuinoFord",
+        "cantidad": 1,
+        "precio_unitario": 2997.8,
+        "subtotal": 2997.8,
+        "id_categoria": 10,
+        "id_unidad_medida": 1
+      },
+      {
+        "nro": 2,
+        "descripcion": "juego de Pastillas de Freno Fordgenuino",
+        "cantidad": 1,
+        "precio_unitario": 970,
+        "subtotal": 970,
+        "id_categoria": 10,
+        "id_unidad_medida": 1
+      },
+      {
+        "nro": 3,
+        "descripcion": "Filtros de Aceite Ford genuino",
+        "cantidad": 2,
+        "precio_unitario": 310,
+        "subtotal": 620,
+        "id_categoria": 10,
+        "id_unidad_medida": 1
+      },
+      {
+        "nro": 4,
+        "descripcion": "Cubeta de Aceite Castrol fullsintetico",
+        "cantidad": 1,
+        "precio_unitario": 1950,
+        "subtotal": 1950,
+        "id_categoria": 10,
+        "id_unidad_medida": 1
+      },
+      {
+        "nro": 5,
+        "descripcion": "Filtros de Aceite Jac Orig.",
+        "cantidad": 2,
+        "precio_unitario": 265,
+        "subtotal": 530,
+        "id_categoria": 10,
+        "id_unidad_medida": 1
+      },
+      {
+        "nro": 6,
+        "descripcion": "Filtros de aire JAC ORIG.",
+        "cantidad": 2,
+        "precio_unitario": 470,
+        "subtotal": 940,
+        "id_categoria": 10,
+        "id_unidad_medida": 1
+      },
+      {
+        "nro": 7,
+        "descripcion": "Filtros de Cabina Jac O.",
+        "cantidad": 2,
+        "precio_unitario": 375,
+        "subtotal": 750,
+        "id_categoria": 10,
+        "id_unidad_medida": 1
+      },
+      {
+        "nro": 8,
+        "descripcion": "Juego de Pastillas Traceras Jac.",
+        "cantidad": 1,
+        "precio_unitario": 1061,
+        "subtotal": 1061,
+        "id_categoria": 10,
+        "id_unidad_medida": 1
+      },
+      {
+        "nro": 9,
+        "descripcion": "Juego Pastillas de freno Jacdelantero",
+        "cantidad": 1,
+        "precio_unitario": 1176.9,
+        "subtotal": 1176.9,
+        "id_categoria": 10,
+        "id_unidad_medida": 1
+      },
+      {
+        "nro": 10,
+        "descripcion": "Juego de Focos Jac",
+        "cantidad": 1,
+        "precio_unitario": 1270,
+        "subtotal": 1270,
+        "id_categoria": 10,
+        "id_unidad_medida": 1
+      }
+    ]
+  },
+  {
+    "serie": "F908C026",
+    "numero_factura": "39665814",
+    "numero_autorizacion": "F908C026-025D-4096-AC1E-BB908F063391",
+    "archivo": "F908C026-025D-4096-AC1E-BB908F063391.pdf",
+    "fecha_emision": "2026-08-25",
+    "proveedor_nit": "2736920K",
+    "proveedor_razon_social": "MULTISERVICIOS DANY",
+    "total": 21155,
+    "items": [
+      {
+        "nro": 1,
+        "descripcion": "Juego de Capirucho,esparago,tuerca y chucho Izquierdo JacOrig-",
+        "cantidad": 5,
+        "precio_unitario": 1090,
+        "subtotal": 5450,
+        "id_categoria": 10,
+        "id_unidad_medida": 1
+      },
+      {
+        "nro": 2,
+        "descripcion": "Juego deEsparago,Tuerca,Capirucho,Chucho  Derecho Jac original",
+        "cantidad": 5,
+        "precio_unitario": 1090,
+        "subtotal": 5450,
+        "id_categoria": 10,
+        "id_unidad_medida": 1
+      },
+      {
+        "nro": 3,
+        "descripcion": "Juego de Esparago-Tuerca-Chucho Derecho Jac-Orig",
+        "cantidad": 5,
+        "precio_unitario": 960,
+        "subtotal": 4800,
+        "id_categoria": 10,
+        "id_unidad_medida": 1
+      },
+      {
+        "nro": 4,
+        "descripcion": "Juego de Esparrago-Tuerca-Chucho Izquierdo Jac-Orig",
+        "cantidad": 5,
+        "precio_unitario": 975,
+        "subtotal": 4875,
+        "id_categoria": 10,
+        "id_unidad_medida": 1
+      },
+      {
+        "nro": 5,
+        "descripcion": "Retenedores de Embolo-FrenoFord-Genuino",
+        "cantidad": 4,
+        "precio_unitario": 145,
+        "subtotal": 580,
+        "id_categoria": 10,
+        "id_unidad_medida": 1
+      }
+    ]
+  },
+  {
+    "serie": "06454067",
+    "numero_factura": "3724953096",
+    "numero_autorizacion": "06454067-DE06-4608-8B5C-C7CDECF350DF",
+    "archivo": "06454067-DE06-4608-8B5C-C7CDECF350DF.pdf",
+    "fecha_emision": "2026-09-22",
+    "proveedor_nit": "2736920K",
+    "proveedor_razon_social": "MULTISERVICIOS DANY",
+    "total": 12930,
+    "items": [
+      {
+        "nro": 1,
+        "descripcion": "Repuesto automotriz de motor",
+        "cantidad": 2,
+        "precio_unitario": 1850,
+        "subtotal": 3700,
+        "id_categoria": 10,
+        "id_unidad_medida": 1
+      },
+      {
+        "nro": 2,
+        "descripcion": "Filtros de Aceite Isuzu",
+        "cantidad": 2,
+        "precio_unitario": 495,
+        "subtotal": 990,
+        "id_categoria": 10,
+        "id_unidad_medida": 1
+      },
+      {
+        "nro": 3,
+        "descripcion": "Filtros de Aire Camion Isuzo",
+        "cantidad": 2,
+        "precio_unitario": 790,
+        "subtotal": 1580,
+        "id_categoria": 10,
+        "id_unidad_medida": 1
+      },
+      {
+        "nro": 4,
+        "descripcion": "Canasta y Disco de EmbreagueJAC-AMERI",
+        "cantidad": 1,
+        "precio_unitario": 4900,
+        "subtotal": 4900,
+        "id_categoria": 10,
+        "id_unidad_medida": 1
+      },
+      {
+        "nro": 5,
+        "descripcion": "Bomba Cojinete CollarinEmbreague JAC-AMERIC",
+        "cantidad": 1,
+        "precio_unitario": 1760,
+        "subtotal": 1760,
+        "id_categoria": 10,
+        "id_unidad_medida": 1
+      }
+    ]
+  },
+  {
+    "serie": "59CF252E",
+    "numero_factura": "2510244220",
+    "numero_autorizacion": "59CF252E-959F-497C-9F1E-AFE62DEA4657",
+    "archivo": "59CF252E-959F-497C-9F1E-AFE62DEA4657.pdf",
+    "fecha_emision": "2026-09-22",
+    "proveedor_nit": "2736920K",
+    "proveedor_razon_social": "MULTISERVICIOS DANY",
+    "total": 15154.93,
+    "items": [
+      {
+        "nro": 1,
+        "descripcion": "Retenedor de punta de motorembreague",
+        "cantidad": 1,
+        "precio_unitario": 325,
+        "subtotal": 325,
+        "id_categoria": 10,
+        "id_unidad_medida": 1
+      },
+      {
+        "nro": 2,
+        "descripcion": "Cabezales de giro Jac-Orig",
+        "cantidad": 2,
+        "precio_unitario": 826.7,
+        "subtotal": 1653.4,
+        "id_categoria": 10,
+        "id_unidad_medida": 1
+      },
+      {
+        "nro": 3,
+        "descripcion": "Cabezales Rotula Superior JAC-ORIG",
+        "cantidad": 2,
+        "precio_unitario": 1793.8,
+        "subtotal": 3587.6,
+        "id_categoria": 10,
+        "id_unidad_medida": 1
+      },
+      {
+        "nro": 4,
+        "descripcion": "Puntas de Cremallera JAC-ORIG",
+        "cantidad": 2,
+        "precio_unitario": 841.6,
+        "subtotal": 1683.2,
+        "id_categoria": 10,
+        "id_unidad_medida": 1
+      },
+      {
+        "nro": 5,
+        "descripcion": "Llave de Chucho Original JAC",
+        "cantidad": 1,
+        "precio_unitario": 797.33,
+        "subtotal": 797.33,
+        "id_categoria": 10,
+        "id_unidad_medida": 1
+      },
+      {
+        "nro": 6,
+        "descripcion": "Stop Completa Camion JAC",
+        "cantidad": 4,
+        "precio_unitario": 730,
+        "subtotal": 2920,
+        "id_categoria": 10,
+        "id_unidad_medida": 1
+      },
+      {
+        "nro": 7,
+        "descripcion": "Sillon completo Moto GNOriginal",
+        "cantidad": 1,
+        "precio_unitario": 890,
+        "subtotal": 890,
+        "id_categoria": 10,
+        "id_unidad_medida": 1
+      },
+      {
+        "nro": 8,
+        "descripcion": "Llantas 8P. R16 tofo terreno",
+        "cantidad": 2,
+        "precio_unitario": 795.4,
+        "subtotal": 1590.8,
+        "id_categoria": 10,
+        "id_unidad_medida": 1
+      },
+      {
+        "nro": 9,
+        "descripcion": "Retrovisores Originas Suzuki",
+        "cantidad": 2,
+        "precio_unitario": 293.7,
+        "subtotal": 587.4,
+        "id_categoria": 10,
+        "id_unidad_medida": 1
+      },
+      {
+        "nro": 10,
+        "descripcion": "Cajas de Control de MandoSuzuki Original",
+        "cantidad": 2,
+        "precio_unitario": 397.6,
+        "subtotal": 795.2,
+        "id_categoria": 10,
+        "id_unidad_medida": 1
+      },
+      {
+        "nro": 11,
+        "descripcion": "Tubo 3 pulgadas de 1.50m.",
+        "cantidad": 1,
+        "precio_unitario": 325,
+        "subtotal": 325,
+        "id_categoria": 10,
+        "id_unidad_medida": 1
+      }
+    ]
+  },
+  {
+    "serie": "BD93AD68",
+    "numero_factura": "906970358",
+    "numero_autorizacion": "BD93AD68-360F-44F6-B184-E8B0431B73AB",
+    "archivo": "BD93AD68-360F-44F6-B184-E8B0431B73AB.pdf",
+    "fecha_emision": "2026-09-24",
+    "proveedor_nit": "111476097",
+    "proveedor_razon_social": "DEPOSITO DE MADERA BOCEL",
+    "total": 1950,
+    "items": [
+      {
+        "nro": 1,
+        "descripcion": "Reglas 3x3x8 pies",
+        "cantidad": 36,
+        "precio_unitario": 45.83,
+        "subtotal": 1650,
+        "id_categoria": 2,
+        "id_unidad_medida": 1
+      },
+      {
+        "nro": 2,
+        "descripcion": "Fajas de 6 cm",
+        "cantidad": 12,
+        "precio_unitario": 25,
+        "subtotal": 300,
+        "id_categoria": 2,
+        "id_unidad_medida": 1
+      }
+    ]
+  },
+  {
+    "serie": "638C85F0",
+    "numero_factura": "2795521974",
+    "numero_autorizacion": "638C85F0-A6A0-47B6-8E37-A9092E3D9076",
+    "archivo": "638C85F0-A6A0-47B6-8E37-A9092E3D9076.pdf",
+    "fecha_emision": "2026-10-09",
+    "proveedor_nit": "2736920K",
+    "proveedor_razon_social": "MULTISERVICIOS DANY",
+    "total": 15267,
+    "items": [
+      {
+        "nro": 1,
+        "descripcion": "bateria LTH 550AM-H",
+        "cantidad": 1,
+        "precio_unitario": 1890,
+        "subtotal": 1890,
+        "id_categoria": 10,
+        "id_unidad_medida": 1
+      },
+      {
+        "nro": 2,
+        "descripcion": "Cables de velocidad Isuzu",
+        "cantidad": 2,
+        "precio_unitario": 2390,
+        "subtotal": 4780,
+        "id_categoria": 10,
+        "id_unidad_medida": 1
+      },
+      {
+        "nro": 3,
+        "descripcion": "T tubos ductores de Freno Jac.",
+        "cantidad": 4,
+        "precio_unitario": 225,
+        "subtotal": 900,
+        "id_categoria": 10,
+        "id_unidad_medida": 1
+      },
+      {
+        "nro": 4,
+        "descripcion": "Silbin Original GN SUZUKI",
+        "cantidad": 1,
+        "precio_unitario": 597,
+        "subtotal": 597,
+        "id_categoria": 10,
+        "id_unidad_medida": 1
+      },
+      {
+        "nro": 5,
+        "descripcion": "Pidevias GN Original Suzukidelantero",
+        "cantidad": 2,
+        "precio_unitario": 197,
+        "subtotal": 394,
+        "id_categoria": 10,
+        "id_unidad_medida": 1
+      },
+      {
+        "nro": 6,
+        "descripcion": "Pidevias Traceros GN SUZUKIORIGINAL",
+        "cantidad": 2,
+        "precio_unitario": 215,
+        "subtotal": 430,
+        "id_categoria": 10,
+        "id_unidad_medida": 1
+      },
+      {
+        "nro": 7,
+        "descripcion": "Cable Acelerador Original Suzuki",
+        "cantidad": 1,
+        "precio_unitario": 145,
+        "subtotal": 145,
+        "id_categoria": 10,
+        "id_unidad_medida": 1
+      },
+      {
+        "nro": 8,
+        "descripcion": "Caja de mando Star Suzuki",
+        "cantidad": 1,
+        "precio_unitario": 263,
+        "subtotal": 263,
+        "id_categoria": 10,
+        "id_unidad_medida": 1
+      },
+      {
+        "nro": 9,
+        "descripcion": "Caja de Mando Pidevias yEmbreague",
+        "cantidad": 1,
+        "precio_unitario": 340,
+        "subtotal": 340,
+        "id_categoria": 10,
+        "id_unidad_medida": 1
+      },
+      {
+        "nro": 10,
+        "descripcion": "Bomba de Freno Original Suzuki",
+        "cantidad": 1,
+        "precio_unitario": 590,
+        "subtotal": 590,
+        "id_categoria": 10,
+        "id_unidad_medida": 1
+      },
+      {
+        "nro": 11,
+        "descripcion": "talco de  Luz freno original Suzuki",
+        "cantidad": 1,
+        "precio_unitario": 290,
+        "subtotal": 290,
+        "id_categoria": 10,
+        "id_unidad_medida": 1
+      },
+      {
+        "nro": 12,
+        "descripcion": "Llanta Delantera 8-pl tubular",
+        "cantidad": 1,
+        "precio_unitario": 670,
+        "subtotal": 670,
+        "id_categoria": 10,
+        "id_unidad_medida": 1
+      },
+      {
+        "nro": 13,
+        "descripcion": "Llanta Tracera 8-pl 110 90 16",
+        "cantidad": 1,
+        "precio_unitario": 879,
+        "subtotal": 879,
+        "id_categoria": 10,
+        "id_unidad_medida": 1
+      },
+      {
+        "nro": 14,
+        "descripcion": "Juego Pastillas Original Suzuki",
+        "cantidad": 1,
+        "precio_unitario": 170,
+        "subtotal": 170,
+        "id_categoria": 10,
+        "id_unidad_medida": 1
+      },
+      {
+        "nro": 15,
+        "descripcion": "Juego Fricciones Original",
+        "cantidad": 1,
+        "precio_unitario": 225,
+        "subtotal": 225,
+        "id_categoria": 10,
+        "id_unidad_medida": 1
+      },
+      {
+        "nro": 16,
+        "descripcion": "bujia Cr7ek irid",
+        "cantidad": 1,
+        "precio_unitario": 165,
+        "subtotal": 165,
+        "id_categoria": 10,
+        "id_unidad_medida": 1
+      },
+      {
+        "nro": 17,
+        "descripcion": "Filtro de aceite Orig",
+        "cantidad": 1,
+        "precio_unitario": 95,
+        "subtotal": 95,
+        "id_categoria": 10,
+        "id_unidad_medida": 1
+      },
+      {
+        "nro": 18,
+        "descripcion": "Litro aceite 20w50 Suzuki",
+        "cantidad": 1,
+        "precio_unitario": 175,
+        "subtotal": 175,
+        "id_categoria": 10,
+        "id_unidad_medida": 1
+      },
+      {
+        "nro": 19,
+        "descripcion": "Tablero Original Suzuki",
+        "cantidad": 1,
+        "precio_unitario": 942.5,
+        "subtotal": 942.5,
+        "id_categoria": 10,
+        "id_unidad_medida": 1
+      },
+      {
+        "nro": 20,
+        "descripcion": "Cable Aspirometro Orig",
+        "cantidad": 1,
+        "precio_unitario": 135,
+        "subtotal": 135,
+        "id_categoria": 10,
+        "id_unidad_medida": 1
+      },
+      {
+        "nro": 21,
+        "descripcion": "tapizado sillon",
+        "cantidad": 1,
+        "precio_unitario": 425,
+        "subtotal": 425,
+        "id_categoria": 10,
+        "id_unidad_medida": 1
+      },
+      {
+        "nro": 22,
+        "descripcion": "kit swich tapon 2chapas 2 llavesoriginal suzuki",
+        "cantidad": 1,
+        "precio_unitario": 576.5,
+        "subtotal": 576.5,
+        "id_categoria": 10,
+        "id_unidad_medida": 1
+      },
+      {
+        "nro": 23,
+        "descripcion": "Carbucliner Grandes",
+        "cantidad": 2,
+        "precio_unitario": 95,
+        "subtotal": 190,
+        "id_categoria": 10,
+        "id_unidad_medida": 1
+      }
+    ]
+  },
+  {
+    "serie": "93B67AF1",
+    "numero_factura": "3705097473",
+    "numero_autorizacion": "93B67AF1-DCD7-4D01-A722-A36B0A65B852",
+    "archivo": "93B67AF1-DCD7-4D01-A722-A36B0A65B852.pdf",
+    "fecha_emision": "2026-10-09",
+    "proveedor_nit": "2736920K",
+    "proveedor_razon_social": "MULTISERVICIOS DANY",
+    "total": 11789,
+    "items": [
+      {
+        "nro": 1,
+        "descripcion": "Juego de Pastillas Japan Ford",
+        "cantidad": 2,
+        "precio_unitario": 1090,
+        "subtotal": 2180,
+        "id_categoria": 10,
+        "id_unidad_medida": 1
+      },
+      {
+        "nro": 2,
+        "descripcion": "Garrafas de aceite  full Sintetico20w50 castrol",
+        "cantidad": 4,
+        "precio_unitario": 695,
+        "subtotal": 2780,
+        "id_categoria": 10,
+        "id_unidad_medida": 1
+      },
+      {
+        "nro": 3,
+        "descripcion": "Filtro Aceite Ford",
+        "cantidad": 2,
+        "precio_unitario": 297,
+        "subtotal": 594,
+        "id_categoria": 10,
+        "id_unidad_medida": 1
+      },
+      {
+        "nro": 4,
+        "descripcion": "Filtro de Aire Ford orig",
+        "cantidad": 2,
+        "precio_unitario": 375,
+        "subtotal": 750,
+        "id_categoria": 10,
+        "id_unidad_medida": 1
+      },
+      {
+        "nro": 5,
+        "descripcion": "Cubeta de Aceite sintetico85W140",
+        "cantidad": 1,
+        "precio_unitario": 1750,
+        "subtotal": 1750,
+        "id_categoria": 10,
+        "id_unidad_medida": 1
+      },
+      {
+        "nro": 6,
+        "descripcion": "Galones Aceite Transmision fullSintetico",
+        "cantidad": 3,
+        "precio_unitario": 775,
+        "subtotal": 2325,
+        "id_categoria": 10,
+        "id_unidad_medida": 1
+      },
+      {
+        "nro": 7,
+        "descripcion": "Tubos de grasa Roja sintetico",
+        "cantidad": 3,
+        "precio_unitario": 140,
+        "subtotal": 420,
+        "id_categoria": 10,
+        "id_unidad_medida": 1
+      },
+      {
+        "nro": 8,
+        "descripcion": "Carbucliner L",
+        "cantidad": 2,
+        "precio_unitario": 105,
+        "subtotal": 210,
+        "id_categoria": 10,
+        "id_unidad_medida": 1
+      },
+      {
+        "nro": 9,
+        "descripcion": "aceite 20w50 sintetico",
+        "cantidad": 1,
+        "precio_unitario": 270,
+        "subtotal": 270,
+        "id_categoria": 10,
+        "id_unidad_medida": 1
+      },
+      {
+        "nro": 10,
+        "descripcion": "filtro aceite",
+        "cantidad": 1,
+        "precio_unitario": 190,
+        "subtotal": 190,
+        "id_categoria": 10,
+        "id_unidad_medida": 1
+      },
+      {
+        "nro": 11,
+        "descripcion": "juego bujias NGK",
+        "cantidad": 1,
+        "precio_unitario": 320,
+        "subtotal": 320,
+        "id_categoria": 10,
+        "id_unidad_medida": 1
+      }
+    ]
+  }
+]

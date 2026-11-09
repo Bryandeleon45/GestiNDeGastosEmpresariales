@@ -11,6 +11,7 @@ import { useSupplierPortalController } from "@/controllers/useSupplierPortalCont
 import NotificationBell from "@/views/dashboard/NotificationBell"
 import DateInput from "@/views/common/DateInput"
 import { destinoPortal } from "@/models/notificaciones"
+import { toPdfSrc } from "@/utils/pdf"
 import {
   listarNotificaciones,
   marcarNotificacionLeida,
@@ -224,7 +225,7 @@ function PedidoDetalleModal({
               </p>
               <div className="space-y-2">
                 {pedido.documentos.map((doc, i) => (
-                  <button key={i} onClick={() => setPdfViewer({ src: doc.contenido_base64, nombre: doc.nombre_archivo })} className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-gray-50 transition-colors rounded-lg border text-left" style={{ borderColor: border }}>
+                          <button key={i} onClick={() => setPdfViewer({ src: toPdfSrc(doc.contenido_base64), nombre: doc.nombre_archivo })} className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-gray-50 transition-colors rounded-lg border text-left" style={{ borderColor: border }}>
                     <Icons.PDF />
                     <span className="flex-1 min-w-0 text-left text-sm font-medium truncate" style={{ color: text }}>
                       {doc.nombre_archivo}
@@ -369,7 +370,7 @@ function PedidosAsignadosSection({
                       </p>
                       <div className="space-y-2">
                         {p.documentos.map((doc, i) => (
-                          <button key={i} onClick={() => setPdfViewer({ src: doc.contenido_base64, nombre: doc.nombre_archivo })} className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-gray-50 transition-colors rounded-lg border text-left" style={{ borderColor: border }}>
+                  <button key={i} onClick={() => setPdfViewer({ src: toPdfSrc(doc.contenido_base64), nombre: doc.nombre_archivo })} className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-gray-50 transition-colors rounded-lg border text-left" style={{ borderColor: border }}>
                             <Icons.PDF />
                             <span className="flex-1 min-w-0 text-left text-sm font-medium truncate" style={{ color: text }}>
                               {doc.nombre_archivo}

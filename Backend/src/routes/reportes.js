@@ -164,11 +164,13 @@ async function consultarReporte(codigo, q) {
         [idCat],
       );
       filas = rows.map((r) => {
-        const alerta = r.stock_minimo > 0 && r.stock_actual < r.stock_minimo * 0.5
-          ? "Crítico"
-          : r.stock_actual <= r.stock_minimo
-            ? "Bajo"
-            : "OK";
+        const alerta = r.stock_minimo <= 0
+          ? "OK"
+          : r.stock_actual < r.stock_minimo * 0.5
+            ? "Crítico"
+            : r.stock_actual <= r.stock_minimo
+              ? "Bajo"
+              : "OK";
         return { ...r, alerta };
       });
       break;
